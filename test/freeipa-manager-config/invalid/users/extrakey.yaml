@@ -1,0 +1,17 @@
+---
+extra.key:
+  firstName: Extra
+  lastName: Key
+  initials: EKE
+  organizationUnit: CISTA
+  manager: sample.manager
+  githubLogin: extrakey
+  emailAddress: extra.key@gooddata.com
+  title: Sr. SW Enginner
+  invalid: extrakey
+  memberOf:
+    - github-gooddata-hackers
+    - hipchat-users
+    - ipausers
+    - jenkins
+    - jira-gooddata-users

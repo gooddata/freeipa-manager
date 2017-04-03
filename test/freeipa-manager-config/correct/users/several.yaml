@@ -1,0 +1,32 @@
+---
+firstname.lastname:
+  firstName: Firstname
+  lastName: Lastname
+  initials: FLA
+  organizationUnit: CISTA
+  manager: sample.manager
+  githubLogin: github-account-one
+  emailAddress: firstname.lastname@gooddata.com
+  title: Sr. SW Enginner
+  memberOf:
+    - github-gooddata-hackers
+    - hipchat-users
+    - ipausers
+    - jenkins
+    - jira-gooddata-users
+
+firstname.lastname2:
+  firstName: Firstname
+  lastName: Lastname
+  initials: FLN
+  organizationUnit: CISTA
+  manager: other.manager
+  githubLogin: github-account-two
+  emailAddress: firstname.lastname2@gooddata.com
+  title: Sr. SW Enginner
+  memberOf:
+    - github-gooddata-hackers
+    - hipchat-users
+    - ipausers
+    - jenkins
+    - jira-gooddata-users
