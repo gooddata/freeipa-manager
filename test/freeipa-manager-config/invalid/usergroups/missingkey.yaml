@@ -1,0 +1,3 @@
+group-two:
+  memberOf:
+    - group.one

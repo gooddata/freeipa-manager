@@ -31,8 +31,7 @@ class FreeIPAManager(FreeIPAManagerCore):
         Load configurations from configuration repository at the given path.
         """
         self.loader = EntityLoader(self.args.path)
-        self.lg.info('Processing %s', 'all entities' if not self.args.types
-                     else 'only [%s]' % ', '.join(self.args.types))
+        self.lg.info('Processing entities [%s]', ', '.join(self.args.types))
         self.loader.load(self.args.types)
         if self.loader.errs:
             self.lg.error(

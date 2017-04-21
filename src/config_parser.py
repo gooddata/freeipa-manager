@@ -10,21 +10,40 @@ Kristian Lesko <kristian.lesko@gooddata.com>
 
 import voluptuous
 
+import entities
+import schemas
 from core import FreeIPAManagerCore
-from entities import FreeIPAUser
 from errors import ConfigError
-from schemas import schema_users
 
 
 class ConfigParser(FreeIPAManagerCore):
     """
     Tool responsible for validating the configurations
     and parsing them into FreeIPAEntity representations.
-    :attr schema: validation schema
     """
-    def __init__(self, schema):
+    def __init__(self, schema, entity_class):
+        """
+        :param dict schema: voluptuous.Schema template to validate configs by
+        :param FreeIPAEntity entity_class: entity class to generate from schema
+        """
         super(ConfigParser, self).__init__()
         self.schema = voluptuous.Schema(schema)
+        self.entity_class = entity_class
+
+    def parse(self, data):
+        """
+        Validate the given configuration and parse entity objects.
+        :param dict data: dictionary of entity configurations to validate
+        """
+        entities = []
+        for key, value in data.iteritems():
+            try:
+                entities.extend(
+                    self.entity_class(name, entry)
+                    for name, entry in self.schema({key: value}).items())
+            except voluptuous.Error as e:
+                raise ConfigError(e)
+        return entities
 
 
 class UserConfigParser(ConfigParser):
@@ -32,19 +51,14 @@ class UserConfigParser(ConfigParser):
     User entity validator & parser.
     """
     def __init__(self):
-        super(UserConfigParser, self).__init__(schema_users)
+        super(UserConfigParser, self).__init__(
+            schemas.schema_users, entities.FreeIPAUser)
 
-    def parse(self, data):
-        """
-        Validate user configuration and return parsed FreeIPAUser list.
-        :param dict data: dictionary of parsed user entities to validate
-        """
-        users = []
-        for key, value in data.iteritems():
-            try:
-                users.extend(
-                    FreeIPAUser(login, entry)
-                    for login, entry in self.schema({key: value}).items())
-            except voluptuous.Error as e:
-                raise ConfigError(e)
-        return users
+
+class UserGroupConfigParser(ConfigParser):
+    """
+    User group entity validator & parser.
+    """
+    def __init__(self):
+        super(UserGroupConfigParser, self).__init__(
+            schemas.schema_usergroups, entities.FreeIPAUserGroup)

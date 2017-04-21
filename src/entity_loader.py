@@ -12,9 +12,10 @@ import glob
 import os
 import yaml
 
-from config_parser import UserConfigParser
+import config_parser as parsers
 from core import FreeIPAManagerCore
 from errors import ConfigError, ManagerError
+from utils import ENTITY_TYPES
 
 
 class EntityLoader(FreeIPAManagerCore):
@@ -28,17 +29,18 @@ class EntityLoader(FreeIPAManagerCore):
         super(EntityLoader, self).__init__()
         self.basepath = basepath
         self.parsers = {
-            'users': UserConfigParser()
+            'users': parsers.UserConfigParser(),
+            'usergroups': parsers.UserGroupConfigParser()
         }
         # parsed FreeIPAEntity objects by entity type
         self.entities = dict()
 
-    def load(self, filters=None):
+    def load(self, filters=ENTITY_TYPES):
         """
         Parse FreeIPA entity configurations from the given paths.
         """
         paths = self._retrieve_paths(filters)
-        for conftype in paths:
+        for conftype in sorted(paths):
             self.entities[conftype] = list()
             self.lg.debug('Loading %s configs', conftype)
             subpaths = paths[conftype]
@@ -50,8 +52,13 @@ class EntityLoader(FreeIPAManagerCore):
                     with open(path, 'r') as confsource:
                         data = yaml.safe_load(confsource)
                     self._check_data(data, conftype)
-                    self.entities[conftype].extend(self._parse(data, conftype))
-                except (IOError, ConfigError) as e:
+                    parsed = self._parse(data, conftype)
+                    if len(parsed) > 1:
+                        self.lg.warning(
+                            'More than one entity parsed from %s (%d).',
+                            fname, len(parsed))
+                    self.entities[conftype].extend(parsed)
+                except (IOError, ConfigError, yaml.YAMLError) as e:
                     self.lg.error('%s: %s', fname, e)
                     self.errs.append(fname)
                     errcount += 1
@@ -59,7 +66,7 @@ class EntityLoader(FreeIPAManagerCore):
                 'Parsed %d %s%s', len(self.entities[conftype]), conftype,
                 ' (%d errors encountered)' % errcount if errcount else '')
 
-    def _retrieve_paths(self, filters=None):
+    def _retrieve_paths(self, filters=ENTITY_TYPES):
         """
         Retrieve all available configuration YAML files from the repository.
         :param list filters: types of configurations that should be scanned
@@ -67,8 +74,7 @@ class EntityLoader(FreeIPAManagerCore):
         """
         self.lg.debug('Retrieving paths for filters %s', filters)
         filepaths = dict()
-        conftypes = filters if filters else ['users']
-        for conftype in conftypes:
+        for conftype in filters:
             subpath = os.path.join(self.basepath, conftype)
             subfiles = glob.glob(subpath + '**/*.yaml')
             if not subfiles:

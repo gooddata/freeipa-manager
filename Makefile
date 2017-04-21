@@ -14,11 +14,12 @@ REQUIREMENTS_FILE = requirements.txt
 REQUIREMENTS = $(VENV_DIR)/requirements.installed
 
 CONFIG_REPO ?= ../../freeipa-manager-config/entities
+CHECK_CMD = src/freeipa_manager.py $(CONFIG_REPO) -t $(ENTITY_TYPES)
 
 
 # @help parse & validate configuration
 check: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) src/freeipa_manager.py $(CONFIG_REPO)
+	$(VENV_CMD) $(CHECK_CMD) $(if $(DEBUG), '-d')
 
 # @help check YAML config files for syntax errors
 check-yaml: $(REQUIREMENTS)

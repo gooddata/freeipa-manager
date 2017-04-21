@@ -24,12 +24,11 @@ class FreeIPAEntity(FreeIPAManagerCore):
 
 class FreeIPAUser(FreeIPAEntity):
     """Representation of a FreeIPA user entity."""
-    def __init__(self, login, data):
-        """
-        :param str login: user login (user key in the config)
-        :param dict data: dictionary of user values (parsed from the config)
-        """
-        super(FreeIPAUser, self).__init__(login, data)
-
     def __repr__(self):
         return '<FreeIPAUser %s>' % self.name
+
+
+class FreeIPAUserGroup(FreeIPAEntity):
+    """Representation of a FreeIPA user group entity."""
+    def __repr__(self):
+        return '<FreeIPAUserGroup %s>' % self.name
