@@ -17,18 +17,64 @@ USER_CORRECT = os.path.join(CONFIG_CORRECT, 'users/archibald_jenkins.yaml')
 USER_CORRECT_SEVERAL = os.path.join(CONFIG_CORRECT, 'users/several.yaml')
 USER_MISSINGKEY = os.path.join(CONFIG_INVALID, 'users/missingkey.yaml')
 USER_EXTRAKEY = os.path.join(CONFIG_INVALID, 'users/extrakey.yaml')
-USERGROUP_CORRECT = os.path.join(CONFIG_CORRECT, 'usergroups/group_one.yaml')
-USERGROUP_CORRECT_SEVERAL = os.path.join(
-    CONFIG_CORRECT, 'usergroups/several.yaml')
-USERGROUP_MISSINGKEY = os.path.join(
-    CONFIG_INVALID, 'usergroups/missingkey.yaml')
-USERGROUP_EXTRAKEY = os.path.join(CONFIG_INVALID, 'usergroups/extrakey.yaml')
+GROUP_CORRECT = os.path.join(CONFIG_CORRECT, '%sgroups/group_one.yaml')
+GROUP_CORRECT_SEVERAL = os.path.join(CONFIG_CORRECT, '%sgroups/several.yaml')
+GROUP_MISSINGKEY = os.path.join(CONFIG_INVALID, '%sgroups/missingkey.yaml')
+GROUP_EXTRAKEY = os.path.join(CONFIG_INVALID, '%sgroups/extrakey.yaml')
 
 
 class TestConfigParser(object):
-    def load_conf(self, path):
-        with open(path, 'r') as src:
+    def load_conf(self, path, *args):
+        with open(path % args, 'r') as src:
             return yaml.safe_load(src)
+
+
+class TestHostGroupConfigParser(TestConfigParser):
+    def setup_method(self, method):
+        self.parser = tool.UserGroupConfigParser()
+
+    def test_parse_hostgroup_correct(self):
+        parsed = self.parser.parse(self.load_conf(GROUP_CORRECT, 'host'))
+        assert len(parsed) == 1
+        group = parsed[0]
+        assert isinstance(group, entities.FreeIPAUserGroup)
+        assert group.name == 'group-one-hosts'
+        assert group.data == {
+            'description': 'Sample host group one'
+        }
+
+    def test_parse_hostgroup_correct_several(self):
+        parsed = self.parser.parse(
+            self.load_conf(GROUP_CORRECT_SEVERAL, 'host'))
+        assert len(parsed) == 2
+        assert all(isinstance(i, entities.FreeIPAUserGroup) for i in parsed)
+        groups = sorted(parsed, key=lambda i: i.name)
+        names = [group.name for group in groups]
+        assert names == ['group-three-hosts', 'group-two']
+        data = [group.data for group in groups]
+        assert data[0] == {
+            'description': 'Sample host group three.',
+            'memberOf': ['group-two']
+        }
+        assert data[1] == {
+            'description': 'Sample meta host group two.',
+            'memberOf': ['group-one-hosts']
+        }
+
+    def test_parse_hostgroup_missingkey(self):
+        with pytest.raises(tool.ConfigError) as exc:
+            self.parser.parse(self.load_conf(GROUP_MISSINGKEY, 'host'))
+        assert (
+            "required key not provided @ data['group-two']['description']"
+            in str(exc))
+
+    def test_parse_hostgroup_extrakey(self):
+        with pytest.raises(tool.ConfigError) as exc:
+            self.parser.parse(self.load_conf(GROUP_EXTRAKEY, 'host'))
+        assert (
+            "extra keys not allowed @ data['group-one-hosts']['extrakey']"
+            in str(exc)
+        )
 
 
 class TestUserConfigParser(TestConfigParser):
@@ -118,7 +164,7 @@ class TestUserGroupConfigParser(TestConfigParser):
         self.parser = tool.UserGroupConfigParser()
 
     def test_parse_usergroup_correct(self):
-        parsed = self.parser.parse(self.load_conf(USERGROUP_CORRECT))
+        parsed = self.parser.parse(self.load_conf(GROUP_CORRECT, 'user'))
         assert len(parsed) == 1
         group = parsed[0]
         assert isinstance(group, entities.FreeIPAUserGroup)
@@ -128,7 +174,8 @@ class TestUserGroupConfigParser(TestConfigParser):
         }
 
     def test_parse_usergroup_correct_several(self):
-        parsed = self.parser.parse(self.load_conf(USERGROUP_CORRECT_SEVERAL))
+        parsed = self.parser.parse(
+            self.load_conf(GROUP_CORRECT_SEVERAL, 'user'))
         assert len(parsed) == 2
         assert all(isinstance(i, entities.FreeIPAUserGroup) for i in parsed)
         groups = sorted(parsed, key=lambda i: i.name)
@@ -141,19 +188,19 @@ class TestUserGroupConfigParser(TestConfigParser):
         }
         assert data[1] == {
             'description': 'Sample meta group two.',
-            'memberOf': ['group-one']
+            'memberOf': ['group-one-users']
         }
 
     def test_parse_usergroup_missingkey(self):
         with pytest.raises(tool.ConfigError) as exc:
-            self.parser.parse(self.load_conf(USERGROUP_MISSINGKEY))
+            self.parser.parse(self.load_conf(GROUP_MISSINGKEY, 'user'))
         assert (
             "required key not provided @ data['group-two']['description']"
             in str(exc))
 
     def test_parse_usergroup_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
-            self.parser.parse(self.load_conf(USERGROUP_EXTRAKEY))
+            self.parser.parse(self.load_conf(GROUP_EXTRAKEY, 'user'))
         assert (
             "extra keys not allowed @ data['group-one-users']['extrakey']"
             in str(exc)

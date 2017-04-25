@@ -26,7 +26,7 @@ schema_users = {
     }
 }
 
-schema_usergroups = {
+schema_groups = {
     str: {
         Required('description'): str,
         'memberOf': [str]

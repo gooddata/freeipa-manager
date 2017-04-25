@@ -46,6 +46,15 @@ class ConfigParser(FreeIPAManagerCore):
         return entities
 
 
+class HostGroupConfigParser(ConfigParser):
+    """
+    User group entity validator & parser.
+    """
+    def __init__(self):
+        super(HostGroupConfigParser, self).__init__(
+            schemas.schema_groups, entities.FreeIPAHostGroup)
+
+
 class UserConfigParser(ConfigParser):
     """
     User entity validator & parser.
@@ -61,4 +70,4 @@ class UserGroupConfigParser(ConfigParser):
     """
     def __init__(self):
         super(UserGroupConfigParser, self).__init__(
-            schemas.schema_usergroups, entities.FreeIPAUserGroup)
+            schemas.schema_groups, entities.FreeIPAUserGroup)

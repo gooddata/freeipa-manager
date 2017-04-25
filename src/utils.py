@@ -11,7 +11,7 @@ import argparse
 import logging
 
 
-ENTITY_TYPES = ['usergroups', 'users']
+ENTITY_TYPES = ['hostgroups', 'usergroups', 'users']
 
 
 def init_logging(loglevel):

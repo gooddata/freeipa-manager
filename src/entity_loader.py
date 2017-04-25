@@ -29,6 +29,7 @@ class EntityLoader(FreeIPAManagerCore):
         super(EntityLoader, self).__init__()
         self.basepath = basepath
         self.parsers = {
+            'hostgroups': parsers.HostGroupConfigParser(),
             'users': parsers.UserConfigParser(),
             'usergroups': parsers.UserGroupConfigParser()
         }

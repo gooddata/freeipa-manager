@@ -18,6 +18,9 @@ CONFIG_CORRECT = os.path.join(testpath, 'freeipa-manager-config/correct')
 class TestEntityLoader(object):
     def setup_method(self, method):
         self.loader = tool.EntityLoader(CONFIG_CORRECT)
+        self.expected_hostgroups = [
+            CONFIG_CORRECT + '/hostgroups/%s.yaml' % group
+            for group in ['group_one', 'several']]
         self.expected_users = [
             CONFIG_CORRECT + '/users/%s.yaml' % user
             for user in ['archibald_jenkins', 'several']]
@@ -27,7 +30,8 @@ class TestEntityLoader(object):
 
     def test_retrieve_paths_all(self):
         paths = self.loader._retrieve_paths()
-        assert sorted(paths.keys()) == ['usergroups', 'users']
+        assert sorted(paths.keys()) == ['hostgroups', 'usergroups', 'users']
+        assert sorted(paths.get('hostgroups')) == self.expected_hostgroups
         assert sorted(paths.get('users')) == self.expected_users
         assert sorted(paths.get('usergroups')) == self.expected_usergroups
 
@@ -82,6 +86,8 @@ class TestEntityLoader(object):
         assert set(group.name for group in usergroups) == set([
             'group-one-users', 'group-two', 'group-three-users'])
         captured_log.check(
+            ('EntityLoader', 'WARNING',
+             'More than one entity parsed from hostgroups/several.yaml (2).'),
             ('EntityLoader', 'WARNING',
              'More than one entity parsed from usergroups/several.yaml (2).'),
             ('EntityLoader', 'WARNING',

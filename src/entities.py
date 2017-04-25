@@ -22,13 +22,19 @@ class FreeIPAEntity(FreeIPAManagerCore):
         self.data = data
 
 
+class FreeIPAHostGroup(FreeIPAEntity):
+    """Representation of a FreeIPA host group entity."""
+    def __repr__(self):
+        return '<Hostgroup %s>' % self.name
+
+
 class FreeIPAUser(FreeIPAEntity):
     """Representation of a FreeIPA user entity."""
     def __repr__(self):
-        return '<FreeIPAUser %s>' % self.name
+        return '<User %s>' % self.name
 
 
 class FreeIPAUserGroup(FreeIPAEntity):
     """Representation of a FreeIPA user group entity."""
     def __repr__(self):
-        return '<FreeIPAUserGroup %s>' % self.name
+        return '<Usergroup %s>' % self.name

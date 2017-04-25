@@ -34,6 +34,7 @@ class TestFreeIPAManager(object):
         assert exc.value[0] == 1
         captured_log.check(
             ('FreeIPAManager', 'ERROR',
-             ('There have been errors in 4 configuration files: '
-              '[usergroups/extrakey.yaml, usergroups/missingkey.yaml, '
+             ('There have been errors in 6 configuration files: '
+              '[hostgroups/extrakey.yaml, hostgroups/missingkey.yaml, '
+              'usergroups/extrakey.yaml, usergroups/missingkey.yaml, '
               'users/extrakey.yaml, users/missingkey.yaml]')))
