@@ -9,8 +9,9 @@ archibald.jenkins:
   emailAddress: deli+jenkins@gooddata.com
   title: Sr. SW Enginner
   memberOf:
-    - github-gooddata-hackers
-    - hipchat-users
-    - ipausers
-    - jenkins
-    - jira-gooddata-users
+    usergroups:
+      - github-gooddata-hackers
+      - hipchat-users
+      - ipausers
+      - jenkins
+      - jira-gooddata-users

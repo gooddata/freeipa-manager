@@ -14,16 +14,43 @@ REQUIREMENTS_FILE = requirements.txt
 REQUIREMENTS = $(VENV_DIR)/requirements.installed
 
 CONFIG_REPO ?= ../../freeipa-manager-config/entities
-CHECK_CMD = src/freeipa_manager.py $(CONFIG_REPO) -t $(ENTITY_TYPES)
+LDAP_SERVER ?= $(shell ./ldap_server.sh)
+DIFF_TARGET ?= .diff
 
+BASE_CMD = src/freeipa_manager.py
+CMD_SUFFIX = -t $(ENTITY_TYPES) $(if $(DEBUG), '-v')
+ARG_CONF = $(if $(CONFIG_REPO), --conf $(CONFIG_REPO))
+ARG_REMOTE = $(if $(LDAP_SERVER), --remote $(LDAP_SERVER))
 
-# @help parse & validate configuration
-check: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(CHECK_CMD) $(if $(DEBUG), '-d')
 
 # @help check YAML config files for syntax errors
 check-yaml: $(REQUIREMENTS)
 	$(VENV_CMD) yamllint -f parsable $(CONFIG_REPO)
+
+# @help parse & validate configuration from repository & LDAP server
+check: $(REQUIREMENTS) check-yaml
+	$(VENV_CMD) $(BASE_CMD) check $(ARG_CONF) $(ARG_REMOTE) $(CMD_SUFFIX)
+
+# @help parse & validate configuration from repository only
+check-config: $(REQUIREMENTS) check-yaml
+	$(VENV_CMD) $(BASE_CMD) check $(ARG_CONF) $(CMD_SUFFIX)
+
+# @help parse & validate configuration from LDAP server only
+check-ldap: $(REQUIREMENTS)
+	$(VENV_CMD) $(BASE_CMD) check $(ARG_REMOTE) $(CMD_SUFFIX)
+
+# @help compare configuration in repository vs. LDAP server
+compare: $(REQUIREMENTS) check-yaml
+	$(VENV_CMD) $(BASE_CMD) compare $(ARG_CONF) $(ARG_REMOTE) $(CMD_SUFFIX) > $(DIFF_TARGET)
+
+# @help pull configuration from LDAP server into config repository
+pull: $(REQUIREMENTS)
+	$(VENV_CMD) $(BASE_CMD) pull $(ARG_CONF) $(ARG_REMOTE) $(CMD_SUFFIX)
+
+# @help push configuration from config repository to LDAP server (add-only)
+push: $(REQUIREMENTS) check-yaml
+	$(VENV_CMD) $(BASE_CMD) push $(ARG_CONF) $(ARG_REMOTE) $(CMD_SUFFIX)
+
 
 $(VENV_ACTIVATE):
 	$(VIRTUALENV) $(VENV_DIR)

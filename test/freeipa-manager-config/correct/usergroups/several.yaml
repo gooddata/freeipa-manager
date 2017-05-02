@@ -2,9 +2,11 @@
 group-two:
   description: Sample meta group two.
   memberOf:
-    - group-one-users
+    usergroups:
+      - group-one-users
 
 group-three-users:
   description: Sample group three.
   memberOf:
-    - group-two
+    usergroups:
+      - group-two

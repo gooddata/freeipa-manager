@@ -10,25 +10,23 @@ NOTE: 'noldap_'-prefixed attributes are only used internally
 Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
-from voluptuous import Required
-
 schema_users = {
     str: {
-        Required('emailAddress'): str,
-        Required('firstName'): str,
-        Required('lastName'): str,
-        Required('initials'): str,
-        Required('organizationUnit'): str,
-        Required('manager'): str,
+        'emailAddress': str,
+        'firstName': str,
+        'lastName': str,
+        'initials': str,
+        'organizationUnit': str,
+        'manager': str,
         'githubLogin': str,
         'title': str,
-        'memberOf': [str]
+        'memberOf': {str: [str]}
     }
 }
 
 schema_groups = {
     str: {
-        Required('description'): str,
-        'memberOf': [str]
+        'description': str,
+        'memberOf': {str: [str]}
     }
 }

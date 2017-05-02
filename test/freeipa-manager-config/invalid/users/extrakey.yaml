@@ -10,8 +10,9 @@ extra.key:
   title: Sr. SW Enginner
   invalid: extrakey
   memberOf:
-    - github-gooddata-hackers
-    - hipchat-users
-    - ipausers
-    - jenkins
-    - jira-gooddata-users
+    usergroups:
+      - github-gooddata-hackers
+      - hipchat-users
+      - ipausers
+      - jenkins
+      - jira-gooddata-users

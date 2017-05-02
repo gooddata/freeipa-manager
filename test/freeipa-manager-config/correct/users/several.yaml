@@ -9,11 +9,12 @@ firstname.lastname:
   emailAddress: firstname.lastname@gooddata.com
   title: Sr. SW Enginner
   memberOf:
-    - github-gooddata-hackers
-    - hipchat-users
-    - ipausers
-    - jenkins
-    - jira-gooddata-users
+    usergroups:
+      - github-gooddata-hackers
+      - hipchat-users
+      - ipausers
+      - jenkins
+      - jira-gooddata-users
 
 firstname.lastname2:
   firstName: Firstname
@@ -25,8 +26,9 @@ firstname.lastname2:
   emailAddress: firstname.lastname2@gooddata.com
   title: Sr. SW Enginner
   memberOf:
-    - github-gooddata-hackers
-    - hipchat-users
-    - ipausers
-    - jenkins
-    - jira-gooddata-users
+    usergroups:
+      - github-gooddata-hackers
+      - hipchat-users
+      - ipausers
+      - jenkins
+      - jira-gooddata-users

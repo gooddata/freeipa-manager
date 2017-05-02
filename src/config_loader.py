@@ -2,8 +2,8 @@
 GoodData FreeIPA tooling
 Configuration parsing tool
 
-Tools for validating & parsing the FreeIPA
-configuration for hosts, users & groups.
+Tools for loading FreeIPA configuration
+from a locally cloned config repo.
 
 Kristian Lesko <kristian.lesko@gooddata.com>
 """
@@ -18,7 +18,7 @@ from errors import ConfigError, ManagerError
 from utils import ENTITY_TYPES
 
 
-class EntityLoader(FreeIPAManagerCore):
+class ConfigLoader(FreeIPAManagerCore):
     """
     Responsible for loading configuration YAML files from the repository.
     """
@@ -26,7 +26,7 @@ class EntityLoader(FreeIPAManagerCore):
         """
         :param str basepath: path to the cloned config repository
         """
-        super(EntityLoader, self).__init__()
+        super(ConfigLoader, self).__init__()
         self.basepath = basepath
         self.parsers = {
             'hostgroups': parsers.HostGroupConfigParser(),
