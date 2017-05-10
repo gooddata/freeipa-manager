@@ -8,6 +8,7 @@ from a remote LDAP server.
 Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
+import dns.resolver
 import ldap
 
 import entities
@@ -19,13 +20,14 @@ from errors import ManagerError
 class LdapLoader(FreeIPAManagerCore):
     """
     Responsible for loading configuration YAML files from LDAP server.
+    :param str domain: domain of the FreeIPA server ((prod|int|dev)gdc.com)
     """
-    def __init__(self, addr='localhost'):
-        """
-        :param str addr: FreeIPA LDAP server address (without ldap://)
-        """
+    def __init__(self, domain):
         super(LdapLoader, self).__init__()
-        self.addr = 'ldap://%s' % addr
+        self.addr = 'ldap://%s' % domain
+        if domain != 'localhost':
+            query = '_kerberos._tcp.%s' % domain
+            self.addr = 'ldap://%s' % self._resolve_ldap_srv(query)
         self._init_connection()
         self.entity_classes = {
             'hostgroups': entities.FreeIPAHostGroup,
@@ -37,18 +39,30 @@ class LdapLoader(FreeIPAManagerCore):
         """
         Initialize a connection to LDAP server & setup Kerberos authentication.
         """
-        self.lg.debug('Initializing LDAP connection to %s', self.addr)
+        self.lg.info('Connecting to LDAP server %s', self.addr)
+        self.lg.debug('Initializing LDAP connection')
         self.server = ldap.initialize(self.addr)
         self.lg.debug('Binding GSSAPI to LDAP connection for Kerberos auth')
         try:
             self.server.sasl_interactive_bind_s('', ldap.sasl.gssapi())
         except ldap.LDAPError as e:
-            msg = '%s%s' % (
-                e[0].get('desc', ''),
-                ' (%s)' % e[0].get('info') if 'info' in e[0] else '')
-            raise ManagerError(
-                'Error authenticating via Kerberos: %s' % msg if msg else e)
+            raise ManagerError('Error authenticating via Kerberos: %s' % e)
         self.lg.info('LDAP connection initialized')
+
+    def _resolve_ldap_srv(self, query):
+        """
+        Resolve the FreeIPA SRV query for the highest-priority LDAP server.
+        :param str query: query to resolve
+        :returns: domain with the highest priority in the SRV record
+        :rtype: str
+        """
+        try:
+            answer = dns.resolver.query(query, 'SRV')
+        except dns.exception.DNSException as e:
+            raise ManagerError('Cannot resolve FreeIPA server: %s' % e)
+        result = answer.response.answer[0][0].target.to_text()
+        self.lg.debug('FreeIPA SRV record resolved to %s', result)
+        return result
 
 
 class LdapDownloader(LdapLoader):

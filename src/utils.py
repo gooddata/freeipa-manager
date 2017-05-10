@@ -90,13 +90,13 @@ def init_logging(loglevel):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='FreeIPA management CLI tool')
+    parser.add_argument('config', help='Path to config repository')
     parser.add_argument('action', choices=['check', 'compare', 'pull', 'push'])
-    parser.add_argument('-c', '--conf', help='Path to config repository')
-    parser.add_argument('-r', '--remote', help='LDAP server address')
-    parser.add_argument(
-        '-t', '--types', nargs='*', choices=ENTITY_TYPES,
-        help='Only process given entity types')
-    parser.add_argument('-d', '--dry', help='Dry run')
+    parser.add_argument('-d', '--domain', help='FreeIPA SRV record to resolve',
+                        nargs='?', const='intgdc.com')
+    parser.add_argument('-t', '--types', nargs='*', choices=ENTITY_TYPES,
+                        help='Only process given entity types')
+    parser.add_argument('--dry', help='Dry run')
     parser.add_argument(
         '-v', '--verbose', dest='loglevel', action='store_const',
         const=logging.DEBUG, default=logging.INFO)

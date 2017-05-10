@@ -32,7 +32,7 @@ class FreeIPAManager(FreeIPAManagerCore):
         """
         Load configurations from configuration repository at the given path.
         """
-        self.loader = ConfigLoader(self.args.conf)
+        self.loader = ConfigLoader(self.args.config)
         self.lg.info('Processing entities [%s]', ', '.join(self.args.types))
         self.loader.load(self.args.types)
         if self.loader.errs:
@@ -44,33 +44,14 @@ class FreeIPAManager(FreeIPAManagerCore):
         """
         Load configurations from given LDAP server.
         """
-        self.ldap_loader = LdapDownloader(self.args.remote)
+        self.ldap_loader = LdapDownloader(self.args.domain)
         self.ldap_loader.load_entities(self.args.types)
-
-    def _check_requirements(self):
-        """
-        Test whether requirements for the given action have been met.
-        Config check requires at least config repo or LDAP server,
-        all other actions require both arguments.
-        """
-        source_args = [self.args.conf, self.args.remote]
-        if self.args.action == 'check':
-            if not any(source_args):
-                raise ManagerError('--conf or --remote required')
-            return
-        elif not all(source_args):
-            raise ManagerError('Both --conf and --remote required')
 
     def run(self):
         """
         Execute the task selected by arguments (check config, upload etc).
         Currently, only configuration checking is implemented.
         """
-        try:
-            self._check_requirements()
-        except ManagerError as e:
-            self.lg.error('Cannot %s: %s', self.args.action, e)
-            sys.exit(2)
         try:
             {
                 'check': self.check,
@@ -87,11 +68,10 @@ class FreeIPAManager(FreeIPAManagerCore):
         Run repository configuration check.
         Can check local config repo, config from LDAP server, or both.
         """
-        if self.args.conf:
-            self.lg.info('Checking local config at %s', self.args.conf)
+        if self.args.config:
+            self.lg.info('Checking local config at %s', self.args.config)
             self._load_config()
-        if self.args.remote:
-            self.lg.info('Checking config at LDAP server %s', self.args.remote)
+        if self.args.domain:
             self._load_ldap()
 
     def compare(self):
