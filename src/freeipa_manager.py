@@ -32,20 +32,15 @@ class FreeIPAManager(FreeIPAManagerCore):
         """
         Load configurations from configuration repository at the given path.
         """
-        self.loader = ConfigLoader(self.args.config)
-        self.lg.info('Processing entities [%s]', ', '.join(self.args.types))
-        self.loader.load(self.args.types)
-        if self.loader.errs:
-            raise ManagerError(
-                'There have been errors in %d configuration files: [%s]' %
-                (len(self.loader.errs), ', '.join(sorted(self.loader.errs))))
+        self.config_loader = ConfigLoader(self.args.config, self.args.domain)
+        self.config_loader.load()
 
     def _load_ldap(self):
         """
         Load configurations from given LDAP server.
         """
         self.ldap_loader = LdapDownloader(self.args.domain)
-        self.ldap_loader.load_entities(self.args.types)
+        self.ldap_loader.load()
 
     def run(self):
         """
@@ -69,7 +64,6 @@ class FreeIPAManager(FreeIPAManagerCore):
         Can check local config repo, config from LDAP server, or both.
         """
         if self.args.config:
-            self.lg.info('Checking local config at %s', self.args.config)
             self._load_config()
         if self.args.domain:
             self._load_ldap()

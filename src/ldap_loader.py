@@ -11,10 +11,9 @@ Kristian Lesko <kristian.lesko@gooddata.com>
 import dns.resolver
 import ldap
 
-import entities
-import utils
 from core import FreeIPAManagerCore
-from errors import ManagerError
+from errors import AuthError, ManagerError
+from utils import ENTITY_CLASSES
 
 
 class LdapLoader(FreeIPAManagerCore):
@@ -24,29 +23,40 @@ class LdapLoader(FreeIPAManagerCore):
     """
     def __init__(self, domain):
         super(LdapLoader, self).__init__()
-        self.addr = 'ldap://%s' % domain
-        if domain != 'localhost':
-            query = '_kerberos._tcp.%s' % domain
-            self.addr = 'ldap://%s' % self._resolve_ldap_srv(query)
-        self._init_connection()
-        self.entity_classes = {
-            'hostgroups': entities.FreeIPAHostGroup,
-            'users': entities.FreeIPAUser,
-            'usergroups': entities.FreeIPAUserGroup
-        }
+        self.domain = domain
+        self._connect()
 
-    def _init_connection(self):
+    def _connect(self):
+        self.connected = False
+        if self.domain == 'localhost':
+            records = ['localhost']
+        else:
+            records = self._resolve_ldap_srv('_kerberos._tcp.%s' % self.domain)
+        while not self.connected and records:
+            server = 'ldap://%s' % records.pop(0)
+            try:
+                self._init_connection(server)
+            except ldap.LDAPError as e:
+                self.lg.warning(
+                    'Error connecting to %s, trying next one: %s', server, e)
+        if not self.connected:
+            raise ManagerError('Unable to connect to any FreeIPA server')
+
+    def _init_connection(self, server):
         """
         Initialize a connection to LDAP server & setup Kerberos authentication.
+        :param str server: LDAP server to connect to
         """
-        self.lg.info('Connecting to LDAP server %s', self.addr)
+        self.lg.info('Connecting to LDAP server %s', server)
         self.lg.debug('Initializing LDAP connection')
-        self.server = ldap.initialize(self.addr)
-        self.lg.debug('Binding GSSAPI to LDAP connection for Kerberos auth')
+        self.server = ldap.initialize(server)
+        self.server.set_option(ldap.OPT_NETWORK_TIMEOUT, 3)
+        self.lg.debug('Enabling Kerberos (GSSAPI) authentication')
         try:
             self.server.sasl_interactive_bind_s('', ldap.sasl.gssapi())
         except ldap.LDAPError as e:
-            raise ManagerError('Error authenticating via Kerberos: %s' % e)
+            raise AuthError('Error authenticating via Kerberos: %s' % e)
+        self.connected = True
         self.lg.info('LDAP connection initialized')
 
     def _resolve_ldap_srv(self, query):
@@ -60,51 +70,46 @@ class LdapLoader(FreeIPAManagerCore):
             answer = dns.resolver.query(query, 'SRV')
         except dns.exception.DNSException as e:
             raise ManagerError('Cannot resolve FreeIPA server: %s' % e)
-        result = answer.response.answer[0][0].target.to_text()
-        self.lg.debug('FreeIPA SRV record resolved to %s', result)
+        result = [i.target.to_text() for i in answer.response.answer[0]]
+        self.lg.debug(
+            'FreeIPA SRV query resolved to records: [%s]', ', '.join(result))
         return result
 
 
 class LdapDownloader(LdapLoader):
-    def load_entities(self, filters=utils.ENTITY_TYPES):
+    def load(self):
         """
         Load entities of selected types from LDAP server at given address
         and parse them into FreeIPA entity object representations.
         :param list(str) filters: list of entity types to load
         """
         self.entities = dict()
-        for conftype in sorted(filters):
-            self._search_entities(conftype)
-            self.lg.debug('Parsed %s: %s', conftype, self.entities[conftype])
+        for entity_class in sorted(ENTITY_CLASSES):
+            self.lg.debug('Searching for %s', entity_class.entity_name)
+            self.entities[entity_class.entity_name] = []
+            attrlist = entity_class.ldap_attrlist
+            search_base = entity_class.construct_dn(self.domain)
+            data = self.server.search_s(
+                search_base, ldap.SCOPE_SUBTREE, entity_class.ldap_filter,
+                self._map_attrlist(attrlist, entity_class))
+            for item in data:
+                dn, attrs = item
+                self.entities[entity_class.entity_name].append(
+                    entity_class(dn, attrs, self.domain))
+            self.lg.debug(
+                'Found %s: %s', entity_class.entity_name,
+                self.entities[entity_class.entity_name])
             self.lg.info(
-                'Parsed %d %s', len(self.entities[conftype]), conftype)
+                'Parsed %d %s', len(self.entities[entity_class.entity_name]),
+                entity_class.entity_name)
 
-    def _search_entities(self, entity_type):
-        """
-        Search LDAP entities of the given entity type.
-        :param str entity_type: entity type to search (users, usergroups etc.)
-        """
-        self.lg.debug('Searching for %s', entity_type)
-        self.entities[entity_type] = []
-        self.entity_class = self.entity_classes[entity_type]
-        base = utils.ldap_get_dn(entity_type)
-        attrlist = utils.ENTITY_ARGS[entity_type]
-        data = self.server.search_s(
-            base, ldap.SCOPE_SUBTREE, '(%s=*)' % utils.LDAP_ID[entity_type],
-            self._map_attrlist(attrlist, entity_type))
-        for item in data:
-            dn, attrs = item
-            if dn == base:  # there is a top-level entity we don't parse
-                continue
-            self.entities[entity_type].append(self.entity_class(dn, attrs))
-
-    def _map_attrlist(self, attrs, conftype):
+    def _map_attrlist(self, attrs, entity_class):
         """
         Map configuration attribute names to their LDAP counterparts.
         :param list attrs: list of attributes to map
-        :param str conftype: config type (users, usergroups, hostgroups)
+        :param FreeIPAEntity entity_class: entity class reference
         :returns: attribute list translated to LDAP format
         :rtype: list
         """
-        mapdict = utils.LDAP_CONF_MAPPING[conftype]
-        return [mapdict.get(key) if mapdict.get(key) else key for key in attrs]
+        mapdict = entity_class.key_mapping
+        return [mapdict.get(key, key) for key in attrs]

@@ -17,7 +17,7 @@ CONFIG_REPO ?= ../../freeipa-manager-config/entities
 DIFF_TARGET ?= .diff
 
 BASE_CMD = src/freeipa_manager.py $(CONFIG_REPO) 
-CMD_SUFFIX = -t $(ENTITY_TYPES) $(if $(DEBUG), '-v') 
+CMD_SUFFIX = $(if $(DEBUG), '-v')
 
 
 # @help check YAML config files for syntax errors
