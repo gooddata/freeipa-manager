@@ -44,10 +44,10 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
     def test_run_check_local(self):
         manager = self._init_tool([CONFIG_CORRECT, 'check'])
         manager._load_config = mock.Mock()
-        manager._load_ldap = mock.Mock()
-        manager.run()
+        with mock.patch('freeipa_manager.LdapDownloader') as mock_ldap:
+            manager.run()
+            mock_ldap.assert_called_with('localhost')
         assert manager._load_config.called
-        assert not manager._load_ldap.called
 
     @log_capture('FreeIPAManager', level=logging.ERROR)
     def test_run_check_local_invalid(self, captured_log):
@@ -55,11 +55,18 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
         with pytest.raises(SystemExit) as exc:
             manager.run()
         assert exc.value[0] == 1
-        captured_log.check(
-            ('FreeIPAManager', 'ERROR',
-             ('There have been errors in 3 configuration files: '
-              '[hostgroups/extrakey.yaml, usergroups/extrakey.yaml, '
-              'users/extrakey.yaml]')))
+        records = [i.msg for i in captured_log.records]
+        assert len(records) == 1
+        config_err = str(records[0])
+        assert 'There have been errors in 9 configuration files' in config_err
+        for i in [
+                'hbacrules/extrakey.yaml', 'hostgroups/extrakey.yaml',
+                'hostgroups/invalidmember.yaml', 'sudorules/extrakey.yaml',
+                'usergroups/extrakey.yaml', 'usergroups/invalidmember.yaml',
+                'users/extrakey.yaml', 'users/invalidmember.yaml']:
+            assert i in config_err
+        assert ('users/duplicit.yaml' in config_err or
+                'users/duplicit2.yaml' in config_err)
 
     def test_run_compare(self):
         manager = self._init_tool([CONFIG_CORRECT, 'compare'])

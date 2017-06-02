@@ -10,11 +10,7 @@ firstname.lastname:
   title: Sr. SW Enginner
   memberOf:
     usergroups:
-      - github-gooddata-hackers
-      - hipchat-users
-      - ipausers
-      - jenkins
-      - jira-gooddata-users
+      - group-one-users
 
 firstname.lastname2:
   firstName: Firstname
@@ -27,8 +23,4 @@ firstname.lastname2:
   title: Sr. SW Enginner
   memberOf:
     usergroups:
-      - github-gooddata-hackers
-      - hipchat-users
-      - ipausers
-      - jenkins
-      - jira-gooddata-users
+      - group-three-users

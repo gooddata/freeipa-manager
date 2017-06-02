@@ -1,0 +1,10 @@
+---
+rule-two:
+  description: Sample sudo rule two.
+  options: ['!authenticate']
+
+rule-three:
+  description: Sample sudo rule three.
+  options: ['!authenticate', '!requiretty']
+  cmdCategory: 'all'
+  runAsUserCategory: 'all'

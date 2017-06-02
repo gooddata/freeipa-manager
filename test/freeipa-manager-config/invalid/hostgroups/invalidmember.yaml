@@ -1,0 +1,6 @@
+---
+group-invalid-member:
+  description: Sample bad host group one
+  memberOf:
+    usergroups:
+      - group-one

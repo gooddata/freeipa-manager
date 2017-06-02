@@ -10,8 +10,8 @@ archibald.jenkins:
   title: Sr. SW Enginner
   memberOf:
     usergroups:
-      - github-gooddata-hackers
-      - hipchat-users
-      - ipausers
-      - jenkins
-      - jira-gooddata-users
+      - group-one-users
+    HBAC rules:
+      - rule-one
+    sudorules:
+      - rule-one

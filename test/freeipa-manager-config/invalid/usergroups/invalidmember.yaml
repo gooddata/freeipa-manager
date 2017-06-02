@@ -1,0 +1,6 @@
+---
+group-invalid-member:
+  description: Sample group one
+  memberOf:
+    hostgroups:
+      - group-one

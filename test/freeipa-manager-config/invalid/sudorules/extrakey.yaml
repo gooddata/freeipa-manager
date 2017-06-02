@@ -1,0 +1,4 @@
+---
+rule-one:
+  description: Sample sudo rule one
+  extrakey: bad

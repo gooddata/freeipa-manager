@@ -1,0 +1,13 @@
+---
+duplicit.entry:
+  firstName: Firstname
+  lastName: Lastname
+  initials: FLA
+  organizationUnit: CISTA
+  manager: sample.manager
+  githubLogin: github-account-one
+  emailAddress: firstname.lastname@gooddata.com
+  title: Sr. SW Enginner
+  memberOf:
+    usergroups:
+      - group-one-users

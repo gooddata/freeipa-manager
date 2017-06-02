@@ -1,0 +1,7 @@
+---
+rule-two:
+  description: Sample HBAC rule two.
+
+rule-three:
+  description: Sample HBAC rule 3.
+  enabled: 'FALSE'

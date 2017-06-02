@@ -1,0 +1,4 @@
+---
+rule-one:
+  description: Sample HBAC rule one
+  extrakey: bad
