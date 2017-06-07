@@ -10,6 +10,7 @@ Kristian Lesko <kristian.lesko@gooddata.com>
 
 import dns.resolver
 import ldap
+import ldap.sasl
 
 from core import FreeIPAManagerCore
 from errors import AuthError, ManagerError
@@ -32,6 +33,8 @@ class LdapLoader(FreeIPAManagerCore):
             records = ['localhost']
         else:
             records = self._resolve_ldap_srv('_kerberos._tcp.%s' % self.domain)
+        if not records:
+            raise ManagerError('No FreeIPA servers available')
         while not self.connected and records:
             server = 'ldap://%s' % records.pop(0)
             try:

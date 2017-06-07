@@ -1,3 +1,4 @@
+dnspython
 mock
 pytest
 pytest-cov

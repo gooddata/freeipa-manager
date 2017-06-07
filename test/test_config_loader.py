@@ -36,7 +36,7 @@ class TestConfigLoader(object):
             CONFIG_CORRECT + '/sudorules/%s.yaml' % rule
             for rule in ['rule_one', 'several']]
 
-    def test_retrieve_paths_all(self):
+    def test_retrieve_paths(self):
         paths = self.loader._retrieve_paths()
         assert sorted(paths.keys()) == [
             'HBAC rules', 'hostgroups', 'sudo rules', 'usergroups', 'users']
@@ -45,6 +45,18 @@ class TestConfigLoader(object):
         assert sorted(paths['usergroups']) == self.expected_usergroups
         assert sorted(paths['HBAC rules']) == self.expected_hbac_rules
         assert sorted(paths['sudo rules']) == self.expected_sudo_rules
+
+    @log_capture('ConfigLoader', level=logging.WARNING)
+    def test_retrieve_paths_empty(self, captured_warnings):
+        self.loader.basepath = '/dev/null'
+        paths = self.loader._retrieve_paths()
+        assert paths.keys() == []
+        assert set(i.msg % i.args for i in captured_warnings.records) == set([
+            'No HBAC rules files found',
+            'No hostgroups files found',
+            'No sudo rules files found',
+            'No usergroups files found',
+            'No users files found'])
 
     def test_parse(self):
         self.loader.entities = {'users': []}
@@ -65,7 +77,7 @@ class TestConfigLoader(object):
                 entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
         assert exc.value[0] == 'Config must be a non-empty dictionary'
 
-    def test_check_duplicit_entities_bad(self):
+    def test_parse_duplicit_entities(self):
         data = {'archibald.jenkins': {}}
         self.loader.entities = {
             'users': [entities.FreeIPAUser('archibald.jenkins', {}, DOMAIN)]}
@@ -75,7 +87,7 @@ class TestConfigLoader(object):
         assert exc.value[0] == 'Duplicit definition of archibald.jenkins'
 
     @log_capture('ConfigLoader', level=logging.WARNING)
-    def test_load(self, captured_log):
+    def test_load(self, captured_warnings):
         self.loader.basepath = CONFIG_CORRECT
         self.loader.load()
         hostgroups = self.loader.entities['hostgroups']
@@ -90,9 +102,35 @@ class TestConfigLoader(object):
         assert len(usergroups) == 3
         assert set(g.name for g in usergroups) == set([
             'group-one-users', 'group-two', 'group-three-users'])
-        assert set(i.msg % i.args for i in captured_log.records) == set([
+        assert set(i.msg % i.args for i in captured_warnings.records) == set([
             'More than one entity parsed from hbacrules/several.yaml (2)',
             'More than one entity parsed from hostgroups/several.yaml (2)',
             'More than one entity parsed from sudorules/several.yaml (2)',
             'More than one entity parsed from usergroups/several.yaml (2)',
             'More than one entity parsed from users/several.yaml (2)'])
+
+    @log_capture('ConfigLoader', level=logging.WARNING)
+    def test_load_empty(self, captured_warnings):
+        self.loader.basepath = '/dev/null'
+        self.loader.load()
+        assert self.loader.entities == dict()
+        assert set(i.msg % i.args for i in captured_warnings.records) == set([
+            'No HBAC rules files found',
+            'No hostgroups files found',
+            'No sudo rules files found',
+            'No usergroups files found',
+            'No users files found'])
+
+    def test_load_invalid(self):
+        self.loader.basepath = CONFIG_INVALID
+        with pytest.raises(tool.ConfigError) as exc:
+            self.loader.load()
+        err = exc.value[0]
+        for i in [
+                'hbacrules/extrakey.yaml', 'hostgroups/extrakey.yaml',
+                'hostgroups/invalidmember.yaml', 'sudorules/extrakey.yaml',
+                'usergroups/extrakey.yaml', 'usergroups/invalidmember.yaml',
+                'users/extrakey.yaml', 'users/invalidmember.yaml']:
+            assert i in err
+        assert ('users/duplicit.yaml' in err or
+                'users/duplicit2.yaml' in err)
