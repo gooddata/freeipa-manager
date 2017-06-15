@@ -34,6 +34,7 @@ class FreeIPAManager(FreeIPAManagerCore):
         """
         self.config_loader = ConfigLoader(self.args.config, self.args.domain)
         self.config_loader.load()
+        self.config_loader.check_integrity()
 
     def _load_ldap(self):
         """

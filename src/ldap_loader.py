@@ -32,7 +32,7 @@ class LdapLoader(FreeIPAManagerCore):
         if self.domain == 'localhost':
             records = ['localhost']
         else:
-            records = self._resolve_ldap_srv('_kerberos._tcp.%s' % self.domain)
+            records = self._resolve_ldap_srv('_ldap._tcp.%s' % self.domain)
         if not records:
             raise ManagerError('No FreeIPA servers available')
         while not self.connected and records:
