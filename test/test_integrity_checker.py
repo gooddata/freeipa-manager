@@ -1,5 +1,4 @@
 import logging
-import mock
 import os
 import pytest
 import sys
@@ -18,7 +17,9 @@ DOMAIN = 'intgdc.com'
 
 class TestIntegrityChecker(object):
     def _create_checker(self, entities):
-        self.checker = tool.IntegrityChecker(entities)
+        settings_path = os.path.join(
+            testpath, 'freeipa-manager-config/integrity_config.yaml')
+        self.checker = tool.IntegrityChecker(settings_path, entities)
         self.checker.errs = dict()
         self.sample_user = tool.entities.FreeIPAUser(
             'sample.user', {}, DOMAIN)
@@ -31,6 +32,8 @@ class TestIntegrityChecker(object):
             'cn=group-one-users,cn=groups,cn=accounts,dc=intgdc,dc=com',
             'cn=group-two,cn=groups,cn=accounts,dc=intgdc,dc=com',
             'cn=group-two,cn=hostgroups,cn=accounts,dc=intgdc,dc=com',
+            'cn=rule-one,cn=hbac,dc=intgdc,dc=com',
+            'cn=rule-one,cn=sudo,dc=intgdc,dc=com',
             'uid=firstname.lastname,cn=users,cn=accounts,dc=intgdc,dc=com',
             'uid=firstname.lastname2,cn=users,cn=accounts,dc=intgdc,dc=com',
             'uid=firstname.lastname3,cn=users,cn=accounts,dc=intgdc,dc=com']
@@ -47,23 +50,10 @@ class TestIntegrityChecker(object):
     @log_capture('IntegrityChecker', level=logging.WARNING)
     def test_check_empty(self, captured_warnings):
         self._create_checker(dict())
-        with mock.patch(
-                'integrity_checker.IntegrityChecker._check_single') as mock_s:
-            self.checker.check()
-        mock_s.assert_not_called()
+        self.checker.check()
         captured_warnings.check((
             'IntegrityChecker', 'WARNING',
             'No entities to check for integrity'))
-
-    def test_check_memberof_meta_users_valid(self):
-        self._create_checker(dict())
-        assert self.checker._check_memberof_meta(
-            self.sample_user,
-            tool.entities.FreeIPAUserGroup(
-                'test-group-users', {}, DOMAIN))
-        assert not self.checker._check_memberof_meta(
-            self.sample_user, tool.entities.FreeIPAUserGroup(
-                'test-group', {}, DOMAIN))
 
     def test_check_correct(self):
         self._create_checker(self._sample_entities_correct())
@@ -72,9 +62,8 @@ class TestIntegrityChecker(object):
 
     def test_check_memberof_nonexistent(self):
         self._create_checker(self._sample_entities_member_nonexistent())
-        with pytest.raises(tool.IntegrityError) as exc:
+        with pytest.raises(tool.IntegrityError):
             self.checker.check()
-        assert exc.value[0] == 'There were 3 integrity errors in 3 entities'
         assert self.checker.errs == {
             'cn=group-one-hosts,cn=hostgroups,%s' % ACCOUNTS_BASE: [
                 ('memberOf non-existent entity '
@@ -86,37 +75,160 @@ class TestIntegrityChecker(object):
                 ('memberOf non-existent entity '
                  'cn=group-one,cn=groups,cn=accounts,dc=intgdc,dc=com')]}
 
+    def test_check_rule_member_nonexistent(self):
+        data = {
+            'HBAC rules': [
+                tool.entities.FreeIPAHBACRule(
+                    'rule-one', {'memberHost': 'no', 'memberUser': 'no'},
+                    DOMAIN)]}
+        self._create_checker(data)
+        with pytest.raises(tool.IntegrityError):
+            self.checker.check()
+        assert self.checker.errs == {
+            'cn=rule-one,cn=hbac,dc=intgdc,dc=com': [
+                ('non-existent memberHost '
+                 'cn=no,cn=hostgroups,cn=accounts,dc=intgdc,dc=com'),
+                ('non-existent memberUser '
+                 'cn=no,cn=groups,cn=accounts,dc=intgdc,dc=com')]}
+
+    def test_check_rule_member_rule_violation(self):
+        data = {
+            'HBAC rules': [
+                tool.entities.FreeIPAHBACRule(
+                    'rule-one', {
+                        'memberHost': 'group-one-hosts',
+                        'memberUser': 'group-one-users'}, DOMAIN)],
+            'hostgroups': [tool.entities.FreeIPAHostGroup(
+                'group-one-hosts', {}, DOMAIN)],
+            'usergroups': [tool.entities.FreeIPAUserGroup(
+                'group-one-users', {}, DOMAIN)]}
+        self._create_checker(data)
+        with pytest.raises(tool.IntegrityError):
+            self.checker.check()
+        assert self.checker.errs == {
+            'cn=rule-one,cn=hbac,dc=intgdc,dc=com': [
+                ('group-one-hosts must be a meta group '
+                 'to be a member of rule-one'),
+                ('group-one-users must be a meta group '
+                 'to be a member of rule-one')]}
+
+    def test_check_rule_member_missing_attribute(self):
+        data = {
+            'HBAC rules': [
+                tool.entities.FreeIPAHBACRule(
+                    'rule-one', {}, DOMAIN)]}
+        self._create_checker(data)
+        with pytest.raises(tool.IntegrityError):
+            self.checker.check()
+        assert self.checker.errs == {
+            'cn=rule-one,cn=hbac,dc=intgdc,dc=com': [
+                'no memberHost', 'no memberUser']}
+
+    def test_check_memberof_invalidtype(self):
+        self._create_checker(self._sample_entities_member_invalidtype())
+        with pytest.raises(tool.IntegrityError):
+            self.checker.check()
+        assert self.checker.errs == {
+            'uid=firstname.lastname2,cn=users,%s' % ACCOUNTS_BASE: [
+                'cannot be a member of hostgroups (group-one)']}
+
     def test_check_memberof_itself(self):
         self._create_checker(self._sample_entities_member_itself())
-        with pytest.raises(tool.IntegrityError) as exc:
+        with pytest.raises(tool.IntegrityError):
             self.checker.check()
-        assert exc.value[0] == 'There were 1 integrity errors in 1 entities'
         assert self.checker.errs == {
             'cn=group-one,cn=groups,%s' % ACCOUNTS_BASE: ['memberOf itself']}
 
-    def test_check_memberof_meta(self):
-        self._create_checker(self._sample_entities_member_meta())
-        with pytest.raises(tool.IntegrityError) as exc:
-            self.checker.check()
-        assert exc.value[0] == 'There were 1 integrity errors in 1 entities'
-        assert self.checker.errs == {
-            'uid=firstname.lastname2,cn=users,%s' % ACCOUNTS_BASE: [
-                'memberOf meta group group-one']}
-
     def test_check_cycle_two_nodes(self):
         self._create_checker(self._sample_entities_cycle_two_nodes())
-        with pytest.raises(tool.IntegrityError) as exc:
+        with pytest.raises(tool.IntegrityError):
             self.checker.check()
-        assert exc.value[0] == (
-            'Cyclic membership of usergroups [group-one, group-two]')
+        assert self.checker.errs == {
+            'cn=group-one,cn=groups,%s' % ACCOUNTS_BASE: [
+                'Cyclic membership of usergroups: [group-one, group-two]'],
+            'cn=group-two,cn=groups,%s' % ACCOUNTS_BASE: [
+                'Cyclic membership of usergroups: [group-two, group-one]']}
 
     def test_check_cycle_three_nodes(self):
         self._create_checker(self._sample_entities_cycle_three_nodes())
-        with pytest.raises(tool.IntegrityError) as exc:
+        with pytest.raises(tool.IntegrityError):
             self.checker.check()
+        assert self.checker.errs == {
+            'cn=group-one,cn=groups,%s' % ACCOUNTS_BASE: [
+                ('Cyclic membership of usergroups: '
+                 '[group-one, group-two, group-three]')],
+            'cn=group-three,cn=groups,%s' % ACCOUNTS_BASE: [
+                ('Cyclic membership of usergroups: '
+                 '[group-three, group-one, group-two]')],
+            'cn=group-two,cn=groups,%s' % ACCOUNTS_BASE: [
+                ('Cyclic membership of usergroups: '
+                 '[group-two, group-three, group-one]')]}
+
+    def test_check_member_rule_meta(self):
+        self._create_checker(dict())
+        group_one = tool.entities.FreeIPAUserGroup(
+            'group-one-users', {}, DOMAIN)
+        rule_one = tool.entities.FreeIPAHBACRule('rule-one', {}, DOMAIN)
+        self.checker.entity_dict = {
+            'cn=group-one-users,cn=groups,%s' % ACCOUNTS_BASE: group_one,
+            'cn=rule-one,cn=hbac,dc=intgdc,dc=com': rule_one}
+        with pytest.raises(tool.IntegrityError) as exc:
+            self.checker._check_member_rule(group_one, rule_one, 'meta')
         assert exc.value[0] == (
-            'Cyclic membership of usergroups '
-            '[group-one, group-two, group-three]')
+            'group-one-users must be a meta group to be a member of rule-one')
+
+    def test_check_member_rule_nonmeta(self):
+        self._create_checker(dict())
+        hbac_member = {'memberOf': {'HBAC rules': ['rule-one']}}
+        group_one = tool.entities.FreeIPAUserGroup(
+            'group-one', hbac_member, DOMAIN)
+        rule_one = tool.entities.FreeIPAHBACRule('rule-one', {}, DOMAIN)
+        self.checker.entity_dict = {
+            'cn=group-one,cn=groups,%s' % ACCOUNTS_BASE: group_one,
+            'cn=rule-one,cn=hbac,dc=intgdc,dc=com': rule_one}
+        with pytest.raises(tool.IntegrityError) as exc:
+            self.checker._check_member_rule(group_one, rule_one, 'nonmeta')
+        assert exc.value[0] == (
+            'group-one must not be a meta group to be a member of rule-one')
+
+    def test_check_member_rule_member_of_meta(self):
+        self._create_checker(dict())
+        user_one = tool.entities.FreeIPAUser(
+            'firstname.lastname',
+            {'memberOf': {'usergroups': ['group-one-users']}}, DOMAIN)
+        group_one = tool.entities.FreeIPAUserGroup(
+            'group-one-users', {}, DOMAIN)
+        self.checker.entity_dict = {
+            'uid=firstname.lastname,cn=users,%s' % ACCOUNTS_BASE: user_one,
+            'cn=group-one-users,cn=groups,%s' % ACCOUNTS_BASE: group_one}
+        with pytest.raises(tool.IntegrityError) as exc:
+            self.checker._check_member_rule(
+                user_one, group_one, 'member_of_meta')
+        assert exc.value[0] == (
+            'group-one-users must be a meta group '
+            'to have firstname.lastname as a member')
+
+    def test_check_member_rule_member_of_nonmeta(self):
+        self._create_checker(dict())
+        user_one = tool.entities.FreeIPAUser(
+            'firstname.lastname',
+            {'memberOf': {'usergroups': ['group-one-users']}}, DOMAIN)
+        group_one = tool.entities.FreeIPAUserGroup('group-one', {}, DOMAIN)
+        self.checker.entity_dict = {
+            'uid=firstname.lastname,cn=users,%s' % ACCOUNTS_BASE: user_one,
+            'cn=group-one-users,cn=groups,%s' % ACCOUNTS_BASE: group_one}
+        with pytest.raises(tool.IntegrityError) as exc:
+            self.checker._check_member_rule(
+                user_one, group_one, 'member_of_nonmeta')
+        assert exc.value[0] == (
+            'group-one must not be a meta group '
+            'to have firstname.lastname as a member')
+
+    def test_check_member_rule_invalid(self):
+        self._create_checker(dict())
+        with pytest.raises(tool.ManagerError) as exc:
+            self.checker._check_member_rule(None, None, 'invalid-rule')
+        assert exc.value[0] == 'Undefined rule: invalid-rule'
 
     def _sample_entities_correct(self):
         return {
@@ -136,7 +248,17 @@ class TestIntegrityChecker(object):
                 tool.entities.FreeIPAHostGroup(
                     'group-one-hosts', {
                         'memberOf': {'hostgroups': ['group-two']}}, DOMAIN),
-                tool.entities.FreeIPAHostGroup('group-two', {}, DOMAIN)]
+                tool.entities.FreeIPAHostGroup('group-two', {}, DOMAIN)],
+            'HBAC rules': [
+                tool.entities.FreeIPAHBACRule(
+                    'rule-one',
+                    {'memberHost': 'group-two', 'memberUser': 'group-two'},
+                    DOMAIN)],
+            'sudo rules': [
+                tool.entities.FreeIPASudoRule(
+                    'rule-one',
+                    {'memberHost': 'group-two', 'memberUser': 'group-two'},
+                    DOMAIN)]
         }
 
     def _sample_entities_member_nonexistent(self):
@@ -159,24 +281,22 @@ class TestIntegrityChecker(object):
                         'memberOf': {'hostgroups': ['group-two']}}, DOMAIN)]
         }
 
+    def _sample_entities_member_invalidtype(self):
+        return {
+            'users': [
+                tool.entities.FreeIPAUser(
+                    'firstname.lastname2',
+                    {'memberOf': {'hostgroups': ['group-one']}}, DOMAIN)],
+            'hostgroups': [
+                tool.entities.FreeIPAHostGroup('group-one', {}, DOMAIN)]
+        }
+
     def _sample_entities_member_itself(self):
         return {
             'usergroups': [
                 tool.entities.FreeIPAUserGroup(
                     'group-one', {
                         'memberOf': {'usergroups': ['group-one']}}, DOMAIN)]
-        }
-
-    def _sample_entities_member_meta(self):
-        return {
-            'users': [
-                tool.entities.FreeIPAUser('firstname.lastname', {}, DOMAIN),
-                tool.entities.FreeIPAUser(
-                    'firstname.lastname2', {
-                        'memberOf': {'usergroups': ['group-one']}}, DOMAIN),
-                tool.entities.FreeIPAUser('firstname.lastname3', {}, DOMAIN)],
-            'usergroups': [
-                tool.entities.FreeIPAUserGroup('group-one', {}, DOMAIN)]
         }
 
     def _sample_entities_cycle_two_nodes(self):

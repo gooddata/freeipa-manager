@@ -85,7 +85,7 @@ class TestFreeIPAHostGroup(object):
             'memberOf': {
                 'hostgroups': ['group-one'],
                 'HBAC rules': ['rule-one'],
-                'sudorules': ['rule-one']}}
+                'sudo rules': ['rule-one']}}
         group = tool.FreeIPAHostGroup(
             'group-one-hosts', data, DOMAIN)
         assert group.name == 'group-one-hosts'
@@ -116,18 +116,9 @@ class TestFreeIPAHostGroup(object):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAHostGroup(
                 'group-one-hosts', {'extrakey': 'bad'}, DOMAIN)
-        assert (
-            ("Error validating group-one-hosts: "
-             "extra keys not allowed @ data['extrakey']") in str(exc))
-
-    def test_create_hostgroup_invalid_member(self):
-        with pytest.raises(tool.ConfigError) as exc:
-            tool.FreeIPAHostGroup(
-                'group-invalid-member',
-                {'memberOf': {'usergroups': ['group-one']}}, DOMAIN)
-        assert (
-            ("Host group cannot be a member of usergroups "
-             "for dictionary value @ data['memberOf']") in str(exc))
+        assert exc.value[0] == (
+            "Error validating group-one-hosts: "
+            "extra keys not allowed @ data['extrakey']")
 
 
 class TestFreeIPAUser(object):
@@ -140,7 +131,7 @@ class TestFreeIPAUser(object):
             'memberOf': {
                 'usergroups': ['group-one-users'],
                 'HBAC rules': ['rule-one'],
-                'sudorules': ['rule-one']}}
+                'sudo rules': ['rule-one']}}
         user = tool.FreeIPAUser('archibald.jenkins', data, DOMAIN)
         assert user.name == 'archibald.jenkins'
         assert user.dn == 'uid=archibald.jenkins,cn=users,%s' % self.acc_dn
@@ -167,29 +158,17 @@ class TestFreeIPAUser(object):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAUser(
                 'archibald.jenkins', {'extrakey': 'bad'}, DOMAIN)
-        assert (
-            ("Error validating archibald.jenkins: "
-             "extra keys not allowed @ data['extrakey']") in str(exc))
+        assert exc.value[0] == (
+            "Error validating archibald.jenkins: "
+            "extra keys not allowed @ data['extrakey']")
 
     def test_create_user_invalid_member(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAUser(
-                'invalid.member',
-                {'memberOf': {'hostgroups': ['group-one']}}, DOMAIN)
-        assert (
-            ("Error validating invalid.member: User cannot be a member "
-             "of hostgroups for dictionary value @ data['memberOf']")
-            in str(exc))
-
-    def test_create_user_invalid_format_member(self):
-        with pytest.raises(tool.ConfigError) as exc:
-            tool.FreeIPAUser(
-                'invalid.member',
-                {'memberOf': {'usergroups': [['group-one']]}}, DOMAIN)
-        assert (
-            ("Error validating invalid.member: memberOf values must be "
-             "string entity names for dictionary value @ data['memberOf']")
-            in str(exc))
+                'archibald.jenkins', {'memberOf': {'invalid': ['x']}}, DOMAIN)
+        assert exc.value[0] == (
+            'archibald.jenkins cannot be a member '
+            'of non-existent class type "invalid"')
 
     def test_convert(self):
         data = {
@@ -221,7 +200,7 @@ class TestFreeIPAUserGroup(object):
             'memberOf': {
                 'usergroups': ['group-one'],
                 'HBAC rules': ['rule-one'],
-                'sudorules': ['rule-one']}}
+                'sudo rules': ['rule-one']}}
         group = tool.FreeIPAUserGroup(
             'group-one-users', data, DOMAIN)
         assert group.name == 'group-one-users'
@@ -250,18 +229,9 @@ class TestFreeIPAUserGroup(object):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAUserGroup(
                 'group-one-users', {'extrakey': 'bad'}, DOMAIN)
-        assert (
-            ("Error validating group-one-users: "
-             "extra keys not allowed @ data['extrakey']") in str(exc))
-
-    def test_create_usergroup_invalid_member(self):
-        with pytest.raises(tool.ConfigError) as exc:
-            tool.FreeIPAUserGroup(
-                'group-invalid-member',
-                {'memberOf': {'hostgroups': ['group-one']}}, DOMAIN)
-        assert (
-            ("User group cannot be a member of hostgroups "
-             "for dictionary value @ data['memberOf']") in str(exc))
+        assert exc.value[0] == (
+            "Error validating group-one-users: "
+            "extra keys not allowed @ data['extrakey']")
 
 
 class TestFreeIPAHBACRule(object):
@@ -288,9 +258,27 @@ class TestFreeIPAHBACRule(object):
     def test_create_hbac_rule_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAHBACRule('rule-one', {'extrakey': 'bad'}, DOMAIN)
-        assert (
-            ("Error validating rule-one: extra keys "
-             "not allowed @ data['extrakey']") in str(exc))
+        assert exc.value[0] == (
+            "Error validating rule-one: extra keys "
+            "not allowed @ data['extrakey']")
+
+    def test_convert(self):
+        data = {
+            'description': 'A sample sudo rule.',
+            'enabled': 'TRUE',
+            'memberHost': 'hostgroup-one',
+            'memberUser': 'usergroup-one'
+        }
+        with mock.patch('entities.FreeIPAUser._parse_data'):
+            user = tool.FreeIPAHBACRule('rule-one', data, DOMAIN)
+        assert user._convert(data) == {
+            'description': ['A sample sudo rule.'],
+            'ipaEnabledFlag': ['TRUE'],
+            'memberHost': [
+                'cn=hostgroup-one,cn=hostgroups,cn=accounts,dc=intgdc,dc=com'],
+            'memberUser': [
+                'cn=usergroup-one,cn=groups,cn=accounts,dc=intgdc,dc=com']
+        }
 
 
 class TestFreeIPASudoRule(object):
@@ -312,6 +300,6 @@ class TestFreeIPASudoRule(object):
     def test_create_sudo_rule_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPASudoRule('rule-one', {'extrakey': 'bad'}, DOMAIN)
-        assert (
-            ("Error validating rule-one: "
-             "extra keys not allowed @ data['extrakey']") in str(exc))
+        assert exc.value[0] == (
+            "Error validating rule-one: "
+            "extra keys not allowed @ data['extrakey']")

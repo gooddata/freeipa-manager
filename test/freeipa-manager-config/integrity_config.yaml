@@ -1,0 +1,11 @@
+HBAC rules:
+  memberHost: [meta]
+  memberUser: [meta]
+sudo rules:
+  memberHost: [meta]
+  memberUser: [meta]
+hostgroups:
+  hostgroups:
+usergroups:
+  usergroups:
+  users: [member_of_nonmeta]

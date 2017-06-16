@@ -21,11 +21,13 @@ class TestFreeIPAManagerBase(object):
 
 class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
     @mock.patch('freeipa_manager.LdapDownloader')
+    @mock.patch('freeipa_manager.IntegrityChecker')
     @mock.patch('freeipa_manager.ConfigLoader')
-    def test_run_check(self, mock_config, mock_ldap):
-        manager = self._init_tool(['check', '-d'])
+    def test_run_check(self, mock_config, mock_check, mock_ldap):
+        manager = self._init_tool(['check', '-d', '-r', 'rules_path'])
         manager.run()
         mock_config.assert_called_with('config_path', 'intgdc.com')
+        mock_check.assert_called()
         mock_ldap.assert_called_with('intgdc.com')
 
     def test_run_check_ipa_domain(self):

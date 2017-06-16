@@ -128,9 +128,8 @@ class TestConfigLoader(object):
         err = exc.value[0]
         for i in [
                 'hbacrules/extrakey.yaml', 'hostgroups/extrakey.yaml',
-                'hostgroups/invalidmember.yaml', 'sudorules/extrakey.yaml',
-                'usergroups/extrakey.yaml', 'usergroups/invalidmember.yaml',
-                'users/extrakey.yaml', 'users/invalidmember.yaml']:
+                'sudorules/extrakey.yaml', 'usergroups/extrakey.yaml',
+                'users/extrakey.yaml']:
             assert i in err
         assert ('users/duplicit.yaml' in err or
                 'users/duplicit2.yaml' in err)

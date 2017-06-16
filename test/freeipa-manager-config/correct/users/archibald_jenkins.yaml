@@ -11,7 +11,3 @@ archibald.jenkins:
   memberOf:
     usergroups:
       - group-one-users
-    HBAC rules:
-      - rule-one
-    sudorules:
-      - rule-one

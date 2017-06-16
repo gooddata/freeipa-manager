@@ -2,3 +2,5 @@
 rule-one:
   description: Sample HBAC rule one
   enabled: 'TRUE'
+  memberHost: group-two
+  memberUser: group-two
