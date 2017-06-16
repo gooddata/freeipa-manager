@@ -14,10 +14,11 @@ REQUIREMENTS_FILE = requirements.txt
 REQUIREMENTS = $(VENV_DIR)/requirements.installed
 
 CONFIG_REPO ?= ../../freeipa-manager-config/entities
+RULES_FILE ?= ../../freeipa-manager-config/integrity_config.yaml
 DIFF_TARGET ?= .diff
 
 BASE_CMD = src/freeipa_manager.py $(CONFIG_REPO) 
-CMD_SUFFIX = $(if $(DEBUG), '-v')
+CMD_SUFFIX = -r $(RULES_FILE) $(if $(DEBUG), '-v')
 
 
 # @help check YAML config files for syntax errors

@@ -31,6 +31,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='FreeIPA management CLI tool')
     parser.add_argument('config', help='Path to config repository')
     parser.add_argument('action', choices=['check', 'compare', 'pull', 'push'])
+    parser.add_argument('-r', '--rules-file', default='integrity_config.yaml',
+                        help='Integrity check rules file')
     parser.add_argument('-d', '--domain', help='LDAP domain',
                         nargs='?', const='intgdc.com', default='localhost')
     parser.add_argument('--dry', help='Dry run')

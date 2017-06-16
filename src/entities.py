@@ -53,9 +53,9 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 self.validation_schema(data)
             except voluptuous.Error as e:
                 raise ConfigError('Error validating %s: %s' % (name, e))
-            self.data = self._convert(data)
             self.name = name
             self.dn = self.construct_dn(self.domain, name)
+            self.data = self._convert(data)
 
     @classmethod
     def construct_dn(cls, domain, name=''):
@@ -119,21 +119,24 @@ class FreeIPAEntity(FreeIPAManagerCore):
         """
         result = list()
         for entity_type in membership_data:
-            entity_class = self._get_entity_class(entity_type)
+            try:
+                entity_class = self._get_entity_class(entity_type)
+            except KeyError:
+                raise ConfigError(
+                    '%s cannot be a member of non-existent class type "%s"' %
+                    (self.name, entity_type))
             for target in membership_data[entity_type]:
                 result.append(entity_class.construct_dn(self.domain, target))
         return result
 
     @staticmethod
     def _get_entity_class(name):
-        class_dict = {
-            'HBAC rules': FreeIPAHBACRule,
-            'hostgroups': FreeIPAHostGroup,
-            'sudorules': FreeIPASudoRule,
-            'usergroups': FreeIPAUserGroup,
-            'users': FreeIPAUser
-        }
-        return class_dict.get(name)
+        for entity_class in [
+                FreeIPAHBACRule, FreeIPAHostGroup, FreeIPASudoRule,
+                FreeIPAUserGroup, FreeIPAUser]:
+            if entity_class.entity_name == name:
+                return entity_class
+        raise KeyError(name)
 
     @abstractproperty
     def type_dn(self):
@@ -254,7 +257,20 @@ class FreeIPAUser(FreeIPAEntity):
         return result
 
 
-class FreeIPAHBACRule(FreeIPAEntity):
+class FreeIPARule(FreeIPAEntity):
+    def _convert(self, data):
+        result = dict()
+        for key, value in data.iteritems():
+            if key == 'memberHost':
+                result[key] = FreeIPAHostGroup.construct_dn(self.domain, value)
+            elif key == 'memberUser':
+                result[key] = FreeIPAUserGroup.construct_dn(self.domain, value)
+            else:
+                result[key] = value
+        return super(FreeIPARule, self)._convert(result)
+
+
+class FreeIPAHBACRule(FreeIPARule):
     """Representation of a FreeIPA HBAC (host-based access control) rule."""
     config_folder = 'hbacrules'
     entity_name = 'HBAC rules'
@@ -265,7 +281,7 @@ class FreeIPAHBACRule(FreeIPAEntity):
     type_dn = 'cn=hbac'
 
 
-class FreeIPASudoRule(FreeIPAEntity):
+class FreeIPASudoRule(FreeIPARule):
     """Representation of a FreeIPA sudo rule."""
     config_folder = 'sudorules'
     entity_name = 'sudo rules'

@@ -13,6 +13,7 @@ import utils
 from core import FreeIPAManagerCore
 from config_loader import ConfigLoader
 from errors import ManagerError
+from integrity_checker import IntegrityChecker
 from ldap_loader import LdapDownloader
 
 
@@ -31,10 +32,13 @@ class FreeIPAManager(FreeIPAManagerCore):
     def _load_config(self):
         """
         Load configurations from configuration repository at the given path.
+        Run integrity check on the loaded configuration.
         """
         self.config_loader = ConfigLoader(self.args.config, self.args.domain)
         self.config_loader.load()
-        self.config_loader.check_integrity()
+        self.integrity_checker = IntegrityChecker(
+            self.args.rules_file, self.config_loader.entities)
+        self.integrity_checker.check()
 
     def _load_ldap(self):
         """

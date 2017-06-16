@@ -14,7 +14,6 @@ import yaml
 
 from core import FreeIPAManagerCore
 from errors import ConfigError
-from integrity_checker import IntegrityChecker
 from utils import ENTITY_CLASSES
 
 
@@ -112,12 +111,3 @@ class ConfigLoader(FreeIPAManagerCore):
         """
         return os.path.join(
             os.path.basename(os.path.dirname(path)), os.path.basename(path))
-
-    def check_integrity(self):
-        """
-        Check integrity of the entity configuration (whether groups
-        contain only the entity types they are allowed to contain and so on).
-        :raises: IntegrityError if there were integrity errors in the entities
-        """
-        checker = IntegrityChecker(self.entities)
-        checker.check()
