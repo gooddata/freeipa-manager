@@ -8,7 +8,7 @@ firstname.lastname:
   emailAddress: firstname.lastname@gooddata.com
   title: Sr. SW Enginner
   memberOf:
-    groups:
+    group:
       - group-one-users
 
 firstname.lastname2:
@@ -20,5 +20,5 @@ firstname.lastname2:
   emailAddress: firstname.lastname2@gooddata.com
   title: Sr. SW Enginner
   memberOf:
-    groups:
+    group:
       - group-three-users

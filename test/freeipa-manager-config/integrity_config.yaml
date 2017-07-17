@@ -1,11 +1,11 @@
-hbacrules:
+hbacrule:
   memberHost: [meta]
   memberUser: [meta]
-sudorules:
+sudorule:
   memberHost: [meta]
   memberUser: [meta]
-hostgroups:
-  hostgroups:
-groups:
-  groups:
-  users: [member_of_nonmeta]
+hostgroup:
+  hostgroup:
+group:
+  group:
+  user: [member_of_nonmeta]

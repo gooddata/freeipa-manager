@@ -2,11 +2,11 @@
 group-two:
   description: Sample meta host group two.
   memberOf:
-    hostgroups:
+    hostgroup:
       - group-one-hosts
 
 group-three-hosts:
   description: Sample host group three.
   memberOf:
-    hostgroups:
+    hostgroup:
       - group-two

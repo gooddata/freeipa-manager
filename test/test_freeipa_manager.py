@@ -20,31 +20,14 @@ class TestFreeIPAManagerBase(object):
 
 
 class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
-    @mock.patch('freeipa_manager.LdapDownloader')
     @mock.patch('freeipa_manager.IntegrityChecker')
     @mock.patch('freeipa_manager.ConfigLoader')
-    def test_run_check(self, mock_config, mock_check, mock_ldap):
-        manager = self._init_tool(['check', '-d', '-r', 'rules_path'])
+    def test_run_check(self, mock_config, mock_check):
+        manager = self._init_tool(['check', '-r', 'rules_path'])
         manager.run()
-        mock_config.assert_called_with('config_path', 'intgdc.com')
-        mock_check.assert_called()
-        mock_ldap.assert_called_with('intgdc.com')
-
-    def test_run_check_ipa_domain(self):
-        manager = self._init_tool(['check', '-d', 'devgdc.com'])
-        manager._load_config = mock.Mock()
-        with mock.patch('freeipa_manager.LdapDownloader') as mock_ldap:
-            manager.run()
-            mock_ldap.assert_called_with('devgdc.com')
-        manager._load_config.assert_called()
-
-    def test_run_check_local(self):
-        manager = self._init_tool(['check'])
-        manager._load_config = mock.Mock()
-        with mock.patch('freeipa_manager.LdapDownloader') as mock_ldap:
-            manager.run()
-            mock_ldap.assert_called_with('localhost')
-        manager._load_config.assert_called()
+        mock_config.assert_called_with('config_path')
+        mock_check.assert_called_with(
+            'rules_path', manager.config_loader.entities)
 
     @log_capture('FreeIPAManager', level=logging.ERROR)
     def test_run_check_error(self, captured_errors):
@@ -56,20 +39,50 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
         captured_errors.check(
             ('FreeIPAManager', 'ERROR', 'Error loading config'))
 
-    def test_run_compare(self):
-        manager = self._init_tool(['compare'])
-        with pytest.raises(NotImplementedError) as exc:
-            manager.run()
-        assert exc.value[0] == 'Comparing not available yet.'
+    def test_run_push(self):
+        with mock.patch('freeipa_manager.FreeIPAManager.check'):
+            manager = self._init_tool(
+                ['push', '--force', '-t', '10', '-v'])
+            manager.integrity_checker = mock.Mock()
+            manager.integrity_checker.entity_dict = dict()
+            with mock.patch('ipa_connector.IpaConnector') as mock_connector:
+                manager.run()
+                # entities, threshold, force, enable deletion, debug
+                mock_connector.assert_called_with({}, 10, True, False, True)
+
+    def test_run_push_enable_deletion(self):
+        with mock.patch('freeipa_manager.FreeIPAManager.check'):
+            manager = self._init_tool(
+                ['push', '--force', '--enable-deletion', '-t', '10', '-v'])
+            manager.integrity_checker = mock.Mock()
+            manager.integrity_checker.entity_dict = dict()
+            with mock.patch('ipa_connector.IpaConnector') as mock_connector:
+                manager.run()
+                # entities, threshold, force, enable deletion, debug
+                mock_connector.assert_called_with({}, 10, True, True, True)
+
+    def test_run_push_dry_run(self):
+        with mock.patch('freeipa_manager.FreeIPAManager.check'):
+            manager = self._init_tool(['push'])
+            manager.integrity_checker = mock.Mock()
+            manager.integrity_checker.entity_dict = dict()
+            with mock.patch('ipa_connector.IpaConnector') as mock_connector:
+                manager.run()
+                # entities, threshold, force, enable deletion, debug
+                mock_connector.assert_called_with({}, 20, False, False, False)
+
+    def test_run_push_dry_run_enable_deletion(self):
+        with mock.patch('freeipa_manager.FreeIPAManager.check'):
+            manager = self._init_tool(['push', '--enable-deletion'])
+            manager.integrity_checker = mock.Mock()
+            manager.integrity_checker.entity_dict = dict()
+            with mock.patch('ipa_connector.IpaConnector') as mock_connector:
+                manager.run()
+                # entities, threshold, force, enable deletion, debug
+                mock_connector.assert_called_with({}, 20, False, True, False)
 
     def test_run_pull(self):
         manager = self._init_tool(['pull'])
         with pytest.raises(NotImplementedError) as exc:
             manager.run()
         assert exc.value[0] == 'Config pulling not available yet.'
-
-    def test_run_push(self):
-        manager = self._init_tool(['push'])
-        with pytest.raises(NotImplementedError) as exc:
-            manager.run()
-        assert exc.value[0] == 'Config pushing not available yet.'

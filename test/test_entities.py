@@ -17,11 +17,13 @@ class TestFreeIPAEntity(object):
             tool.FreeIPAEntity('sample.entity', {})
         assert exc.value[0] == (
             "Can't instantiate abstract class FreeIPAEntity "
-            "with abstract methods validation_schema")
+            "with abstract methods managed_attributes, validation_schema")
 
     def test_equality(self):
-        user1 = tool.FreeIPAUser('user1', {})
-        user2 = tool.FreeIPAUser('user1', {})
+        user1 = tool.FreeIPAUser(
+            'user1', {'firstName': 'Some', 'lastName': 'Name'})
+        user2 = tool.FreeIPAUser(
+            'user1', {'firstName': 'Some', 'lastName': 'Name'})
         assert user1 == user2
         user2.name = 'user2'
         assert user1 != user2
@@ -79,15 +81,12 @@ class TestFreeIPAHostGroup(object):
         data = {
             'description': 'Sample host group',
             'memberOf': {
-                'hostgroups': ['group-one'],
-                'hbacrules': ['rule-one'],
-                'sudorules': ['rule-one']}}
+                'hostgroup': ['group-one'],
+                'hbacrule': ['rule-one'],
+                'sudorule': ['rule-one']}}
         group = tool.FreeIPAHostGroup('group-one-hosts', data)
         assert group.name == 'group-one-hosts'
-        assert sorted(group.data['memberof']) == [
-            ('hbacrule', 'rule-one'),
-            ('hostgroup', 'group-one'),
-            ('sudorule', 'rule-one')]
+        assert group.data['memberOf'] == data['memberOf']
         assert group.data['description'] == ('Sample host group',)
 
     def test_create_hostgroup_extrakey(self):
@@ -102,13 +101,14 @@ class TestFreeIPAHostGroup(object):
 class TestFreeIPAUser(object):
     def test_create_user_correct(self):
         data = {
+            'firstName': 'Some',
+            'lastName': 'Name',
             'manager': 'sample.manager',
-            'memberOf': {'groups': ['group-one-users', 'group-two']}
+            'memberOf': {'group': ['group-one-users', 'group-two']}
         }
         user = tool.FreeIPAUser('archibald.jenkins', data)
         assert user.name == 'archibald.jenkins'
-        assert sorted(user.data['memberof']) == [
-            ('group', 'group-one-users'), ('group', 'group-two')]
+        assert user.data['memberOf'] == data['memberOf']
         assert user.data['manager'] == ('sample.manager',)
 
     def test_create_user_extrakey(self):
@@ -119,14 +119,6 @@ class TestFreeIPAUser(object):
             "Error validating archibald.jenkins: "
             "extra keys not allowed @ data['extrakey']")
 
-    def test_create_user_invalid_member(self):
-        with pytest.raises(tool.ConfigError) as exc:
-            tool.FreeIPAUser(
-                'archibald.jenkins', {'memberOf': {'invalid': ['x']}})
-        assert exc.value[0] == (
-            'archibald.jenkins cannot be a member '
-            'of non-existent class type "invalid"')
-
     def test_convert(self):
         data = {
             'firstName': 'Firstname',
@@ -136,16 +128,11 @@ class TestFreeIPAUser(object):
         }
         user = tool.FreeIPAUser('some.name', data)
         assert user._convert(data) == {
-            'givenname': ('Firstname',),
+            'givenName': ('Firstname',),
             'sn': ('Lastname',),
             'initials': ('FL',),
             'ou': ('TEST',)
         }
-
-    def test_map_memberof(self):
-        user = tool.FreeIPAUser('some.name', {})
-        assert user._map_memberof({'groups': ['test-users']}) == [
-            ('group', 'test-users')]
 
 
 class TestFreeIPAUserGroup(object):
@@ -153,15 +140,13 @@ class TestFreeIPAUserGroup(object):
         data = {
             'description': 'Sample user group',
             'memberOf': {
-                'groups': ['group-one'],
-                'hbacrules': ['rule-one'],
-                'sudorules': ['rule-one']}}
+                'group': ['group-one'],
+                'hbacrule': ['rule-one'],
+                'sudorule': ['rule-one']}}
         group = tool.FreeIPAUserGroup(
             'group-one-users', data)
         assert group.name == 'group-one-users'
-        assert sorted(group.data['memberof']) == [
-            ('group', 'group-one'), ('hbacrule', 'rule-one'),
-            ('sudorule', 'rule-one')]
+        assert group.data['memberOf'] == data['memberOf']
         assert group.data['description'] == ('Sample user group',)
 
     def test_create_usergroup_extrakey(self):
@@ -196,9 +181,50 @@ class TestFreeIPAHBACRule(object):
         user = tool.FreeIPAHBACRule('rule-one', data)
         assert user._convert(data) == {
             'description': ('A sample sudo rule.',),
-            'memberhost': 'hosts-one',
-            'memberuser': 'users-one'
+            'memberHost': ('hosts-one',),
+            'memberUser': ('users-one',)
         }
+
+    def test_create_commands_member_same(self):
+        rule = tool.FreeIPAHBACRule(
+            'rule-one', {'memberHost': 'group-one', 'memberUser': 'group-one'})
+        remote_rule = {
+            'cn': ('rule-one',), 'memberuser_group': ('group-one',),
+            'memberhost_hostgroup': ('group-one',)}
+        assert not rule.create_commands(remote_rule)
+
+    def test_create_commands_member_add(self):
+        rule = tool.FreeIPAHBACRule(
+            'rule-one', {'memberHost': 'group-one', 'memberUser': 'group-one'})
+        remote_rule = {'cn': ('rule-one',)}
+        commands = rule.create_commands(remote_rule)
+        assert len(commands) == 2
+        assert [i.command for i in commands] == [
+            'hbacrule_add_host', 'hbacrule_add_user']
+        assert [i.description for i in commands] == [
+            u'hbacrule_add_host rule-one (hostgroup=group-one)',
+            u'hbacrule_add_user rule-one (group=group-one)']
+        assert [i.payload for i in commands] == [
+            {'cn': u'rule-one', 'hostgroup': u'group-one'},
+            {'cn': u'rule-one', 'group': u'group-one'}]
+
+    def test_create_commands_member_remove(self):
+        rule = tool.FreeIPAHBACRule(
+            'rule-one', {'memberHost': 'group-one', 'memberUser': 'group-one'})
+        rule.data = dict()  # rule must have members when created
+        remote_rule = {
+            'cn': ('rule-one',), 'memberuser_group': ('group-one',),
+            'memberhost_hostgroup': ('group-one',)}
+        commands = rule.create_commands(remote_rule)
+        assert len(commands) == 2
+        assert [i.command for i in commands] == [
+            'hbacrule_remove_host', 'hbacrule_remove_user']
+        assert [i.description for i in commands] == [
+            u'hbacrule_remove_host rule-one (hostgroup=group-one)',
+            u'hbacrule_remove_user rule-one (group=group-one)']
+        assert [i.payload for i in commands] == [
+            {'cn': u'rule-one', 'hostgroup': u'group-one'},
+            {'cn': u'rule-one', 'group': u'group-one'}]
 
 
 class TestFreeIPASudoRule(object):
@@ -214,3 +240,28 @@ class TestFreeIPASudoRule(object):
         assert exc.value[0] == (
             "Error validating rule-one: "
             "extra keys not allowed @ data['extrakey']")
+
+    def test_create_commands_option_add(self):
+        rule = tool.FreeIPASudoRule(
+            'rule-one', {'options': ['!test', '!test2']})
+        remote_rule = {'cn': (u'rule-one',)}
+        commands = rule.create_commands(remote_rule)
+        assert len(commands) == 2
+        assert all(i.command == 'sudorule_add_option' for i in commands)
+        assert sorted([(i.description, i.payload) for i in commands]) == [
+            (u'sudorule_add_option rule-one (ipasudoopt=!test)',
+             {'cn': u'rule-one', 'ipasudoopt': u'!test'}),
+            (u'sudorule_add_option rule-one (ipasudoopt=!test2)',
+             {'cn': u'rule-one', 'ipasudoopt': u'!test2'})]
+
+    def test_create_commands_option_remove(self):
+        rule = tool.FreeIPASudoRule('rule-one', {'options': ['!test']})
+        remote_rule = {'cn': (u'rule-one',),
+                       'ipasudoopt': (u'!test', u'!test2')}
+        commands = rule.create_commands(remote_rule)
+        assert len(commands) == 1
+        assert commands[0].command == 'sudorule_remove_option'
+        assert commands[0].description == (
+            'sudorule_remove_option rule-one (ipasudoopt=!test2)')
+        assert commands[0].payload == {
+            'cn': u'rule-one', 'ipasudoopt': u'!test2'}

@@ -38,12 +38,12 @@ class TestConfigLoader(object):
     def test_retrieve_paths(self):
         paths = self.loader._retrieve_paths()
         assert sorted(paths.keys()) == [
-            'groups', 'hbacrules', 'hostgroups', 'sudorules', 'users']
-        assert sorted(paths['hostgroups']) == self.expected_hostgroups
-        assert sorted(paths['users']) == self.expected_users
-        assert sorted(paths['groups']) == self.expected_groups
-        assert sorted(paths['hbacrules']) == self.expected_hbac_rules
-        assert sorted(paths['sudorules']) == self.expected_sudo_rules
+            'group', 'hbacrule', 'hostgroup', 'sudorule', 'user']
+        assert sorted(paths['hostgroup']) == self.expected_hostgroups
+        assert sorted(paths['user']) == self.expected_users
+        assert sorted(paths['group']) == self.expected_groups
+        assert sorted(paths['hbacrule']) == self.expected_hbac_rules
+        assert sorted(paths['sudorule']) == self.expected_sudo_rules
 
     @log_capture('ConfigLoader', level=logging.WARNING)
     def test_retrieve_paths_empty(self, captured_warnings):
@@ -58,8 +58,9 @@ class TestConfigLoader(object):
             'No user files found'])
 
     def test_parse(self):
-        self.loader.entities = {'users': []}
-        data = {'archibald.jenkins': {}}
+        self.loader.entities = {'user': []}
+        data = {
+            'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
         self.loader._parse(
             data, entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
 
@@ -77,9 +78,13 @@ class TestConfigLoader(object):
         assert exc.value[0] == 'Config must be a non-empty dictionary'
 
     def test_parse_duplicit_entities(self):
-        data = {'archibald.jenkins': {}}
+        data = {
+            'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
         self.loader.entities = {
-            'users': [entities.FreeIPAUser('archibald.jenkins', {})]}
+            'user': [
+                entities.FreeIPAUser(
+                    'archibald.jenkins',
+                    {'firstName': 'first', 'lastName': 'last'})]}
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
                 data, entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
@@ -89,15 +94,15 @@ class TestConfigLoader(object):
     def test_load(self, captured_warnings):
         self.loader.basepath = CONFIG_CORRECT
         self.loader.load()
-        hostgroups = self.loader.entities['hostgroups']
+        hostgroups = self.loader.entities['hostgroup']
         assert len(hostgroups) == 3
         assert set(g.name for g in hostgroups) == set([
             'group-one-hosts', 'group-two', 'group-three-hosts'])
-        users = self.loader.entities['users']
+        users = self.loader.entities['user']
         assert len(users) == 3
         assert sorted(u.name for u in users) == [
             'archibald.jenkins', 'firstname.lastname', 'firstname.lastname2']
-        groups = self.loader.entities['groups']
+        groups = self.loader.entities['group']
         assert len(groups) == 3
         assert set(g.name for g in groups) == set([
             'group-one-users', 'group-two', 'group-three-users'])

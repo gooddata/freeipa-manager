@@ -8,5 +8,5 @@ archibald.jenkins:
   emailAddress: deli+jenkins@gooddata.com
   title: Sr. SW Enginner
   memberOf:
-    groups:
+    group:
       - group-one-users
