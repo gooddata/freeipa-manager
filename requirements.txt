@@ -1,5 +1,3 @@
-dnspython
-python-ldap
 pyyaml
 voluptuous
 yamllint

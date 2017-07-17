@@ -59,9 +59,8 @@ class IntegrityChecker(FreeIPAManagerCore):
             errs = self._check_single_member_entity(entity)
         if errs:
             self.lg.error(
-                '%s (%s): %s', entity.name,
-                entity.entity_name, '; '.join(errs))
-            self.errs[entity.dn] = errs
+                '%s %s: %s', entity.entity_name, entity.name, '; '.join(errs))
+            self.errs[(entity.entity_name, entity.name)] = errs
 
     def _check_single_rule_entity(self, entity):
         """
@@ -74,14 +73,13 @@ class IntegrityChecker(FreeIPAManagerCore):
         """
         errs = []
         for key, member_type in [
-                ('memberHost', entities.FreeIPAHostGroup),
-                ('memberUser', entities.FreeIPAUserGroup)]:
-            member_name = entity.data.get(key)
+                ('memberHost', 'hostgroup'),
+                ('memberUser', 'group')]:
+            member_name = entity.data.get(key.lower())
             if not member_name:
                 errs.append('no %s' % key)
                 continue
-            member_name = member_name[0]  # LDAP stores everything as list
-            member = self.entity_dict.get(member_name)
+            member = self.entity_dict.get((member_type, member_name))
             if not member:
                 errs.append('non-existent %s %s' % (key, member_name))
                 continue
@@ -98,16 +96,18 @@ class IntegrityChecker(FreeIPAManagerCore):
         :param FreeIPAEntity entity: entity to check
         """
         errs = []
-        for item in entity.data.get('memberOf', []):
+        for item in entity.data.get('memberof', []):
+            member_type, member_name = item
             target = self.entity_dict.get(item)
             if not target:
-                errs.append('memberOf non-existent entity %s' % item)
+                errs.append(
+                    'memberOf non-existent %s %s' % (member_type, member_name))
                 continue
             if target == entity:
                 errs.append('memberOf itself')
                 continue
             try:
-                self._check_member_rules(entity, entity.entity_name, target)
+                self._check_member_rules(entity, entity.entity_name_pl, target)
             except IntegrityError as e:
                 errs.append(str(e))
                 continue
@@ -116,7 +116,7 @@ class IntegrityChecker(FreeIPAManagerCore):
             cyclic_path = self._check_cycles(entity)
             if cyclic_path:
                 errs.append('Cyclic membership of %s: %s'
-                            % (entity.entity_name, cyclic_path))
+                            % (entity.entity_name_pl, cyclic_path))
         return errs
 
     def _check_member_rules(self, member, member_name, target):
@@ -130,10 +130,11 @@ class IntegrityChecker(FreeIPAManagerCore):
         :param FreeIPAEntity target: membership target entity
         """
         try:
-            rules = self.rules[target.entity_name][member_name]
+            rules = self.rules[target.entity_name_pl][member_name]
         except KeyError:
             raise IntegrityError(
-                'cannot be a member of %s (%s)' % (target.entity_name, target))
+                'cannot be a member of a %s (%s)'
+                % (target.entity_name, target))
         if not rules:
             return
         for rule in rules:
@@ -174,15 +175,16 @@ class IntegrityChecker(FreeIPAManagerCore):
         :param FreeIPAGroup entity: entity (group) to begin checking at
         :returns: cyclic membership entity list if found, else None
         """
-        self.lg.debug('Running cycles check for %s', entity.dn)
+        self.lg.debug(
+            'Running cycles check for %s %s', entity.entity_name, entity.name)
         stack = [(entity, [])]
         visited = set()
         while stack:
             current, path = stack.pop()
             visited.add(current)
             path.append(current)
-            for target_dn in current.data.get('memberOf', []):
-                target = self.entity_dict.get(target_dn)
+            for item in current.data.get('memberof', []):
+                target = self.entity_dict.get(item)
                 if not target:  # non-existent entity
                     continue
                 if target == entity:  # cycle found
@@ -200,7 +202,7 @@ class IntegrityChecker(FreeIPAManagerCore):
         self.entity_dict = dict()
         for entity_list in parsed.itervalues():
             for e in entity_list:
-                self.entity_dict[e.dn] = e
+                self.entity_dict[(e.entity_name, e.name)] = e
 
     def _load_rules(self, path):
         """

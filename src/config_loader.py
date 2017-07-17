@@ -23,14 +23,12 @@ class ConfigLoader(FreeIPAManagerCore):
     :attr dict entities: storage of loaded entities, which are organized
                          in lists under entity class name keys.
     """
-    def __init__(self, basepath, domain):
+    def __init__(self, basepath):
         """
         :param str basepath: path to the cloned config repository
-        :param str domain: LDAP server domain (for DN construction)
         """
         super(ConfigLoader, self).__init__()
         self.basepath = basepath
-        self.domain = domain
         self.entities = dict()
 
     def load(self):
@@ -40,7 +38,7 @@ class ConfigLoader(FreeIPAManagerCore):
         self.lg.info('Checking local configuration at %s', self.basepath)
         paths = self._retrieve_paths()
         for entity_class in ENTITY_CLASSES:
-            entity_name = entity_class.entity_name
+            entity_name = entity_class.entity_name_pl
             entity_paths = paths.get(entity_name, [])
             if not entity_paths:
                 continue
@@ -78,14 +76,14 @@ class ConfigLoader(FreeIPAManagerCore):
         parsed = []
         for name, attrs in data.iteritems():
             self.lg.debug('Creating entity %s', name)
-            entity = entity_class(name, attrs, self.domain)
-            if entity in self.entities[entity_class.entity_name]:
+            entity = entity_class(name, attrs or dict())
+            if entity in self.entities[entity_class.entity_name_pl]:
                 raise ConfigError('Duplicit definition of %s' % entity)
             parsed.append(entity)
         if len(parsed) > 1:
             self.lg.warning(
                 'More than one entity parsed from %s (%d)', fname, len(parsed))
-        self.entities[entity_class.entity_name].extend(parsed)
+        self.entities[entity_class.entity_name_pl].extend(parsed)
 
     def _retrieve_paths(self):
         """
@@ -93,7 +91,7 @@ class ConfigLoader(FreeIPAManagerCore):
         """
         filepaths = dict()
         for entity_class in ENTITY_CLASSES:
-            folder = os.path.join(self.basepath, entity_class.config_folder)
+            folder = os.path.join(self.basepath, entity_class.entity_name_pl)
             entity_filepaths = glob.glob('%s/*.yaml' % folder)
             self.lg.debug(
                 'Retrieved %s config paths: [%s]',
@@ -101,7 +99,7 @@ class ConfigLoader(FreeIPAManagerCore):
             if not entity_filepaths:
                 self.lg.warning('No %s files found', entity_class.entity_name)
                 continue
-            filepaths[entity_class.entity_name] = entity_filepaths
+            filepaths[entity_class.entity_name_pl] = entity_filepaths
         return filepaths
 
     def _short_path(self, path):

@@ -6,7 +6,7 @@ help:
 	say "$$3:"; my $$x = $$1 . $$2; $$x =~ s/^#? ?/   /gm; say $$x }' Makefile | fmt
 
 
-VIRTUALENV ?= virtualenv
+VIRTUALENV ?= virtualenv --system-site-packages
 VENV_DIR = .venv
 VENV_ACTIVATE = $(VENV_DIR)/bin/activate
 VENV_CMD = . $(VENV_ACTIVATE);
@@ -15,10 +15,11 @@ REQUIREMENTS = $(VENV_DIR)/requirements.installed
 
 CONFIG_REPO ?= ../../freeipa-manager-config/entities
 RULES_FILE ?= ../../freeipa-manager-config/integrity_config.yaml
-DIFF_TARGET ?= .diff
+DIFF_TARGET ?= .todo
+THRESHOLD ?= 20
 
 BASE_CMD = src/freeipa_manager.py $(CONFIG_REPO) 
-CMD_SUFFIX = -r $(RULES_FILE) $(if $(DEBUG), '-v')
+CMD_SUFFIX = -r $(RULES_FILE) -t $(THRESHOLD) $(if $(DEBUG), '-v')
 
 
 # @help check YAML config files for syntax errors
@@ -27,40 +28,27 @@ check-yaml: $(REQUIREMENTS)
 
 # @help parse & validate configuration from repository & LDAP server
 check: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(BASE_CMD) check $(ARG_CONF) -d $(DOMAIN) $(CMD_SUFFIX)
-
-# @help parse & validate configuration from repository & localhost LDAP
-check-local: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(BASE_CMD) check $(ARG_CONF) -d localhost $(CMD_SUFFIX)
-
-# @help parse & validate configuration from repository only
-check-config: $(REQUIREMENTS) check-yaml
 	$(VENV_CMD) $(BASE_CMD) check $(CMD_SUFFIX)
 
-# @help compare configuration in repository vs. LDAP server
+# @help push configuration from config repository to FreeIPA server
 compare: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(BASE_CMD) compare $(CMD_SUFFIX) -d $(DOMAIN) > $(DIFF_TARGET)
+	$(VENV_CMD) $(BASE_CMD) push --dry-run --add-only $(CMD_SUFFIX) > $(DIFF_TARGET)
 
-# @help compare configuration in repository vs. localhost LDAP server
-compare-local: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(BASE_CMD) compare $(CMD_SUFFIX) -d localhost > $(DIFF_TARGET)
+# @help push configuration from config repository to FreeIPA server
+compare-enable-del: $(REQUIREMENTS) check-yaml
+	$(VENV_CMD) $(BASE_CMD) push --dry-run $(CMD_SUFFIX) > $(DIFF_TARGET)
 
-# @help pull configuration from LDAP server into config repository
-pull: $(REQUIREMENTS)
-	$(VENV_CMD) $(BASE_CMD) pull -d $(DOMAIN) $(CMD_SUFFIX)
-
-# @help pull configuration from LDAP server into config repository
-pull-local: $(REQUIREMENTS)
-	$(VENV_CMD) $(BASE_CMD) pull -d localhost $(CMD_SUFFIX)
-
-# @help push configuration from config repository to LDAP server (add-only)
+# @help push configuration from config repository to FreeIPA server
 push: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(BASE_CMD) push -d $(DOMAIN) $(CMD_SUFFIX)
+	$(VENV_CMD) $(BASE_CMD) push --add-only $(CMD_SUFFIX)
 
-# @help push configuration from config repository to LDAP server (add-only)
-push-local: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(BASE_CMD) push -d localhost $(CMD_SUFFIX)
+# @help push configuration from config repository to FreeIPA server
+push-enable-del: $(REQUIREMENTS) check-yaml
+	$(VENV_CMD) $(BASE_CMD) push $(CMD_SUFFIX)
 
+# @help pull configuration from FreeIPA server into config repository
+pull: $(REQUIREMENTS)
+	$(VENV_CMD) $(BASE_CMD) pull $(CMD_SUFFIX)
 
 $(VENV_ACTIVATE):
 	$(VIRTUALENV) $(VENV_DIR)

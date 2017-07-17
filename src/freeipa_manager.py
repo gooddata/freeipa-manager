@@ -14,7 +14,6 @@ from core import FreeIPAManagerCore
 from config_loader import ConfigLoader
 from errors import ManagerError
 from integrity_checker import IntegrityChecker
-from ldap_loader import LdapDownloader
 
 
 class FreeIPAManager(FreeIPAManagerCore):
@@ -40,17 +39,9 @@ class FreeIPAManager(FreeIPAManagerCore):
             self.args.rules_file, self.config_loader.entities)
         self.integrity_checker.check()
 
-    def _load_ldap(self):
-        """
-        Load configurations from given LDAP server.
-        """
-        self.ldap_loader = LdapDownloader(self.args.domain)
-        self.ldap_loader.load()
-
     def run(self):
         """
         Execute the task selected by arguments (check config, upload etc).
-        Currently, only configuration checking is implemented.
         """
         try:
             {
@@ -65,16 +56,14 @@ class FreeIPAManager(FreeIPAManagerCore):
 
     def check(self):
         """
-        Run repository configuration check.
-        Can check local config repo, config from LDAP server, or both.
+        Load configurations from configuration repository at the given path.
+        Run integrity check on the loaded configuration.
         """
-        if self.args.config:
-            self._load_config()
-        if self.args.domain:
-            self._load_ldap()
-
-    def compare(self):
-        raise NotImplementedError('Comparing not available yet.')
+        self.config_loader = ConfigLoader(self.args.config)
+        self.config_loader.load()
+        self.integrity_checker = IntegrityChecker(
+            self.args.rules_file, self.config_loader.entities)
+        self.integrity_checker.check()
 
     def push(self):
         raise NotImplementedError('Config pushing not available yet.')
