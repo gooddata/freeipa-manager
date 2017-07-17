@@ -35,9 +35,13 @@ class IntegrityChecker(FreeIPAManagerCore):
         if not self.entity_dict:
             self.lg.warning('No entities to check for integrity')
             return
-        self.errs = dict()
-        for entity in self.entity_dict.itervalues():
-            self._check_single(entity)
+        self.lg.info('Running integrity check')
+        self.errs = dict()  # key: (entity type, name), value: error list
+        for entity_type in sorted(self.entity_dict):
+            self.lg.debug('Checking %s entities', entity_type)
+            for entity in self.entity_dict[entity_type].itervalues():
+                self.lg.debug('Checking entity %s', entity)
+                self._check_single(entity)
         if self.errs:
             raise IntegrityError(
                 'There were %d integrity errors in %d entities' %
@@ -75,18 +79,19 @@ class IntegrityChecker(FreeIPAManagerCore):
         for key, member_type in [
                 ('memberHost', 'hostgroup'),
                 ('memberUser', 'group')]:
-            member_name = entity.data.get(key.lower())
-            if not member_name:
+            member_names = entity.data.get(key, [])
+            if not member_names:
                 errs.append('no %s' % key)
                 continue
-            member = self.entity_dict.get((member_type, member_name))
-            if not member:
-                errs.append('non-existent %s %s' % (key, member_name))
-                continue
-            try:
-                self._check_member_rules(member, key, entity)
-            except IntegrityError as e:
-                errs.append(str(e))
+            for name in member_names:
+                member = self._find_entity(member_type, name)
+                if not member:
+                    errs.append('non-existent %s %s' % (key, name))
+                    continue
+                try:
+                    self._check_member_rules(member, key, entity)
+                except IntegrityError as e:
+                    errs.append(str(e))
         return errs
 
     def _check_single_member_entity(self, entity):
@@ -96,27 +101,29 @@ class IntegrityChecker(FreeIPAManagerCore):
         :param FreeIPAEntity entity: entity to check
         """
         errs = []
-        for item in entity.data.get('memberof', []):
-            member_type, member_name = item
-            target = self.entity_dict.get(item)
-            if not target:
-                errs.append(
-                    'memberOf non-existent %s %s' % (member_type, member_name))
-                continue
-            if target == entity:
-                errs.append('memberOf itself')
-                continue
-            try:
-                self._check_member_rules(entity, entity.entity_name_pl, target)
-            except IntegrityError as e:
-                errs.append(str(e))
-                continue
+        member_of = entity.data.get('memberOf', dict())
+        for target_type, targets in member_of.iteritems():
+            for target_name in targets:
+                target = self._find_entity(target_type, target_name)
+                if not target:
+                    errs.append('memberOf non-existent %s %s'
+                                % (target_type, target_name))
+                    continue
+                if target == entity:
+                    errs.append('memberOf itself')
+                    continue
+                try:
+                    self._check_member_rules(
+                        entity, entity.entity_name, target)
+                except IntegrityError as e:
+                    errs.append(str(e))
+                    continue
         # check for cyclic membership
         if not errs and isinstance(entity, entities.FreeIPAGroup):
             cyclic_path = self._check_cycles(entity)
             if cyclic_path:
-                errs.append('Cyclic membership of %s: %s'
-                            % (entity.entity_name_pl, cyclic_path))
+                errs.append('Cyclic membership of %ss: %s'
+                            % (entity.entity_name, cyclic_path))
         return errs
 
     def _check_member_rules(self, member, member_name, target):
@@ -130,7 +137,7 @@ class IntegrityChecker(FreeIPAManagerCore):
         :param FreeIPAEntity target: membership target entity
         """
         try:
-            rules = self.rules[target.entity_name_pl][member_name]
+            rules = self.rules[target.entity_name][member_name]
         except KeyError:
             raise IntegrityError(
                 'cannot be a member of a %s (%s)'
@@ -183,8 +190,9 @@ class IntegrityChecker(FreeIPAManagerCore):
             current, path = stack.pop()
             visited.add(current)
             path.append(current)
-            for item in current.data.get('memberof', []):
-                target = self.entity_dict.get(item)
+            member_of = current.data.get('memberOf', dict())
+            for item in member_of.get(current.entity_name, []):
+                target = self._find_entity(current.entity_name, item)
                 if not target:  # non-existent entity
                     continue
                 if target == entity:  # cycle found
@@ -200,9 +208,16 @@ class IntegrityChecker(FreeIPAManagerCore):
         :returns: None (the `entity_dict` attribute is set)
         """
         self.entity_dict = dict()
-        for entity_list in parsed.itervalues():
-            for e in entity_list:
-                self.entity_dict[(e.entity_name, e.name)] = e
+        for entity_type in parsed:
+            self.entity_dict[entity_type] = dict()
+            for entity in parsed[entity_type]:
+                self.entity_dict[entity_type][entity.name] = entity
+
+    def _find_entity(self, entity_type, name):
+        entity_subdict = self.entity_dict.get(entity_type)
+        if entity_subdict:
+            return entity_subdict.get(name)
+        return None
 
     def _load_rules(self, path):
         """
@@ -210,7 +225,7 @@ class IntegrityChecker(FreeIPAManagerCore):
         and generate respective membership checking functions.
         :param str path: path to the rules file
         """
-        self.lg.info('Using integrity check rules from %s', path)
+        self.lg.debug('Using integrity check rules from %s', path)
         try:
             with open(path) as src:
                     self.rules = yaml.safe_load(src)

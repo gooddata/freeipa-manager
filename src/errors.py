@@ -2,8 +2,8 @@ class ManagerError(Exception):
     """General error, used mainly for derivation of other exceptions."""
 
 
-class AuthError(ManagerError):
-    """Error raised in case of LDAP Kerberos authentication error."""
+class CommandError(ManagerError):
+    """Error raised in case of API command execution error."""
 
 
 class ConfigError(ManagerError):

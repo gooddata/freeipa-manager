@@ -4,54 +4,52 @@ Configuration parsing tool
 
 Validation schemas for FreeIPA entities configuration.
 
-NOTE: 'noldap_'-prefixed attributes are only used internally
-      by the script and are not propagated to FreeIPA.
-
 Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
-from voluptuous import Any
+from voluptuous import Any, Required
 
+
+_item_or_list = Any(str, [str])
+_schema_memberof = {str: [str]}
 
 schema_users = {
-    'emailAddress': str,
-    'firstName': str,
-    'lastName': str,
+    Required('firstName'): str,
+    Required('lastName'): str,
     'initials': str,
+    'emailAddress': _item_or_list,
     'organizationUnit': str,
     'manager': str,
-    'githubLogin': str,
+    'githubLogin': _item_or_list,
     'title': str,
-    'memberOf': dict
+    'memberOf': _schema_memberof
 }
 
 
 schema_usergroups = {
     'description': str,
-    'memberOf': dict
+    'memberOf': _schema_memberof
 }
 
 
 schema_hostgroups = {
     'description': str,
-    'memberOf': dict
+    'memberOf': _schema_memberof
 }
 
 
 schema_hbac = {
     'description': str,
-    'enabled': Any('TRUE', 'FALSE'),
-    'memberHost': str,
-    'memberUser': str
+    'memberHost': _item_or_list,
+    'memberUser': _item_or_list
 }
 
 
 schema_sudo = {
     'cmdCategory': str,
     'description': str,
-    'enabled': Any('TRUE', 'FALSE'),
-    'memberHost': str,
-    'memberUser': str,
+    'memberHost': _item_or_list,
+    'memberUser': _item_or_list,
     'options': [str],
     'runAsGroupCategory': str,
     'runAsUserCategory': str

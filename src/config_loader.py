@@ -38,12 +38,11 @@ class ConfigLoader(FreeIPAManagerCore):
         self.lg.info('Checking local configuration at %s', self.basepath)
         paths = self._retrieve_paths()
         for entity_class in ENTITY_CLASSES:
-            entity_name = entity_class.entity_name_pl
-            entity_paths = paths.get(entity_name, [])
+            entity_paths = paths.get(entity_class.entity_name, [])
             if not entity_paths:
                 continue
-            self.entities[entity_name] = list()
-            self.lg.debug('Loading %s configs', entity_name)
+            self.entities[entity_class.entity_name] = list()
+            self.lg.debug('Loading %s configs', entity_class.entity_name)
             errcount = 0
             for path in entity_paths:
                 fname = self._short_path(path)
@@ -57,7 +56,8 @@ class ConfigLoader(FreeIPAManagerCore):
                     self.errs.append(fname)
                     errcount += 1
             self.lg.info(
-                'Parsed %d %s%s', len(self.entities[entity_name]), entity_name,
+                'Parsed %d %s%s', len(self.entities[entity_class.entity_name]),
+                '%ss' % entity_class.entity_name,
                 ' (%d errors encountered)' % errcount if errcount else '')
         if self.errs:
             raise ConfigError(
@@ -76,14 +76,14 @@ class ConfigLoader(FreeIPAManagerCore):
         parsed = []
         for name, attrs in data.iteritems():
             self.lg.debug('Creating entity %s', name)
-            entity = entity_class(name, attrs or dict())
-            if entity in self.entities[entity_class.entity_name_pl]:
+            entity = entity_class(name, attrs)
+            if entity in self.entities[entity_class.entity_name]:
                 raise ConfigError('Duplicit definition of %s' % entity)
             parsed.append(entity)
         if len(parsed) > 1:
             self.lg.warning(
                 'More than one entity parsed from %s (%d)', fname, len(parsed))
-        self.entities[entity_class.entity_name_pl].extend(parsed)
+        self.entities[entity_class.entity_name].extend(parsed)
 
     def _retrieve_paths(self):
         """
@@ -91,7 +91,8 @@ class ConfigLoader(FreeIPAManagerCore):
         """
         filepaths = dict()
         for entity_class in ENTITY_CLASSES:
-            folder = os.path.join(self.basepath, entity_class.entity_name_pl)
+            folder = os.path.join(
+                self.basepath, '%ss' % entity_class.entity_name)
             entity_filepaths = glob.glob('%s/*.yaml' % folder)
             self.lg.debug(
                 'Retrieved %s config paths: [%s]',
@@ -99,7 +100,7 @@ class ConfigLoader(FreeIPAManagerCore):
             if not entity_filepaths:
                 self.lg.warning('No %s files found', entity_class.entity_name)
                 continue
-            filepaths[entity_class.entity_name_pl] = entity_filepaths
+            filepaths[entity_class.entity_name] = entity_filepaths
         return filepaths
 
     def _short_path(self, path):

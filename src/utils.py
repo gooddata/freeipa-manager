@@ -30,14 +30,25 @@ def init_logging(loglevel):
 def parse_args():
     parser = argparse.ArgumentParser(description='FreeIPA management CLI tool')
     parser.add_argument('config', help='Path to config repository')
-    parser.add_argument('action', choices=['check', 'compare', 'pull', 'push'])
+    parser.add_argument('action', choices=['check', 'pull', 'push'])
     parser.add_argument('-r', '--rules-file', default='integrity_config.yaml',
                         help='Integrity check rules file')
-    parser.add_argument('-d', '--domain', help='LDAP domain',
-                        nargs='?', const='intgdc.com', default='localhost')
-    parser.add_argument('--dry', help='Dry run')
-    parser.add_argument(
-        '-v', '--verbose', dest='loglevel', action='store_const',
-        const=logging.DEBUG, default=logging.INFO)
+    parser.add_argument('-t', '--threshold', type=_type_threshold,
+                        metavar='(%)', help='Change threshold', default=20)
+    parser.add_argument('-f', '--force', action='store_true',
+                        help='Actually make changes (no dry run)')
+    parser.add_argument('-d', '--enable-deletion', action='store_true',
+                        help='Enable deletion of entities')
+    parser.add_argument('-v', '--verbose', dest='debug', action='store_true')
     args = parser.parse_args()
     return args
+
+
+def _type_threshold(value):
+    try:
+        number = int(value)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e))
+    if number < 1 or number > 100:
+        raise argparse.ArgumentTypeError('must be a number in range 1-100')
+    return number

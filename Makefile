@@ -15,7 +15,6 @@ REQUIREMENTS = $(VENV_DIR)/requirements.installed
 
 CONFIG_REPO ?= ../../freeipa-manager-config/entities
 RULES_FILE ?= ../../freeipa-manager-config/integrity_config.yaml
-DIFF_TARGET ?= .todo
 THRESHOLD ?= 20
 
 BASE_CMD = src/freeipa_manager.py $(CONFIG_REPO) 
@@ -26,25 +25,25 @@ CMD_SUFFIX = -r $(RULES_FILE) -t $(THRESHOLD) $(if $(DEBUG), '-v')
 check-yaml: $(REQUIREMENTS)
 	$(VENV_CMD) yamllint -f parsable $(CONFIG_REPO)
 
-# @help parse & validate configuration from repository & LDAP server
+# @help parse & validate configuration from local config repo
 check: $(REQUIREMENTS) check-yaml
 	$(VENV_CMD) $(BASE_CMD) check $(CMD_SUFFIX)
 
-# @help push configuration from config repository to FreeIPA server
+# @help compare configuration between local repo & FreeIPA server
 compare: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(BASE_CMD) push --dry-run --add-only $(CMD_SUFFIX) > $(DIFF_TARGET)
+	$(VENV_CMD) $(BASE_CMD) push $(CMD_SUFFIX)
 
-# @help push configuration from config repository to FreeIPA server
+# @help compare configuration between local repo & FreeIPA server (including extra remote entity deletion)
 compare-enable-del: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(BASE_CMD) push --dry-run $(CMD_SUFFIX) > $(DIFF_TARGET)
+	$(VENV_CMD) $(BASE_CMD) push --enable-deletion $(CMD_SUFFIX)
 
 # @help push configuration from config repository to FreeIPA server
 push: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(BASE_CMD) push --add-only $(CMD_SUFFIX)
+	$(VENV_CMD) $(BASE_CMD) push --force $(CMD_SUFFIX)
 
-# @help push configuration from config repository to FreeIPA server
+# @help push configuration from config repository to FreeIPA server (including extra remote entity deletion)
 push-enable-del: $(REQUIREMENTS) check-yaml
-	$(VENV_CMD) $(BASE_CMD) push $(CMD_SUFFIX)
+	$(VENV_CMD) $(BASE_CMD) push --force --enable-deletion $(CMD_SUFFIX)
 
 # @help pull configuration from FreeIPA server into config repository
 pull: $(REQUIREMENTS)
