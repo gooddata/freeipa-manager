@@ -6,6 +6,5 @@ rule-two:
 
 rule-three:
   description: Sample HBAC rule 3.
-  enabled: 'FALSE'
   memberHost: group-two
   memberUser: group-two

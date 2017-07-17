@@ -4,10 +4,9 @@ archibald.jenkins:
   lastName: Jenkins
   initials: AJE
   organizationUnit: CISTA
-  manager: sample.manager
   githubLogin: yenkins
   emailAddress: deli+jenkins@gooddata.com
   title: Sr. SW Enginner
   memberOf:
-    usergroups:
+    groups:
       - group-one-users

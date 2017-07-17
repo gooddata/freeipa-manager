@@ -2,5 +2,5 @@
 group-one-users:
   description: Sample group one
   memberOf:
-    usergroups:
+    groups:
       - group-two

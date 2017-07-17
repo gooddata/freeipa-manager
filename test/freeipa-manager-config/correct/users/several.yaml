@@ -4,12 +4,11 @@ firstname.lastname:
   lastName: Lastname
   initials: FLA
   organizationUnit: CISTA
-  manager: sample.manager
   githubLogin: github-account-one
   emailAddress: firstname.lastname@gooddata.com
   title: Sr. SW Enginner
   memberOf:
-    usergroups:
+    groups:
       - group-one-users
 
 firstname.lastname2:
@@ -17,10 +16,9 @@ firstname.lastname2:
   lastName: Lastname
   initials: FLN
   organizationUnit: CISTA
-  manager: other.manager
   githubLogin: github-account-two
   emailAddress: firstname.lastname2@gooddata.com
   title: Sr. SW Enginner
   memberOf:
-    usergroups:
+    groups:
       - group-three-users

@@ -14,20 +14,19 @@ entities = __import__('entities')
 
 CONFIG_CORRECT = os.path.join(testpath, 'freeipa-manager-config/correct')
 CONFIG_INVALID = os.path.join(testpath, 'freeipa-manager-config/invalid')
-DOMAIN = 'intgdc.com'
 
 
 class TestConfigLoader(object):
     def setup_method(self, method):
-        self.loader = tool.ConfigLoader(CONFIG_CORRECT, DOMAIN)
+        self.loader = tool.ConfigLoader(CONFIG_CORRECT)
         self.expected_hostgroups = [
             CONFIG_CORRECT + '/hostgroups/%s.yaml' % group
             for group in ['group_one', 'several']]
         self.expected_users = [
             CONFIG_CORRECT + '/users/%s.yaml' % user
             for user in ['archibald_jenkins', 'several']]
-        self.expected_usergroups = [
-            CONFIG_CORRECT + '/usergroups/%s.yaml' % group
+        self.expected_groups = [
+            CONFIG_CORRECT + '/groups/%s.yaml' % group
             for group in ['group_one', 'several']]
         self.expected_hbac_rules = [
             CONFIG_CORRECT + '/hbacrules/%s.yaml' % rule
@@ -39,12 +38,12 @@ class TestConfigLoader(object):
     def test_retrieve_paths(self):
         paths = self.loader._retrieve_paths()
         assert sorted(paths.keys()) == [
-            'HBAC rules', 'hostgroups', 'sudo rules', 'usergroups', 'users']
+            'groups', 'hbacrules', 'hostgroups', 'sudorules', 'users']
         assert sorted(paths['hostgroups']) == self.expected_hostgroups
         assert sorted(paths['users']) == self.expected_users
-        assert sorted(paths['usergroups']) == self.expected_usergroups
-        assert sorted(paths['HBAC rules']) == self.expected_hbac_rules
-        assert sorted(paths['sudo rules']) == self.expected_sudo_rules
+        assert sorted(paths['groups']) == self.expected_groups
+        assert sorted(paths['hbacrules']) == self.expected_hbac_rules
+        assert sorted(paths['sudorules']) == self.expected_sudo_rules
 
     @log_capture('ConfigLoader', level=logging.WARNING)
     def test_retrieve_paths_empty(self, captured_warnings):
@@ -52,11 +51,11 @@ class TestConfigLoader(object):
         paths = self.loader._retrieve_paths()
         assert paths.keys() == []
         assert set(i.msg % i.args for i in captured_warnings.records) == set([
-            'No HBAC rules files found',
-            'No hostgroups files found',
-            'No sudo rules files found',
-            'No usergroups files found',
-            'No users files found'])
+            'No hbacrule files found',
+            'No hostgroup files found',
+            'No sudorule files found',
+            'No group files found',
+            'No user files found'])
 
     def test_parse(self):
         self.loader.entities = {'users': []}
@@ -80,7 +79,7 @@ class TestConfigLoader(object):
     def test_parse_duplicit_entities(self):
         data = {'archibald.jenkins': {}}
         self.loader.entities = {
-            'users': [entities.FreeIPAUser('archibald.jenkins', {}, DOMAIN)]}
+            'users': [entities.FreeIPAUser('archibald.jenkins', {})]}
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
                 data, entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
@@ -98,15 +97,15 @@ class TestConfigLoader(object):
         assert len(users) == 3
         assert sorted(u.name for u in users) == [
             'archibald.jenkins', 'firstname.lastname', 'firstname.lastname2']
-        usergroups = self.loader.entities['usergroups']
-        assert len(usergroups) == 3
-        assert set(g.name for g in usergroups) == set([
+        groups = self.loader.entities['groups']
+        assert len(groups) == 3
+        assert set(g.name for g in groups) == set([
             'group-one-users', 'group-two', 'group-three-users'])
         assert set(i.msg % i.args for i in captured_warnings.records) == set([
             'More than one entity parsed from hbacrules/several.yaml (2)',
             'More than one entity parsed from hostgroups/several.yaml (2)',
             'More than one entity parsed from sudorules/several.yaml (2)',
-            'More than one entity parsed from usergroups/several.yaml (2)',
+            'More than one entity parsed from groups/several.yaml (2)',
             'More than one entity parsed from users/several.yaml (2)'])
 
     @log_capture('ConfigLoader', level=logging.WARNING)
@@ -115,11 +114,11 @@ class TestConfigLoader(object):
         self.loader.load()
         assert self.loader.entities == dict()
         assert set(i.msg % i.args for i in captured_warnings.records) == set([
-            'No HBAC rules files found',
-            'No hostgroups files found',
-            'No sudo rules files found',
-            'No usergroups files found',
-            'No users files found'])
+            'No hbacrule files found',
+            'No hostgroup files found',
+            'No sudorule files found',
+            'No group files found',
+            'No user files found'])
 
     def test_load_invalid(self):
         self.loader.basepath = CONFIG_INVALID
@@ -128,7 +127,7 @@ class TestConfigLoader(object):
         err = exc.value[0]
         for i in [
                 'hbacrules/extrakey.yaml', 'hostgroups/extrakey.yaml',
-                'sudorules/extrakey.yaml', 'usergroups/extrakey.yaml',
+                'sudorules/extrakey.yaml', 'groups/extrakey.yaml',
                 'users/extrakey.yaml']:
             assert i in err
         assert ('users/duplicit.yaml' in err or

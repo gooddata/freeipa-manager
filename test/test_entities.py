@@ -10,8 +10,6 @@ toolpath = testpath.replace('test', 'src')
 sys.path.insert(0, toolpath)
 tool = __import__('entities')
 
-DOMAIN = 'intgdc.com'
-
 
 class TestFreeIPAEntity(object):
     def test_create_entity(self):
@@ -19,27 +17,26 @@ class TestFreeIPAEntity(object):
             tool.FreeIPAEntity('sample.entity', {})
         assert exc.value[0] == (
             "Can't instantiate abstract class FreeIPAEntity "
-            "with abstract methods config_folder, ldap_attrlist, ldap_filter, "
-            "type_dn, validation_schema")
+            "with abstract methods validation_schema")
 
     def test_equality(self):
-        user1 = tool.FreeIPAUser('user1', {}, DOMAIN)
-        user2 = tool.FreeIPAUser('user1', {}, DOMAIN)
+        user1 = tool.FreeIPAUser('user1', {})
+        user2 = tool.FreeIPAUser('user1', {})
         assert user1 == user2
-        user2.name = 'user2'  # check that equality is based on DN, not name
-        assert user1 == user2
+        user2.name = 'user2'
+        assert user1 != user2
 
     def test_nonequality_different_type(self):
-        group1 = tool.FreeIPAUserGroup('group', {}, DOMAIN)
-        group2 = tool.FreeIPAHostGroup('group', {}, DOMAIN)
+        group1 = tool.FreeIPAUserGroup('group', {})
+        group2 = tool.FreeIPAHostGroup('group', {})
         assert group1 != group2
 
     def test_nonequality_same_type(self):
-        rule1 = tool.FreeIPASudoRule('rule-one', {}, DOMAIN)
-        rule2 = tool.FreeIPASudoRule('rule-two', {}, DOMAIN)
+        rule1 = tool.FreeIPASudoRule('rule-one', {})
+        rule2 = tool.FreeIPASudoRule('rule-two', {})
         assert rule1 != rule2
-        rule2.name = 'rule-one'  # check that equality is based on DN, not name
-        assert rule1 != rule2
+        rule2.name = 'rule-one'
+        assert rule1 == rule2
 
 
 class TestFreeIPAGroup(object):
@@ -48,116 +45,76 @@ class TestFreeIPAGroup(object):
             tool.FreeIPAGroup('sample-group', {})
         assert exc.value[0] == (
             "Can't instantiate abstract class FreeIPAGroup "
-            "with abstract methods config_folder, "
-            "ldap_filter, type_dn, validation_schema")
+            "with abstract methods validation_schema")
 
     def test_create_usergroup_nonmeta(self):
-        group = tool.FreeIPAUserGroup('sample-group-users', {}, DOMAIN)
+        group = tool.FreeIPAUserGroup('sample-group-users', {})
         assert not group.is_meta
 
     def test_create_usergroup_meta(self):
-        group = tool.FreeIPAUserGroup('sample-group', {}, DOMAIN)
+        group = tool.FreeIPAUserGroup('sample-group', {})
         assert group.is_meta
 
     def test_create_usergroup_meta_not_enforced(self):
         with mock.patch('entities.FreeIPAUserGroup.meta_group_suffix', ''):
-            group = tool.FreeIPAUserGroup('sample-group', {}, DOMAIN)
+            group = tool.FreeIPAUserGroup('sample-group', {})
             assert not group.is_meta
 
     def test_create_hostgroup_nonmeta(self):
-        group = tool.FreeIPAHostGroup('sample-group-hosts', {}, DOMAIN)
+        group = tool.FreeIPAHostGroup('sample-group-hosts', {})
         assert not group.is_meta
 
     def test_create_hostgroup_meta_not_enforced(self):
         with mock.patch('entities.FreeIPAHostGroup.meta_group_suffix', ''):
-            group = tool.FreeIPAHostGroup('sample-group', {}, DOMAIN)
+            group = tool.FreeIPAHostGroup('sample-group', {})
             assert not group.is_meta
 
     def test_create_hostgroup_meta(self):
-        group = tool.FreeIPAHostGroup('sample-group', {}, DOMAIN)
+        group = tool.FreeIPAHostGroup('sample-group', {})
         assert group.is_meta
 
 
 class TestFreeIPAHostGroup(object):
-    def test_create_hostgroup_correct_local(self):
+    def test_create_hostgroup_correct(self):
         data = {
             'description': 'Sample host group',
             'memberOf': {
                 'hostgroups': ['group-one'],
-                'HBAC rules': ['rule-one'],
-                'sudo rules': ['rule-one']}}
-        group = tool.FreeIPAHostGroup(
-            'group-one-hosts', data, DOMAIN)
+                'hbacrules': ['rule-one'],
+                'sudorules': ['rule-one']}}
+        group = tool.FreeIPAHostGroup('group-one-hosts', data)
         assert group.name == 'group-one-hosts'
-        assert group.dn == (
-            'cn=group-one-hosts,cn=hostgroups,cn=accounts,dc=intgdc,dc=com')
-        assert sorted(group.data['memberOf']) == [
-            'cn=group-one,cn=hostgroups,cn=accounts,dc=intgdc,dc=com',
-            'cn=rule-one,cn=hbac,dc=intgdc,dc=com',
-            'cn=rule-one,cn=sudo,dc=intgdc,dc=com']
-        assert group.data['description'] == ['Sample host group']
-
-    def test_create_hostgroup_correct_ldap(self):
-        data = {
-            'memberOf': [
-                'cn=group-one,cn=hostgroups,cn=accounts,dc=intgdc,dc=com',
-                'cn=rule-one,cn=hbac,dc=intgdc,dc=com',
-                'cn=rule-one,cn=sudo,dc=intgdc,dc=com'],
-            'description': ['Sample host group']}
-        group = tool.FreeIPAHostGroup(
-            'cn=group-one-hosts,cn=hostgroups,cn=accounts,dc=intgdc,dc=com',
-            data, DOMAIN)
-        assert group.name == 'group-one-hosts'
-        assert group.dn == (
-            'cn=group-one-hosts,cn=hostgroups,cn=accounts,dc=intgdc,dc=com')
-        assert group.data == data
+        assert sorted(group.data['memberof']) == [
+            ('hbacrule', 'rule-one'),
+            ('hostgroup', 'group-one'),
+            ('sudorule', 'rule-one')]
+        assert group.data['description'] == ('Sample host group',)
 
     def test_create_hostgroup_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAHostGroup(
-                'group-one-hosts', {'extrakey': 'bad'}, DOMAIN)
+                'group-one-hosts', {'extrakey': 'bad'})
         assert exc.value[0] == (
             "Error validating group-one-hosts: "
             "extra keys not allowed @ data['extrakey']")
 
 
 class TestFreeIPAUser(object):
-    def setup_method(self, method):
-        self.acc_dn = 'cn=accounts,dc=intgdc,dc=com'
-
-    def test_create_user_correct_local(self):
+    def test_create_user_correct(self):
         data = {
             'manager': 'sample.manager',
-            'memberOf': {
-                'usergroups': ['group-one-users'],
-                'HBAC rules': ['rule-one'],
-                'sudo rules': ['rule-one']}}
-        user = tool.FreeIPAUser('archibald.jenkins', data, DOMAIN)
+            'memberOf': {'groups': ['group-one-users', 'group-two']}
+        }
+        user = tool.FreeIPAUser('archibald.jenkins', data)
         assert user.name == 'archibald.jenkins'
-        assert user.dn == 'uid=archibald.jenkins,cn=users,%s' % self.acc_dn
-        assert sorted(user.data['memberOf']) == [
-            'cn=group-one-users,cn=groups,%s' % self.acc_dn,
-            'cn=rule-one,cn=hbac,dc=intgdc,dc=com',
-            'cn=rule-one,cn=sudo,dc=intgdc,dc=com']
-        assert user.data['manager'] == [
-            'uid=sample.manager,cn=users,%s' % self.acc_dn]
-
-    def test_create_user_correct_ldap(self):
-        data = {
-            'memberOf': [
-                'cn=group-one-users,cn=groups,%s' % self.acc_dn,
-                'cn=rule-one,cn=hbac,dc=intgdc,dc=com',
-                'cn=rule-one,cn=sudo,dc=intgdc,dc=com']}
-        user = tool.FreeIPAUser(
-            'uid=archibald.jenkins,cn=users,%s' % self.acc_dn, data, DOMAIN)
-        assert user.name == 'archibald.jenkins'
-        assert user.dn == 'uid=archibald.jenkins,cn=users,%s' % self.acc_dn
-        assert user.data == data
+        assert sorted(user.data['memberof']) == [
+            ('group', 'group-one-users'), ('group', 'group-two')]
+        assert user.data['manager'] == ('sample.manager',)
 
     def test_create_user_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAUser(
-                'archibald.jenkins', {'extrakey': 'bad'}, DOMAIN)
+                'archibald.jenkins', {'extrakey': 'bad'})
         assert exc.value[0] == (
             "Error validating archibald.jenkins: "
             "extra keys not allowed @ data['extrakey']")
@@ -165,7 +122,7 @@ class TestFreeIPAUser(object):
     def test_create_user_invalid_member(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAUser(
-                'archibald.jenkins', {'memberOf': {'invalid': ['x']}}, DOMAIN)
+                'archibald.jenkins', {'memberOf': {'invalid': ['x']}})
         assert exc.value[0] == (
             'archibald.jenkins cannot be a member '
             'of non-existent class type "invalid"')
@@ -177,87 +134,55 @@ class TestFreeIPAUser(object):
             'initials': 'FL',
             'organizationUnit': 'TEST'
         }
-        with mock.patch('entities.FreeIPAUser._parse_data'):
-            user = tool.FreeIPAUser('some.name', data, DOMAIN)
+        user = tool.FreeIPAUser('some.name', data)
         assert user._convert(data) == {
-            'givenName': ['Firstname'],
-            'sn': ['Lastname'],
-            'initials': ['FL'],
-            'ou': ['TEST']
+            'givenname': ('Firstname',),
+            'sn': ('Lastname',),
+            'initials': ('FL',),
+            'ou': ('TEST',)
         }
 
     def test_map_memberof(self):
-        with mock.patch('entities.FreeIPAUser._parse_data'):
-            user = tool.FreeIPAUser('some.name', {}, 'localhost')
-        assert user._map_memberof({'usergroups': ['test-users']}) == [
-            'cn=test-users,cn=groups,cn=accounts,dc=localhost']
+        user = tool.FreeIPAUser('some.name', {})
+        assert user._map_memberof({'groups': ['test-users']}) == [
+            ('group', 'test-users')]
 
 
 class TestFreeIPAUserGroup(object):
-    def test_create_usergroup_correct_local(self):
+    def test_create_usergroup_correct(self):
         data = {
             'description': 'Sample user group',
             'memberOf': {
-                'usergroups': ['group-one'],
-                'HBAC rules': ['rule-one'],
-                'sudo rules': ['rule-one']}}
+                'groups': ['group-one'],
+                'hbacrules': ['rule-one'],
+                'sudorules': ['rule-one']}}
         group = tool.FreeIPAUserGroup(
-            'group-one-users', data, DOMAIN)
+            'group-one-users', data)
         assert group.name == 'group-one-users'
-        assert group.dn == (
-            'cn=group-one-users,cn=groups,cn=accounts,dc=intgdc,dc=com')
-        assert sorted(group.data['memberOf']) == [
-            'cn=group-one,cn=groups,cn=accounts,dc=intgdc,dc=com',
-            'cn=rule-one,cn=hbac,dc=intgdc,dc=com',
-            'cn=rule-one,cn=sudo,dc=intgdc,dc=com']
-        assert group.data['description'] == ['Sample user group']
-
-    def test_create_usergroup_correct_ldap(self):
-        data = {
-            'memberOf': [
-                'cn=group-one,cn=groups,cn=accounts,dc=intgdc,dc=com',
-                'cn=rule-one,cn=hbac,dc=intgdc,dc=com',
-                'cn=rule-one,cn=sudo,dc=intgdc,dc=com'],
-            'description': ['Sample user group']}
-        dn = 'cn=group-one-users,cn=groups,cn=accounts,dc=intgdc,dc=com'
-        group = tool.FreeIPAUserGroup(dn, data, DOMAIN)
-        assert group.name == 'group-one-users'
-        assert group.dn == dn
-        assert group.data == data
+        assert sorted(group.data['memberof']) == [
+            ('group', 'group-one'), ('hbacrule', 'rule-one'),
+            ('sudorule', 'rule-one')]
+        assert group.data['description'] == ('Sample user group',)
 
     def test_create_usergroup_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAUserGroup(
-                'group-one-users', {'extrakey': 'bad'}, DOMAIN)
+                'group-one-users', {'extrakey': 'bad'})
         assert exc.value[0] == (
             "Error validating group-one-users: "
             "extra keys not allowed @ data['extrakey']")
 
 
 class TestFreeIPAHBACRule(object):
-    def test_create_hbac_rule_correct_local(self):
+    def test_create_hbac_rule_correct(self):
         rule = tool.FreeIPAHBACRule(
-            'rule-one',
-            {'description': 'Sample HBAC rule', 'enabled': 'TRUE'}, DOMAIN)
+            'rule-one', {'description': 'Sample HBAC rule'})
         assert rule.name == 'rule-one'
-        assert rule.dn == 'cn=rule-one,cn=hbac,dc=intgdc,dc=com'
-        assert rule.data == {
-            'description': ['Sample HBAC rule'],
-            'ipaEnabledFlag': ['TRUE']}
-
-    def test_create_hbac_rule_correct_ldap(self):
-        dn = 'cn=rule-one,cn=hbac,dc=intgdc,dc=com'
-        data = {
-            'description': ['Sample HBAC rule'],
-            'ipaEnabledFlag': ['TRUE']}
-        rule = tool.FreeIPAHBACRule(dn, data, DOMAIN)
-        assert rule.name == 'rule-one'
-        assert rule.dn == 'cn=rule-one,cn=hbac,dc=intgdc,dc=com'
-        assert rule.data == data
+        assert rule.data == {'description': ('Sample HBAC rule',)}
 
     def test_create_hbac_rule_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
-            tool.FreeIPAHBACRule('rule-one', {'extrakey': 'bad'}, DOMAIN)
+            tool.FreeIPAHBACRule('rule-one', {'extrakey': 'bad'})
         assert exc.value[0] == (
             "Error validating rule-one: extra keys "
             "not allowed @ data['extrakey']")
@@ -265,41 +190,27 @@ class TestFreeIPAHBACRule(object):
     def test_convert(self):
         data = {
             'description': 'A sample sudo rule.',
-            'enabled': 'TRUE',
-            'memberHost': 'hostgroup-one',
-            'memberUser': 'usergroup-one'
+            'memberHost': 'hosts-one',
+            'memberUser': 'users-one'
         }
-        with mock.patch('entities.FreeIPAUser._parse_data'):
-            user = tool.FreeIPAHBACRule('rule-one', data, DOMAIN)
+        user = tool.FreeIPAHBACRule('rule-one', data)
         assert user._convert(data) == {
-            'description': ['A sample sudo rule.'],
-            'ipaEnabledFlag': ['TRUE'],
-            'memberHost': [
-                'cn=hostgroup-one,cn=hostgroups,cn=accounts,dc=intgdc,dc=com'],
-            'memberUser': [
-                'cn=usergroup-one,cn=groups,cn=accounts,dc=intgdc,dc=com']
+            'description': ('A sample sudo rule.',),
+            'memberhost': 'hosts-one',
+            'memberuser': 'users-one'
         }
 
 
 class TestFreeIPASudoRule(object):
-    def test_create_sudo_rule_correct_local(self):
+    def test_create_sudo_rule_correct(self):
         rule = tool.FreeIPASudoRule(
-            'rule-one', {'description': 'Sample sudo rule'}, DOMAIN)
+            'rule-one', {'description': 'Sample sudo rule'})
         assert rule.name == 'rule-one'
-        assert rule.dn == 'cn=rule-one,cn=sudo,dc=intgdc,dc=com'
-        assert rule.data == {'description': ['Sample sudo rule']}
-
-    def test_create_sudo_rule_correct_ldap(self):
-        dn = 'cn=rule-one,cn=sudo,dc=intgdc,dc=com'
-        data = {'description': ['Sample sudo rule']}
-        rule = tool.FreeIPASudoRule(dn, data, DOMAIN)
-        assert rule.name == 'rule-one'
-        assert rule.dn == dn
-        assert rule.data == data
+        assert rule.data == {'description': ('Sample sudo rule',)}
 
     def test_create_sudo_rule_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
-            tool.FreeIPASudoRule('rule-one', {'extrakey': 'bad'}, DOMAIN)
+            tool.FreeIPASudoRule('rule-one', {'extrakey': 'bad'})
         assert exc.value[0] == (
             "Error validating rule-one: "
             "extra keys not allowed @ data['extrakey']")
