@@ -34,12 +34,18 @@ class TestIpaConnector(object):
         self.connector.commands = dict()
         self.connector.remote_count = 0
 
-    def test_load_remote(self):
+    @log_capture('IpaConnector', level=logging.DEBUG)
+    def test_load_remote(self, captured_log):
         self._create_connector()
-        self.connector.load_remote()
+        tool.api.Command.__getitem__.side_effect = self._api_call
+        with mock.patch('entities.FreeIPAUser.ignored', ['user.one']):
+            self.connector.load_remote()
         for cmd in ('group', 'hbacrule', 'hostgroup', 'sudorule', 'user'):
             tool.api.Command.__getitem__.assert_any_call(
                 '%s_find' % cmd)
+        msgs = [(r.levelname, r.msg % r.args) for r in captured_log.records]
+        assert ('DEBUG', 'Not parsing ignored user user.one') in msgs
+        assert ('INFO', 'Parsed 4 entities from FreeIPA API') in msgs
 
     def test_load_remote_errors(self):
         self._create_connector()
@@ -143,8 +149,6 @@ class TestIpaConnector(object):
                 'uid': ('test.user',),
                 'givenname': (u'Test',), 'sn': (u'User',)}},
             'group': {
-                'ipausers': {
-                    'cn': ('ipausers',), 'member_user': ('test.user',)},
                 'group-one': {
                     'cn': ('group-one',), 'member_user': ('test.user',)}}}
         self.connector.commands = []

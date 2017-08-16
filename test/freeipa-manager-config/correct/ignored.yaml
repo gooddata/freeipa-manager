@@ -1,0 +1,4 @@
+group: [ipausers, testgroup]
+hostgroup: [some-hosts]
+hbacrule: [rule1]
+user: [admin]

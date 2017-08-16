@@ -1,4 +1,5 @@
 import logging
+import mock
 import os
 import pytest
 import sys
@@ -11,14 +12,17 @@ toolpath = testpath.replace('test', 'src')
 sys.path.insert(0, toolpath)
 tool = __import__('config_loader')
 entities = __import__('entities')
+utils = __import__('utils')
 
 CONFIG_CORRECT = os.path.join(testpath, 'freeipa-manager-config/correct')
 CONFIG_INVALID = os.path.join(testpath, 'freeipa-manager-config/invalid')
+IGNORED_CORRECT = os.path.join(CONFIG_CORRECT, 'ignored.yaml')
+IGNORED_INVALID = os.path.join(CONFIG_INVALID, 'ignored.yaml')
 
 
 class TestConfigLoader(object):
     def setup_method(self, method):
-        self.loader = tool.ConfigLoader(CONFIG_CORRECT)
+        self.loader = tool.ConfigLoader(CONFIG_CORRECT, IGNORED_CORRECT)
         self.expected_hostgroups = [
             CONFIG_CORRECT + '/hostgroups/%s.yaml' % group
             for group in ['group_one', 'several']]
@@ -34,6 +38,8 @@ class TestConfigLoader(object):
         self.expected_sudo_rules = [
             CONFIG_CORRECT + '/sudorules/%s.yaml' % rule
             for rule in ['rule_one', 'several']]
+        for cls in utils.ENTITY_CLASSES:
+            cls.ignored = []
 
     def test_retrieve_paths(self):
         paths = self.loader._retrieve_paths()
@@ -91,6 +97,19 @@ class TestConfigLoader(object):
         assert exc.value[0] == 'Duplicit definition of archibald.jenkins'
 
     @log_capture('ConfigLoader', level=logging.WARNING)
+    def test_parse_ignored(self, captured_warnings):
+        data = {
+            'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
+        self.loader.entities['user'] = []
+        with mock.patch('entities.FreeIPAUser.ignored', ['archibald.jenkins']):
+            self.loader._parse(
+                data, entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
+        assert self.loader.entities['user'] == []
+        captured_warnings.check(('ConfigLoader', 'WARNING',
+                                ('Not creating ignored user archibald.jenkins '
+                                 'from users/archibald_jenkins.yaml')))
+
+    @log_capture('ConfigLoader', level=logging.WARNING)
     def test_load(self, captured_warnings):
         self.loader.basepath = CONFIG_CORRECT
         self.loader.load()
@@ -137,3 +156,52 @@ class TestConfigLoader(object):
             assert i in err
         assert ('users/duplicit.yaml' in err or
                 'users/duplicit2.yaml' in err)
+
+    @log_capture('ConfigLoader', level=logging.DEBUG)
+    def test_load_ignored_no_file(self, captured_log):
+        loader = tool.ConfigLoader(None, None)
+        loader.load_ignored()
+        captured_log.check(
+            ('ConfigLoader', 'DEBUG', 'No ignored entities file configured.'))
+
+    def test_load_ignored_correct(self):
+        assert entities.FreeIPAUser.ignored == []
+        assert entities.FreeIPAUserGroup.ignored == []
+        assert entities.FreeIPAHostGroup.ignored == []
+        assert entities.FreeIPAHBACRule.ignored == []
+        assert entities.FreeIPASudoRule.ignored == []
+        self.loader.ignored_file = IGNORED_CORRECT
+        self.loader.load_ignored()
+        assert entities.FreeIPAUser.ignored == ['admin']
+        assert entities.FreeIPAUserGroup.ignored == ['ipausers', 'testgroup']
+        assert entities.FreeIPAHostGroup.ignored == ['some-hosts']
+        assert entities.FreeIPAHBACRule.ignored == ['rule1']
+        assert entities.FreeIPASudoRule.ignored == []
+
+    def test_load_ignored_error(self):
+        self.loader.ignored_file = 'some/path'
+        with mock.patch('__builtin__.open') as mock_open:
+            mock_open.side_effect = IOError('[Errno 2] No such file or dir')
+            with pytest.raises(tool.ManagerError) as exc:
+                self.loader.load_ignored()
+        assert exc.value[0] == (
+            'Error opening ignored entities file: '
+            '[Errno 2] No such file or dir')
+
+    def test_load_ignored_invalid(self):
+        self.loader.ignored_file = IGNORED_INVALID
+        with pytest.raises(tool.ManagerError) as exc:
+            self.loader.load_ignored()
+        assert exc.value[0] == (
+            'Ignored entities file error: values must be name lists')
+        with mock.patch('config_loader.yaml.safe_load') as mock_load:
+            mock_load.return_value = ['entity1', 'entity2']
+            with pytest.raises(tool.ManagerError) as exc:
+                self.loader.load_ignored()
+            assert exc.value[0] == (
+                'Ignored entities file error: must be a dict')
+            mock_load.return_value = {'invalid': ['entity1']}
+            with pytest.raises(tool.ManagerError) as exc:
+                self.loader.load_ignored()
+            assert exc.value[0] == (
+                'Invalid type in ignored entities file: invalid')

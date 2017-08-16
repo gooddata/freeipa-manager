@@ -22,8 +22,9 @@ class FreeIPAEntity(FreeIPAManagerCore):
     Can only be used via subclasses, not directly.
     """
     __metaclass__ = ABCMeta
-    entity_id_type = 'cn'  # entity name identificator inside LDAP DN
-    key_mapping = {}  # attribute name mapping between local config and LDAP
+    entity_id_type = 'cn'  # entity name identificator in FreeIPA
+    key_mapping = {}  # attribute name mapping between local config and FreeIPA
+    ignored = []  # list of ignored entities for each entity type
 
     def __init__(self, name, data):
         """

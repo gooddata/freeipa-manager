@@ -13,7 +13,8 @@ import os
 import yaml
 
 from core import FreeIPAManagerCore
-from errors import ConfigError
+from entities import FreeIPAEntity
+from errors import ConfigError, ManagerError
 from utils import ENTITY_CLASSES
 
 
@@ -23,18 +24,49 @@ class ConfigLoader(FreeIPAManagerCore):
     :attr dict entities: storage of loaded entities, which are organized
                          in lists under entity class name keys.
     """
-    def __init__(self, basepath):
+    def __init__(self, basepath, ignored_file):
         """
         :param str basepath: path to the cloned config repository
+        :param str ignored_file: path to file with ignored entity list
         """
         super(ConfigLoader, self).__init__()
         self.basepath = basepath
+        self.ignored_file = ignored_file
         self.entities = dict()
+
+    def load_ignored(self):
+        """
+        Parse list of entities that should be ignored during processing.
+        """
+        if not self.ignored_file:
+            self.lg.debug('No ignored entities file configured.')
+            return
+        self.lg.debug('Loading ignored entity list from %s', self.ignored_file)
+        try:
+            with open(self.ignored_file) as ignored:
+                data = yaml.safe_load(ignored)
+        except (IOError, yaml.YAMLError) as e:
+            raise ManagerError('Error opening ignored entities file: %s' % e)
+        if not isinstance(data, dict):
+            raise ManagerError('Ignored entities file error: must be a dict')
+        for t, name_list in data.iteritems():
+            if not isinstance(name_list, list):
+                raise ManagerError(
+                    'Ignored entities file error: values must be name lists')
+            try:
+                cls = FreeIPAEntity.get_entity_class(t)
+                cls.ignored = [str(name) for name in name_list]
+                self.lg.debug(
+                    'Ignore list %s added to class %s', cls.ignored, t)
+            except KeyError:
+                raise ManagerError(
+                    'Invalid type in ignored entities file: %s' % t)
 
     def load(self):
         """
         Parse FreeIPA entity configurations from the given paths.
         """
+        self.load_ignored()
         self.lg.info('Checking local configuration at %s', self.basepath)
         paths = self._retrieve_paths()
         for entity_class in ENTITY_CLASSES:
@@ -76,6 +108,10 @@ class ConfigLoader(FreeIPAManagerCore):
         parsed = []
         for name, attrs in data.iteritems():
             self.lg.debug('Creating entity %s', name)
+            if name in entity_class.ignored:
+                self.lg.warning('Not creating ignored %s %s from %s',
+                                entity_class.entity_name, name, fname)
+                continue
             entity = entity_class(name, attrs)
             if entity in self.entities[entity_class.entity_name]:
                 raise ConfigError('Duplicit definition of %s' % entity)

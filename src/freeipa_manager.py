@@ -50,7 +50,7 @@ class FreeIPAManager(FreeIPAManagerCore):
         :raises ConfigError: in case of configuration syntax errors
         :raises IntegrityError: in case of config entity integrity violations
         """
-        self.config_loader = ConfigLoader(self.args.config)
+        self.config_loader = ConfigLoader(self.args.config, self.args.ignored)
         self.config_loader.load()
         self.integrity_checker = IntegrityChecker(
             self.args.rules_file, self.config_loader.entities)

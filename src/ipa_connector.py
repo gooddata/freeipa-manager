@@ -68,9 +68,14 @@ class IpaConnector(FreeIPAManagerCore):
                                    % (entity_class.entity_name, e))
             for entity in parsed['result']:
                 name = entity[entity_class.entity_id_type][0]
+                if name in entity_class.ignored:
+                    self.lg.debug('Not parsing ignored %s %s',
+                                  entity_class.entity_name, name)
+                    continue
                 self.remote[entity_class.entity_name][name] = entity
             self.lg.debug('Found %d %s entities: %s',
-                          len(parsed['result']), entity_class.entity_name,
+                          len(self.remote[entity_class.entity_name]),
+                          entity_class.entity_name,
                           sorted(self.remote[entity_class.entity_name].keys()))
         self.remote_count = sum(len(i) for i in self.remote.itervalues())
         self.lg.info('Parsed %d entities from FreeIPA API', self.remote_count)
@@ -138,8 +143,6 @@ class IpaConnector(FreeIPAManagerCore):
         else:
             target_type = entity.entity_name
         for group_name, group in self.remote[target_type].iteritems():
-            if (target_type, group_name) == ('group', 'ipausers'):
-                continue
             members = group.get('member_%s' % entity.entity_name, [])
             if entity.name in members:
                 if group_name not in member_of.get(target_type, []):

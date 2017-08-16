@@ -18,7 +18,7 @@ RULES_FILE ?= ../../freeipa-manager-config/integrity_config.yaml
 THRESHOLD ?= 20
 
 BASE_CMD = src/freeipa_manager.py $(CONFIG_REPO) 
-CMD_SUFFIX = -r $(RULES_FILE) -t $(THRESHOLD) $(if $(DEBUG), '-v')
+CMD_SUFFIX = -r $(RULES_FILE) -t $(THRESHOLD) $(if $(IGNORED), -i $(IGNORED)) $(if $(DEBUG), '-v')
 
 
 # @help check YAML config files for syntax errors
