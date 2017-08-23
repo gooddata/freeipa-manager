@@ -7,14 +7,13 @@ from testfixtures import log_capture
 
 
 testpath = os.path.dirname(os.path.abspath(__file__))
-
-toolpath = testpath.replace('test', 'src')
-sys.path.insert(0, toolpath)
+sys.path.insert(0, os.path.join(testpath, '..'))
 
 sys.modules['ipalib'] = mock.Mock()
-tool = __import__('ipa_connector')
+import ipamanager.ipa_connector as tool
+import ipamanager.entities as entities
 tool.api = mock.MagicMock()
-entities = __import__('entities')
+class_name = 'ipamanager.ipa_connector.IpaConnector'
 
 
 class TestIpaConnector(object):
@@ -38,7 +37,8 @@ class TestIpaConnector(object):
     def test_load_remote(self, captured_log):
         self._create_connector()
         tool.api.Command.__getitem__.side_effect = self._api_call
-        with mock.patch('entities.FreeIPAUser.ignored', ['user.one']):
+        with mock.patch(
+                'ipamanager.entities.FreeIPAUser.ignored', ['user.one']):
             self.connector.load_remote()
         for cmd in ('group', 'hbacrule', 'hostgroup', 'sudorule', 'user'):
             tool.api.Command.__getitem__.assert_any_call(
@@ -59,7 +59,7 @@ class TestIpaConnector(object):
     def test_load_remote_unknown_command(self):
         self._create_connector()
         with mock.patch(
-                'ipa_connector.entities.FreeIPAUser.entity_name', 'users'):
+                'ipamanager.entities.FreeIPAUser.entity_name', 'users'):
             with pytest.raises(tool.ManagerError) as exc:
                 self.connector.load_remote()
             assert exc.value[0] == 'Undefined API command users_find'
@@ -302,7 +302,7 @@ class TestIpaConnector(object):
         self.connector.remote_count = 100
         self.connector.commands = [
             tool.Command('cmd%d' % i, {}, '', '') for i in range(1, 12)]
-        with mock.patch('ipa_connector.IpaConnector._prepare_commands'):
+        with mock.patch('%s._prepare_commands' % class_name):
             with pytest.raises(tool.ManagerError) as exc:
                 self.connector.execute_update()
         assert exc.value[0] == 'Threshold exceeded (11.00 % > 10 %), aborting'
@@ -312,8 +312,8 @@ class TestIpaConnector(object):
         self._create_connector(force=True, threshold=15)
         tool.api.Command.__getitem__.side_effect = self._api_call
         self.connector.commands = self._large_commands()
-        with mock.patch('ipa_connector.IpaConnector._prepare_commands'):
-            with mock.patch('ipa_connector.IpaConnector._check_threshold'):
+        with mock.patch('%s._prepare_commands' % class_name):
+            with mock.patch('%s._check_threshold' % class_name):
                 self.connector.execute_update()
         captured_log.check(
             ('Command', 'INFO', 'Executing group_add group1 ()'),
@@ -366,8 +366,8 @@ class TestIpaConnector(object):
         tool.api.Command.__getitem__.side_effect = (
             self._api_call_unreliable)
         self.connector.commands = self._large_commands()
-        with mock.patch('ipa_connector.IpaConnector._prepare_commands'):
-            with mock.patch('ipa_connector.IpaConnector._check_threshold'):
+        with mock.patch('%s._prepare_commands' % class_name):
+            with mock.patch('%s._check_threshold' % class_name):
                 with pytest.raises(tool.ManagerError) as exc:
                     self.connector.execute_update()
         assert exc.value[0] == 'There were 5 errors executing update'
@@ -404,8 +404,8 @@ class TestIpaConnector(object):
         tool.api.Command.__getitem__.side_effect = (
             self._api_call_execute_fail)
         self.connector.commands = self._large_commands()
-        with mock.patch('ipa_connector.IpaConnector._prepare_commands'):
-            with mock.patch('ipa_connector.IpaConnector._check_threshold'):
+        with mock.patch('%s._prepare_commands' % class_name):
+            with mock.patch('%s._check_threshold' % class_name):
                 with pytest.raises(tool.ManagerError) as exc:
                     self.connector.execute_update()
         assert exc.value[0] == 'There were 3 errors executing update'
@@ -421,8 +421,8 @@ class TestIpaConnector(object):
         self._create_connector(force=True, threshold=15)
         tool.api.Command.__getitem__.side_effect = self._api_call
         self.connector.commands = [tool.Command('non_existent', {}, 'x', 'cn')]
-        with mock.patch('ipa_connector.IpaConnector._prepare_commands'):
-            with mock.patch('ipa_connector.IpaConnector._check_threshold'):
+        with mock.patch('%s._prepare_commands' % class_name):
+            with mock.patch('%s._check_threshold' % class_name):
                 with pytest.raises(tool.ManagerError) as exc:
                     self.connector.execute_update()
         assert exc.value[0] == 'There were 1 errors executing update'

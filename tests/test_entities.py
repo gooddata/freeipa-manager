@@ -5,10 +5,11 @@ import sys
 
 
 testpath = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(testpath, '..'))
 
-toolpath = testpath.replace('test', 'src')
-sys.path.insert(0, toolpath)
-tool = __import__('entities')
+import ipamanager.entities as tool
+
+modulename = 'ipamanager.entities'
 
 
 class TestFreeIPAEntity(object):
@@ -58,7 +59,8 @@ class TestFreeIPAGroup(object):
         assert group.is_meta
 
     def test_create_usergroup_meta_not_enforced(self):
-        with mock.patch('entities.FreeIPAUserGroup.meta_group_suffix', ''):
+        with mock.patch(
+                '%s.FreeIPAUserGroup.meta_group_suffix' % modulename, ''):
             group = tool.FreeIPAUserGroup('sample-group', {})
             assert not group.is_meta
 
@@ -67,7 +69,8 @@ class TestFreeIPAGroup(object):
         assert not group.is_meta
 
     def test_create_hostgroup_meta_not_enforced(self):
-        with mock.patch('entities.FreeIPAHostGroup.meta_group_suffix', ''):
+        with mock.patch(
+                '%s.FreeIPAHostGroup.meta_group_suffix' % modulename, ''):
             group = tool.FreeIPAHostGroup('sample-group', {})
             assert not group.is_meta
 

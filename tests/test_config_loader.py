@@ -7,12 +7,12 @@ from testfixtures import log_capture
 
 
 testpath = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(testpath, '..'))
+modulename = 'ipamanager.config_loader'
 
-toolpath = testpath.replace('test', 'src')
-sys.path.insert(0, toolpath)
-tool = __import__('config_loader')
-entities = __import__('entities')
-utils = __import__('utils')
+import ipamanager.config_loader as tool
+import ipamanager.entities as entities
+import ipamanager.utils as utils
 
 CONFIG_CORRECT = os.path.join(testpath, 'freeipa-manager-config/correct')
 CONFIG_INVALID = os.path.join(testpath, 'freeipa-manager-config/invalid')
@@ -63,6 +63,24 @@ class TestConfigLoader(object):
             'No group files found',
             'No user files found'])
 
+    @log_capture('ConfigLoader', level=logging.DEBUG)
+    def test_run_yamllint_check_ok(self, captured_log):
+        data = '---\ntest-group:\n  description: A test group.\n'
+        self.loader._run_yamllint_check(data, 'groups/test_group.yaml')
+        captured_log.check(
+            ('ConfigLoader', 'DEBUG',
+             'groups/test_group.yaml yamllint check passed successfully'))
+
+    def test_run_yamllint_check_error(self):
+        data = 'test-group:\n  description: A test group.\n  description: test'
+        with pytest.raises(tool.ConfigError) as exc:
+            self.loader._run_yamllint_check(data, 'groups/test_group.yaml')
+        assert exc.value[0] == (
+            'yamllint errors: [1:1: missing document start "---" '
+            '(document-start), 3:3: duplication of key "description" '
+            'in mapping (key-duplicates), 3:20: no new line character '
+            'at the end of file (new-line-at-end-of-file)]')
+
     def test_parse(self):
         self.loader.entities = {'user': []}
         data = {
@@ -101,7 +119,9 @@ class TestConfigLoader(object):
         data = {
             'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
         self.loader.entities['user'] = []
-        with mock.patch('entities.FreeIPAUser.ignored', ['archibald.jenkins']):
+        with mock.patch(
+                'ipamanager.entities.FreeIPAUser.ignored',
+                ['archibald.jenkins']):
             self.loader._parse(
                 data, entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
         assert self.loader.entities['user'] == []
@@ -194,7 +214,7 @@ class TestConfigLoader(object):
             self.loader.load_ignored()
         assert exc.value[0] == (
             'Ignored entities file error: values must be name lists')
-        with mock.patch('config_loader.yaml.safe_load') as mock_load:
+        with mock.patch('%s.yaml.safe_load' % modulename) as mock_load:
             mock_load.return_value = ['entity1', 'entity2']
             with pytest.raises(tool.ManagerError) as exc:
                 self.loader.load_ignored()

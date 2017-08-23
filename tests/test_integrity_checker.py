@@ -6,10 +6,9 @@ from testfixtures import log_capture
 
 
 testpath = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(testpath, '..'))
 
-toolpath = testpath.replace('test', 'src')
-sys.path.insert(0, toolpath)
-tool = __import__('integrity_checker')
+import ipamanager.integrity_checker as tool
 
 
 class TestIntegrityChecker(object):

@@ -29,10 +29,11 @@ def init_logging(loglevel):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='FreeIPA management CLI tool')
-    parser.add_argument('config', help='Path to config repository')
     parser.add_argument('action', choices=['check', 'pull', 'push'])
-    parser.add_argument('-r', '--rules-file', default='integrity_config.yaml',
-                        help='Integrity check rules file')
+    parser.add_argument('config', nargs='?', help='Path to config repository',
+                        default='/opt/freeipa-manager/entities')
+    parser.add_argument('-r', '--rules-file', help='Config check rules file',
+                        default='/opt/freeipa-manager/rules.yaml')
     parser.add_argument('-t', '--threshold', type=_type_threshold,
                         metavar='(%)', help='Change threshold', default=20)
     parser.add_argument('-f', '--force', action='store_true',

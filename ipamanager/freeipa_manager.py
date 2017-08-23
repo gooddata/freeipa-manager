@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 GoodData FreeIPA tooling
 
@@ -87,6 +86,10 @@ class FreeIPAManager(FreeIPAManagerCore):
         raise NotImplementedError('Config pulling not available yet.')
 
 
-if __name__ == '__main__':
+def main():
     manager = FreeIPAManager()
     manager.run()
+
+
+if __name__ == '__main__':
+    main()

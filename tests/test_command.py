@@ -7,10 +7,9 @@ from testfixtures import log_capture
 
 
 testpath = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(testpath, '..'))
 
-toolpath = testpath.replace('test', 'src')
-sys.path.insert(0, toolpath)
-tool = __import__('command')
+import ipamanager.command as tool
 
 
 class TestCommand(object):

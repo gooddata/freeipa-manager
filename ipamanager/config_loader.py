@@ -11,6 +11,8 @@ Kristian Lesko <kristian.lesko@gooddata.com>
 import glob
 import os
 import yaml
+from yamllint.linter import run as yamllint_check
+from yamllint.config import YamlLintConfig
 
 from core import FreeIPAManagerCore
 from entities import FreeIPAEntity
@@ -33,6 +35,7 @@ class ConfigLoader(FreeIPAManagerCore):
         self.basepath = basepath
         self.ignored_file = ignored_file
         self.entities = dict()
+        self.yamllint_config = YamlLintConfig('extends: default')
 
     def load_ignored(self):
         """
@@ -81,7 +84,9 @@ class ConfigLoader(FreeIPAManagerCore):
                 self.lg.debug('Loading config from %s', fname)
                 try:
                     with open(path, 'r') as confsource:
-                        data = yaml.safe_load(confsource)
+                        contents = confsource.read()
+                    self._run_yamllint_check(contents, fname)
+                    data = yaml.safe_load(contents)
                     self._parse(data, entity_class, fname)
                 except (IOError, ConfigError, yaml.YAMLError) as e:
                     self.lg.error('%s: %s', fname, e)
@@ -95,6 +100,18 @@ class ConfigLoader(FreeIPAManagerCore):
             raise ConfigError(
                 'There have been errors in %d configuration files: [%s]' %
                 (len(self.errs), ', '.join(sorted(self.errs))))
+
+    def _run_yamllint_check(self, data, fname):
+        """
+        Run a yamllint check on parsed file contents
+        to verify that the file syntax is correct.
+        :param str data: contents of the configuration file to check
+        :raises ConfigError: in case of yamllint errors
+        """
+        lint_errs = [err for err in yamllint_check(data, self.yamllint_config)]
+        if lint_errs:
+            raise ConfigError('yamllint errors: %s' % lint_errs)
+        self.lg.debug('%s yamllint check passed successfully', fname)
 
     def _parse(self, data, entity_class, fname):
         """
