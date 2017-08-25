@@ -15,28 +15,28 @@ modulename = 'ipamanager.entities'
 class TestFreeIPAEntity(object):
     def test_create_entity(self):
         with pytest.raises(TypeError) as exc:
-            tool.FreeIPAEntity('sample.entity', {})
+            tool.FreeIPAEntity('sample.entity', {}, 'path')
         assert exc.value[0] == (
             "Can't instantiate abstract class FreeIPAEntity "
             "with abstract methods managed_attributes, validation_schema")
 
     def test_equality(self):
         user1 = tool.FreeIPAUser(
-            'user1', {'firstName': 'Some', 'lastName': 'Name'})
+            'user1', {'firstName': 'Some', 'lastName': 'Name'}, 'path')
         user2 = tool.FreeIPAUser(
-            'user1', {'firstName': 'Some', 'lastName': 'Name'})
+            'user1', {'firstName': 'Some', 'lastName': 'Name'}, 'path')
         assert user1 == user2
         user2.name = 'user2'
         assert user1 != user2
 
     def test_nonequality_different_type(self):
-        group1 = tool.FreeIPAUserGroup('group', {})
-        group2 = tool.FreeIPAHostGroup('group', {})
+        group1 = tool.FreeIPAUserGroup('group', {}, 'path')
+        group2 = tool.FreeIPAHostGroup('group', {}, 'path')
         assert group1 != group2
 
     def test_nonequality_same_type(self):
-        rule1 = tool.FreeIPASudoRule('rule-one', {})
-        rule2 = tool.FreeIPASudoRule('rule-two', {})
+        rule1 = tool.FreeIPASudoRule('rule-one', {}, 'path')
+        rule2 = tool.FreeIPASudoRule('rule-two', {}, 'path')
         assert rule1 != rule2
         rule2.name = 'rule-one'
         assert rule1 == rule2
@@ -45,37 +45,37 @@ class TestFreeIPAEntity(object):
 class TestFreeIPAGroup(object):
     def test_create_group(self):
         with pytest.raises(TypeError) as exc:
-            tool.FreeIPAGroup('sample-group', {})
+            tool.FreeIPAGroup('sample-group', {}, 'path')
         assert exc.value[0] == (
             "Can't instantiate abstract class FreeIPAGroup "
             "with abstract methods validation_schema")
 
     def test_create_usergroup_nonmeta(self):
-        group = tool.FreeIPAUserGroup('sample-group-users', {})
+        group = tool.FreeIPAUserGroup('sample-group-users', {}, 'path')
         assert not group.is_meta
 
     def test_create_usergroup_meta(self):
-        group = tool.FreeIPAUserGroup('sample-group', {})
+        group = tool.FreeIPAUserGroup('sample-group', {}, 'path')
         assert group.is_meta
 
     def test_create_usergroup_meta_not_enforced(self):
         with mock.patch(
                 '%s.FreeIPAUserGroup.meta_group_suffix' % modulename, ''):
-            group = tool.FreeIPAUserGroup('sample-group', {})
+            group = tool.FreeIPAUserGroup('sample-group', {}, 'path')
             assert not group.is_meta
 
     def test_create_hostgroup_nonmeta(self):
-        group = tool.FreeIPAHostGroup('sample-group-hosts', {})
+        group = tool.FreeIPAHostGroup('sample-group-hosts', {}, 'path')
         assert not group.is_meta
 
     def test_create_hostgroup_meta_not_enforced(self):
         with mock.patch(
                 '%s.FreeIPAHostGroup.meta_group_suffix' % modulename, ''):
-            group = tool.FreeIPAHostGroup('sample-group', {})
+            group = tool.FreeIPAHostGroup('sample-group', {}, 'path')
             assert not group.is_meta
 
     def test_create_hostgroup_meta(self):
-        group = tool.FreeIPAHostGroup('sample-group', {})
+        group = tool.FreeIPAHostGroup('sample-group', {}, 'path')
         assert group.is_meta
 
 
@@ -87,7 +87,7 @@ class TestFreeIPAHostGroup(object):
                 'hostgroup': ['group-one'],
                 'hbacrule': ['rule-one'],
                 'sudorule': ['rule-one']}}
-        group = tool.FreeIPAHostGroup('group-one-hosts', data)
+        group = tool.FreeIPAHostGroup('group-one-hosts', data, 'path')
         assert group.name == 'group-one-hosts'
         assert group.data['memberOf'] == data['memberOf']
         assert group.data['description'] == ('Sample host group',)
@@ -95,7 +95,7 @@ class TestFreeIPAHostGroup(object):
     def test_create_hostgroup_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAHostGroup(
-                'group-one-hosts', {'extrakey': 'bad'})
+                'group-one-hosts', {'extrakey': 'bad'}, 'path')
         assert exc.value[0] == (
             "Error validating group-one-hosts: "
             "extra keys not allowed @ data['extrakey']")
@@ -109,7 +109,7 @@ class TestFreeIPAUser(object):
             'manager': 'sample.manager',
             'memberOf': {'group': ['group-one-users', 'group-two']}
         }
-        user = tool.FreeIPAUser('archibald.jenkins', data)
+        user = tool.FreeIPAUser('archibald.jenkins', data, 'path')
         assert user.name == 'archibald.jenkins'
         assert user.data['memberOf'] == data['memberOf']
         assert user.data['manager'] == ('sample.manager',)
@@ -117,7 +117,7 @@ class TestFreeIPAUser(object):
     def test_create_user_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAUser(
-                'archibald.jenkins', {'extrakey': 'bad'})
+                'archibald.jenkins', {'extrakey': 'bad'}, 'path')
         assert exc.value[0] == (
             "Error validating archibald.jenkins: "
             "extra keys not allowed @ data['extrakey']")
@@ -129,7 +129,7 @@ class TestFreeIPAUser(object):
             'initials': 'FL',
             'organizationUnit': 'TEST'
         }
-        user = tool.FreeIPAUser('some.name', data)
+        user = tool.FreeIPAUser('some.name', data, 'path')
         assert user._convert(data) == {
             'givenName': ('Firstname',),
             'sn': ('Lastname',),
@@ -147,7 +147,7 @@ class TestFreeIPAUserGroup(object):
                 'hbacrule': ['rule-one'],
                 'sudorule': ['rule-one']}}
         group = tool.FreeIPAUserGroup(
-            'group-one-users', data)
+            'group-one-users', data, 'path')
         assert group.name == 'group-one-users'
         assert group.data['memberOf'] == data['memberOf']
         assert group.data['description'] == ('Sample user group',)
@@ -155,7 +155,7 @@ class TestFreeIPAUserGroup(object):
     def test_create_usergroup_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAUserGroup(
-                'group-one-users', {'extrakey': 'bad'})
+                'group-one-users', {'extrakey': 'bad'}, 'path')
         assert exc.value[0] == (
             "Error validating group-one-users: "
             "extra keys not allowed @ data['extrakey']")
@@ -164,13 +164,13 @@ class TestFreeIPAUserGroup(object):
 class TestFreeIPAHBACRule(object):
     def test_create_hbac_rule_correct(self):
         rule = tool.FreeIPAHBACRule(
-            'rule-one', {'description': 'Sample HBAC rule'})
+            'rule-one', {'description': 'Sample HBAC rule'}, 'path')
         assert rule.name == 'rule-one'
         assert rule.data == {'description': ('Sample HBAC rule',)}
 
     def test_create_hbac_rule_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
-            tool.FreeIPAHBACRule('rule-one', {'extrakey': 'bad'})
+            tool.FreeIPAHBACRule('rule-one', {'extrakey': 'bad'}, 'path')
         assert exc.value[0] == (
             "Error validating rule-one: extra keys "
             "not allowed @ data['extrakey']")
@@ -181,7 +181,7 @@ class TestFreeIPAHBACRule(object):
             'memberHost': 'hosts-one',
             'memberUser': 'users-one'
         }
-        user = tool.FreeIPAHBACRule('rule-one', data)
+        user = tool.FreeIPAHBACRule('rule-one', data, 'path')
         assert user._convert(data) == {
             'description': ('A sample sudo rule.',),
             'memberHost': ('hosts-one',),
@@ -190,7 +190,8 @@ class TestFreeIPAHBACRule(object):
 
     def test_create_commands_member_same(self):
         rule = tool.FreeIPAHBACRule(
-            'rule-one', {'memberHost': 'group-one', 'memberUser': 'group-one'})
+            'rule-one', {'memberHost': 'group-one', 'memberUser': 'group-one'},
+            'path')
         remote_rule = {
             'cn': ('rule-one',), 'memberuser_group': ('group-one',),
             'memberhost_hostgroup': ('group-one',)}
@@ -198,7 +199,8 @@ class TestFreeIPAHBACRule(object):
 
     def test_create_commands_member_add(self):
         rule = tool.FreeIPAHBACRule(
-            'rule-one', {'memberHost': 'group-one', 'memberUser': 'group-one'})
+            'rule-one', {'memberHost': 'group-one', 'memberUser': 'group-one'},
+            'path')
         remote_rule = {'cn': ('rule-one',)}
         commands = rule.create_commands(remote_rule)
         assert len(commands) == 2
@@ -213,7 +215,8 @@ class TestFreeIPAHBACRule(object):
 
     def test_create_commands_member_remove(self):
         rule = tool.FreeIPAHBACRule(
-            'rule-one', {'memberHost': 'group-one', 'memberUser': 'group-one'})
+            'rule-one', {'memberHost': 'group-one', 'memberUser': 'group-one'},
+            'path')
         rule.data = dict()  # rule must have members when created
         remote_rule = {
             'cn': ('rule-one',), 'memberuser_group': ('group-one',),
@@ -233,20 +236,20 @@ class TestFreeIPAHBACRule(object):
 class TestFreeIPASudoRule(object):
     def test_create_sudo_rule_correct(self):
         rule = tool.FreeIPASudoRule(
-            'rule-one', {'description': 'Sample sudo rule'})
+            'rule-one', {'description': 'Sample sudo rule'}, 'path')
         assert rule.name == 'rule-one'
         assert rule.data == {'description': ('Sample sudo rule',)}
 
     def test_create_sudo_rule_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
-            tool.FreeIPASudoRule('rule-one', {'extrakey': 'bad'})
+            tool.FreeIPASudoRule('rule-one', {'extrakey': 'bad'}, 'path')
         assert exc.value[0] == (
             "Error validating rule-one: "
             "extra keys not allowed @ data['extrakey']")
 
     def test_create_commands_option_add(self):
         rule = tool.FreeIPASudoRule(
-            'rule-one', {'options': ['!test', '!test2']})
+            'rule-one', {'options': ['!test', '!test2']}, 'path')
         remote_rule = {'cn': (u'rule-one',)}
         commands = rule.create_commands(remote_rule)
         assert len(commands) == 2
@@ -258,7 +261,7 @@ class TestFreeIPASudoRule(object):
              {'cn': u'rule-one', 'ipasudoopt': u'!test2'})]
 
     def test_create_commands_option_remove(self):
-        rule = tool.FreeIPASudoRule('rule-one', {'options': ['!test']})
+        rule = tool.FreeIPASudoRule('rule-one', {'options': ['!test']}, 'path')
         remote_rule = {'cn': (u'rule-one',),
                        'ipasudoopt': (u'!test', u'!test2')}
         commands = rule.create_commands(remote_rule)

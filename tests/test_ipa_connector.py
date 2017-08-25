@@ -3,7 +3,7 @@ import mock
 import os
 import pytest
 import sys
-from testfixtures import log_capture
+from testfixtures import log_capture, LogCapture
 
 
 testpath = os.path.dirname(os.path.abspath(__file__))
@@ -78,7 +78,7 @@ class TestIpaConnector(object):
     def test_parse_entity_diff_add(self):
         self._create_connector()
         entity = entities.FreeIPAUser(
-            'test.user', {'firstName': 'Test', 'lastName': 'User'})
+            'test.user', {'firstName': 'Test', 'lastName': 'User'}, 'path')
         self.connector.remote = {'user': dict(), 'group': dict()}
         self.connector.commands = []
         self.connector._parse_entity_diff(entity)
@@ -95,7 +95,7 @@ class TestIpaConnector(object):
         entity = entities.FreeIPAUser(
             'test.user',
             {'firstName': 'Test', 'lastName': 'User',
-             'githubLogin': ['gh1', 'gh2']})
+             'githubLogin': ['gh1', 'gh2']}, 'path')
         self.connector.remote = {
             'user': {
                 'test.user': {
@@ -121,8 +121,9 @@ class TestIpaConnector(object):
                 'test.user': entities.FreeIPAUser(
                     'test.user',
                     {'firstName': 'Test', 'lastName': 'User',
-                     'memberOf': {'group': ['group-one']}})},
-            'group': {'group-one': entities.FreeIPAUserGroup('group-one', {})}}
+                     'memberOf': {'group': ['group-one']}}, 'path')},
+            'group': {'group-one': entities.FreeIPAUserGroup(
+                'group-one', {}, 'path')}}
         self.connector.remote = {
             'user': {'test.user': {
                 'uid': ('test.user',),
@@ -142,8 +143,10 @@ class TestIpaConnector(object):
         self._create_connector()
         self.connector.local = {
             'user': {'test.user': entities.FreeIPAUser(
-                'test.user', {'firstName': 'Test', 'lastName': 'User'})},
-            'group': {'group-one': entities.FreeIPAUserGroup('group-one', {})}}
+                'test.user', {'firstName': 'Test', 'lastName': 'User'},
+                'path')},
+            'group': {'group-one': entities.FreeIPAUserGroup(
+                'group-one', {}, 'path')}}
         self.connector.remote = {
             'user': {'test.user': {
                 'uid': ('test.user',),
@@ -161,14 +164,16 @@ class TestIpaConnector(object):
             'group_remove_member group-one (user=test.user)')
         assert cmd.payload == {'cn': u'group-one', 'user': u'test.user'}
 
-    def test_prepare_commands_same(self):
+    def test_prepare_push_same(self):
         self._create_connector()
         self.connector.local = {
             'user': {
                 'test.user': entities.FreeIPAUser(
                     'test.user', {'firstName': 'Test', 'lastName': 'User',
-                                  'memberOf': {'group': ['group-one']}})},
-            'group': {'group-one': entities.FreeIPAUserGroup('group-one', {})}}
+                                  'memberOf': {'group': ['group-one']}},
+                    'path')},
+            'group': {'group-one': entities.FreeIPAUserGroup(
+                'group-one', {}, 'path')}}
         self.connector.remote = {
             'user': {
                 'test.user': {
@@ -176,44 +181,48 @@ class TestIpaConnector(object):
                     'givenname': (u'Test',), 'sn': (u'User',)}},
             'group': {'group-one': {
                 'cn': ('group-one',), 'member_user': ('test.user',)}}}
-        self.connector._prepare_commands()
+        self.connector._prepare_push()
         assert len(self.connector.commands) == 0
 
     @log_capture('IpaConnector', level=logging.INFO)
-    def test_prepare_commands_changes_addonly(self, captured_log):
+    def test_prepare_push_changes_addonly(self, captured_log):
         self._create_connector(force=True)
         self.connector.local = {
             'user': {
                 'test.user': entities.FreeIPAUser(
                     'test.user',
                     {'firstName': 'Test', 'lastName': 'User',
-                     'memberOf': {'group': ['group-one']}})},
-            'group': {'group-one': entities.FreeIPAUserGroup('group-one', {})},
+                     'memberOf': {'group': ['group-one']}}, 'path')},
+            'group': {'group-one': entities.FreeIPAUserGroup(
+                'group-one', {}, 'path')},
             'sudorule': {
                 'rule-one': entities.FreeIPASudoRule(
                     'rule-one',
-                    {'options': ['!test'], 'memberUser': 'group-one'})}}
+                    {'options': ['!test'], 'memberUser': 'group-one'},
+                    'path')}}
         self.connector.remote = {
             'group': {'group-one': {'cn': ('group-one',)}},
             'sudorule': dict(), 'user': dict()}
-        self.connector._prepare_commands()
+        self.connector._prepare_push()
         assert len(self.connector.commands) == 5
         assert [i.command for i in sorted(self.connector.commands)] == [
             'sudorule_add', 'user_add', 'group_add_member',
             'sudorule_add_option', 'sudorule_add_user']
         captured_log.check(('IpaConnector', 'INFO', '5 commands to execute'))
 
-    def test_prepare_commands_changes_deletion_enabled(self):
+    def test_prepare_push_changes_deletion_enabled(self):
         self._create_connector(enable_deletion=True)
         self.connector.local = {
             'user': {
                 'test.user': entities.FreeIPAUser(
                     'test.user',
                     {'firstName': 'Test', 'lastName': 'User',
-                     'memberOf': {'group': ['group-one']}})},
-            'group': {'group-one': entities.FreeIPAUserGroup('group-one', {})},
+                     'memberOf': {'group': ['group-one']}}, 'path')},
+            'group': {'group-one': entities.FreeIPAUserGroup(
+                'group-one', {}, 'path')},
             'sudorule': {'rule-one': entities.FreeIPASudoRule(
-                'rule-one', {'options': ['!test'], 'memberUser': 'group-one'})}
+                'rule-one', {'options': ['!test'], 'memberUser': 'group-one'},
+                'path')}
         }
         self.connector.remote = {
             'group': {
@@ -221,29 +230,30 @@ class TestIpaConnector(object):
                 'group-two': {'cn': (u'group-two',)}},
             'user': dict(),
             'sudorule': dict()}
-        self.connector._prepare_commands()
+        self.connector._prepare_push()
         assert len(self.connector.commands) == 6
         assert [i.command for i in sorted(self.connector.commands)] == [
             'sudorule_add', 'user_add', 'group_add_member',
             'sudorule_add_option', 'sudorule_add_user', 'group_del']
 
-    def test_prepare_commands_memberof_add_new_group(self):
+    def test_prepare_push_memberof_add_new_group(self):
         self._create_connector(debug=True)
         self.connector.local = {
             'user': {
                 'test.user': entities.FreeIPAUser(
                     'test.user',
                     {'firstName': 'Test', 'lastName': 'User',
-                     'memberOf': {'group': ['group-one']}})},
+                     'memberOf': {'group': ['group-one']}}, 'path')},
             'group': {
-                'group-one': entities.FreeIPAUserGroup('group-one', {})}}
+                'group-one': entities.FreeIPAUserGroup(
+                    'group-one', {}, 'path')}}
         self.connector.remote = {
             'user': {
                 'test.user': {
                     'uid': ('test.user',),
                     'givenname': (u'Test',), 'sn': (u'User',)}},
             'group': dict()}
-        self.connector._prepare_commands()
+        self.connector._prepare_push()
         assert len(self.connector.commands) == 2
         assert [i.command for i in sorted(self.connector.commands)] == [
             'group_add', 'group_add_member']
@@ -278,43 +288,110 @@ class TestIpaConnector(object):
             assert tool.Command('%s_add' % i, {}, '', '') < tool.Command(
                 '%s_add_whatever' % i, {}, '', '')
 
+    def test_check_threshold(self):
+        self._create_connector(threshold=10)
+        self.connector.commands = [
+            tool.Command('cmd%d' % i, {}, '', '') for i in range(1, 12)]
+        self.connector.remote_count = 120
+        with LogCapture('IpaConnector', level=logging.DEBUG) as log:
+            self.connector._check_threshold()
+        log.check(
+            ('IpaConnector', 'DEBUG',
+             '11 commands, 120 remote entities (9.17 %)'),
+            ('IpaConnector', 'DEBUG', 'Threshold check passed'))
+
+    def test_check_threshold_empty_ipa(self):
+        self._create_connector(threshold=10)
+        self.connector.commands = [
+            tool.Command('cmd%d' % i, {}, '', '') for i in range(1, 12)]
+        self.connector.remote_count = 0
+        with LogCapture('IpaConnector', level=logging.DEBUG) as log:
+            with pytest.raises(tool.ManagerError) as exc:
+                self.connector._check_threshold()
+        assert exc.value[0] == 'Threshold exceeded (100.00 % > 10 %), aborting'
+        log.check(
+            ('IpaConnector', 'DEBUG',
+             '11 commands, 0 remote entities (100.00 %)'))
+
+    def test_check_threshold_exceeded(self):
+        self._create_connector(threshold=10)
+        self.connector.commands = [
+            tool.Command('cmd%d' % i, {}, '', '') for i in range(1, 12)]
+        self.connector.remote_count = 100
+        with pytest.raises(tool.ManagerError) as exc:
+            self.connector._check_threshold()
+        assert exc.value[0] == 'Threshold exceeded (11.00 % > 10 %), aborting'
+
     @log_capture('IpaConnector', level=logging.INFO)
-    def test_execute_update_dry_run(self, captured_log):
+    def test_push_dry_run_no_todo(self, captured_log):
         self._create_connector()
-        self.connector.execute_update()
+        self.connector.push()
         captured_log.check(
             ('IpaConnector', 'INFO', '0 commands to execute'),
             ('IpaConnector', 'INFO',
              'FreeIPA consistent with local config, nothing to do'))
 
     @log_capture('IpaConnector', level=logging.INFO)
-    def test_execute_update_no_todo(self, captured_log):
+    def test_push_dry_run(self, captured_log):
+        self._create_connector()
+        tool.api.Command.__getitem__.side_effect = self._api_call
+        self.connector.commands = self._large_commands()
+        with mock.patch('%s._prepare_push' % class_name):
+            with mock.patch('%s._check_threshold' % class_name):
+                self.connector.push()
+        captured_log.check(
+            ('IpaConnector', 'INFO', 'Would execute commands:'),
+            ('IpaConnector', 'INFO', '- group_add group1 ()'),
+            ('IpaConnector', 'INFO', '- group_add group2 ()'),
+            ('IpaConnector', 'INFO', '- hbacrule_add rule1 ()'),
+            ('IpaConnector', 'INFO', '- hostgroup_add group1 ()'),
+            ('IpaConnector', 'INFO', '- sudorule_add rule1 ()'),
+            ('IpaConnector', 'INFO', '- user_add user1 ()'),
+            ('IpaConnector', 'INFO', '- user_add user2 ()'),
+            ('IpaConnector', 'INFO',
+             u'- group_add_member group1 (user=user1)'),
+            ('IpaConnector', 'INFO',
+             u'- group_add_member group1-users (user=user2)'),
+            ('IpaConnector', 'INFO',
+             u'- group_add_member group2 (group=group1)'),
+            ('IpaConnector', 'INFO',
+             u'- hbacrule_add_host rule1 (hostgroup=group1)'),
+            ('IpaConnector', 'INFO',
+             u'- hbacrule_add_user rule1 (group=group2)'),
+            ('IpaConnector', 'INFO',
+             u'- sudorule_add_host rule1 (hostgroup=group1)'),
+            ('IpaConnector', 'INFO',
+             u'- sudorule_add_user rule1 (group=group2)'))
+        assert self.connector.errs == []
+
+    @log_capture('IpaConnector', level=logging.INFO)
+    def test_push_no_todo(self, captured_log):
         self._create_connector(force=True)
-        self.connector.execute_update()
+        self.connector.push()
         captured_log.check(
             ('IpaConnector', 'INFO', '0 commands to execute'),
             ('IpaConnector', 'INFO',
              'FreeIPA consistent with local config, nothing to do'))
         assert self.connector.commands == []
 
-    def test_execute_update_threshold_exceeded(self):
+    def test_push_threshold_exceeded(self):
         self._create_connector(force=True, threshold=10)
         self.connector.remote_count = 100
         self.connector.commands = [
             tool.Command('cmd%d' % i, {}, '', '') for i in range(1, 12)]
-        with mock.patch('%s._prepare_commands' % class_name):
+        with mock.patch('%s._prepare_push' % class_name):
             with pytest.raises(tool.ManagerError) as exc:
-                self.connector.execute_update()
+                self.connector.push()
         assert exc.value[0] == 'Threshold exceeded (11.00 % > 10 %), aborting'
 
     @log_capture('Command', level=logging.INFO)
-    def test_execute_update(self, captured_log):
+    def test_push(self, captured_log):
         self._create_connector(force=True, threshold=15)
         tool.api.Command.__getitem__.side_effect = self._api_call
         self.connector.commands = self._large_commands()
-        with mock.patch('%s._prepare_commands' % class_name):
+        with mock.patch('%s._prepare_push' % class_name):
             with mock.patch('%s._check_threshold' % class_name):
-                self.connector.execute_update()
+                self.connector.push()
         captured_log.check(
             ('Command', 'INFO', 'Executing group_add group1 ()'),
             ('Command', 'INFO', u'Added group "group1"'),
@@ -361,15 +438,15 @@ class TestIpaConnector(object):
         assert self.connector.errs == []
 
     @log_capture('Command', level=logging.ERROR)
-    def test_execute_update_errors(self, captured_log):
+    def test_push_errors(self, captured_log):
         self._create_connector(force=True, threshold=15)
         tool.api.Command.__getitem__.side_effect = (
             self._api_call_unreliable)
         self.connector.commands = self._large_commands()
-        with mock.patch('%s._prepare_commands' % class_name):
+        with mock.patch('%s._prepare_push' % class_name):
             with mock.patch('%s._check_threshold' % class_name):
                 with pytest.raises(tool.ManagerError) as exc:
-                    self.connector.execute_update()
+                    self.connector.push()
         assert exc.value[0] == 'There were 5 errors executing update'
         assert self.connector.errs == [
             (u'group_add_member group1 (user=user1)',
@@ -399,15 +476,15 @@ class TestIpaConnector(object):
              u'sudorule_add_user rule1 (group=group2) failed:'),
             ('Command', 'ERROR', u'- test: no such attr2'))
 
-    def test_execute_update_exceptions(self):
+    def test_push_exceptions(self):
         self._create_connector(force=True, threshold=15)
         tool.api.Command.__getitem__.side_effect = (
             self._api_call_execute_fail)
         self.connector.commands = self._large_commands()
-        with mock.patch('%s._prepare_commands' % class_name):
+        with mock.patch('%s._prepare_push' % class_name):
             with mock.patch('%s._check_threshold' % class_name):
                 with pytest.raises(tool.ManagerError) as exc:
-                    self.connector.execute_update()
+                    self.connector.push()
         assert exc.value[0] == 'There were 3 errors executing update'
         assert self.connector.errs == [
             (u'group_add_member group1 (user=user1)',
@@ -417,14 +494,14 @@ class TestIpaConnector(object):
             (u'group_add_member group2 (group=group1)',
              'Error executing group_add_member: Some error happened')]
 
-    def test_execute_update_invalid_command(self):
+    def test_push_invalid_command(self):
         self._create_connector(force=True, threshold=15)
         tool.api.Command.__getitem__.side_effect = self._api_call
         self.connector.commands = [tool.Command('non_existent', {}, 'x', 'cn')]
-        with mock.patch('%s._prepare_commands' % class_name):
+        with mock.patch('%s._prepare_push' % class_name):
             with mock.patch('%s._check_threshold' % class_name):
                 with pytest.raises(tool.ManagerError) as exc:
-                    self.connector.execute_update()
+                    self.connector.push()
         assert exc.value[0] == 'There were 1 errors executing update'
         assert self.connector.errs == [
             ('non_existent x ()', 'Non-existent command non_existent')]
@@ -432,9 +509,9 @@ class TestIpaConnector(object):
     def _api_call(self, command):
         return {
             'group_find': self._api_group_find,
-            'hbacrule_find': self._api_hbacrule_find,
-            'hostgroup_find': self._api_hostgroup_find,
-            'sudorule_find': self._api_sudorule_find,
+            'hbacrule_find': self._api_rule_find,
+            'hostgroup_find': self._api_group_find,
+            'sudorule_find': self._api_rule_find,
             'user_find': self._api_user_find,
             'user_add': self._api_user_add,
             'group_add': self._api_add('group'),
@@ -471,13 +548,7 @@ class TestIpaConnector(object):
     def _api_group_find(self, **kwargs):
         return {'result': [{'cn': ('group-one',)}]}
 
-    def _api_hbacrule_find(self, **kwargs):
-        return {'result': [{'cn': ('rule-one',)}]}
-
-    def _api_hostgroup_find(self, **kwargs):
-        return {'result': [{'cn': ('group-one',)}]}
-
-    def _api_sudorule_find(self, **kwargs):
+    def _api_rule_find(self, **kwargs):
         return {'result': [{'cn': ('rule-one',)}]}
 
     def _api_user_find(self, **kwargs):

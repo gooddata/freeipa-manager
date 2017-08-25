@@ -1,9 +1,4 @@
 ---
-rule-two:
-  description: Sample HBAC rule two.
-  memberHost: group-two
-  memberUser: group-two
-
 rule-three:
   description: Sample HBAC rule 3.
   memberHost: group-two

@@ -4,6 +4,3 @@ group-two:
   memberOf:
     group:
       - group-three-users
-
-group-three-users:
-  description: Sample group three.

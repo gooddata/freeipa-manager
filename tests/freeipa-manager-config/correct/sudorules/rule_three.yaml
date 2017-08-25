@@ -1,10 +1,4 @@
 ---
-rule-two:
-  description: Sample sudo rule two.
-  options: ['!authenticate']
-  memberHost: group-two
-  memberUser: group-two
-
 rule-three:
   description: Sample sudo rule three.
   options: ['!authenticate', '!requiretty']

@@ -76,7 +76,8 @@ class TestIntegrityChecker(object):
         data = {
             'hbacrule': [
                 tool.entities.FreeIPAHBACRule(
-                    'rule-one', {'memberHost': 'no', 'memberUser': 'no'})]}
+                    'rule-one', {'memberHost': 'no', 'memberUser': 'no'},
+                    'path')]}
         self._create_checker(data)
         with pytest.raises(tool.IntegrityError):
             self.checker.check()
@@ -91,11 +92,11 @@ class TestIntegrityChecker(object):
                 tool.entities.FreeIPAHBACRule(
                     'rule-one', {
                         'memberHost': 'group-one-hosts',
-                        'memberUser': 'group-one-users'})],
+                        'memberUser': 'group-one-users'}, 'path')],
             'hostgroup': [tool.entities.FreeIPAHostGroup(
-                'group-one-hosts', {})],
+                'group-one-hosts', {}, 'path')],
             'group': [tool.entities.FreeIPAUserGroup(
-                'group-one-users', {})]}
+                'group-one-users', {}, 'path')]}
         self._create_checker(data)
         with pytest.raises(tool.IntegrityError):
             self.checker.check()
@@ -109,8 +110,7 @@ class TestIntegrityChecker(object):
     def test_check_rule_member_missing_attribute(self):
         data = {
             'hbacrule': [
-                tool.entities.FreeIPAHBACRule(
-                    'rule-one', {})]}
+                tool.entities.FreeIPAHBACRule('rule-one', {}, 'path')]}
         self._create_checker(data)
         with pytest.raises(tool.IntegrityError):
             self.checker.check()
@@ -138,9 +138,9 @@ class TestIntegrityChecker(object):
             self.checker.check()
         assert self.checker.errs == {
             ('group', 'group-one'): [
-                'Cyclic membership of groups: [group-one, group-two]'],
+                'Cyclic membership: [group group-one, group group-two]'],
             ('group', 'group-two'): [
-                'Cyclic membership of groups: [group-two, group-one]']}
+                'Cyclic membership: [group group-two, group group-one]']}
 
     def test_check_cycle_three_nodes(self):
         self._create_checker(self._sample_entities_cycle_three_nodes())
@@ -148,14 +148,14 @@ class TestIntegrityChecker(object):
             self.checker.check()
         assert self.checker.errs == {
             ('group', 'group-one'): [
-                ('Cyclic membership of groups: '
-                 '[group-one, group-two, group-three]')],
+                ('Cyclic membership: '
+                 '[group group-one, group group-two, group group-three]')],
             ('group', 'group-three'): [
-                ('Cyclic membership of groups: '
-                 '[group-three, group-one, group-two]')],
+                ('Cyclic membership: '
+                 '[group group-three, group group-one, group group-two]')],
             ('group', 'group-two'): [
-                ('Cyclic membership of groups: '
-                 '[group-two, group-three, group-one]')]}
+                ('Cyclic membership: '
+                 '[group group-two, group group-three, group group-one]')]}
 
     def test_check_member_rule_meta(self):
         self._create_checker(dict())
@@ -218,32 +218,36 @@ class TestIntegrityChecker(object):
             'user': [
                 tool.entities.FreeIPAUser(
                     'firstname.lastname',
-                    {'firstName': 'Firstname', 'lastName': 'Lastname'}),
+                    {'firstName': 'Firstname', 'lastName': 'Lastname'},
+                    'path'),
                 tool.entities.FreeIPAUser(
                     'firstname.lastname2',
                     {'firstName': 'Firstname', 'lastName': 'Lastname',
-                     'memberOf': {'group': ['group-one-users']}}),
+                     'memberOf': {'group': ['group-one-users']}}, 'path'),
                 tool.entities.FreeIPAUser(
                     'firstname.lastname3',
-                    {'firstName': 'Firstname', 'lastName': 'Lastname'})],
+                    {'firstName': 'Firstname', 'lastName': 'Lastname'},
+                    'path')],
             'group': [
                 tool.entities.FreeIPAUserGroup(
                     'group-one-users', {
-                        'memberOf': {'group': ['group-two']}}),
-                tool.entities.FreeIPAUserGroup('group-two', {})],
+                        'memberOf': {'group': ['group-two']}}, 'path'),
+                tool.entities.FreeIPAUserGroup('group-two', {}, 'path')],
             'hostgroup': [
                 tool.entities.FreeIPAHostGroup(
                     'group-one-hosts', {
-                        'memberOf': {'hostgroup': ['group-two']}}),
-                tool.entities.FreeIPAHostGroup('group-two', {})],
+                        'memberOf': {'hostgroup': ['group-two']}}, 'path'),
+                tool.entities.FreeIPAHostGroup('group-two', {}, 'path')],
             'hbacrule': [
                 tool.entities.FreeIPAHBACRule(
                     'rule-one',
-                    {'memberHost': 'group-two', 'memberUser': 'group-two'})],
+                    {'memberHost': 'group-two', 'memberUser': 'group-two'},
+                    'path')],
             'sudorule': [
                 tool.entities.FreeIPASudoRule(
                     'rule-one',
-                    {'memberHost': 'group-two', 'memberUser': 'group-two'})]
+                    {'memberHost': 'group-two', 'memberUser': 'group-two'},
+                    'path')]
         }
 
     def _sample_entities_member_nonexistent(self):
@@ -251,22 +255,24 @@ class TestIntegrityChecker(object):
             'user': [
                 tool.entities.FreeIPAUser(
                     'firstname.lastname',
-                    {'firstName': 'Firstname', 'lastName': 'Lastname'}),
+                    {'firstName': 'Firstname', 'lastName': 'Lastname'},
+                    'path'),
                 tool.entities.FreeIPAUser(
                     'firstname.lastname2',
                     {'firstName': 'Firstname', 'lastName': 'Lastname',
-                     'memberOf': {'group': ['group-one']}}),
+                     'memberOf': {'group': ['group-one']}}, 'path'),
                 tool.entities.FreeIPAUser(
                     'firstname.lastname3',
-                    {'firstName': 'Firstname', 'lastName': 'Lastname'})],
+                    {'firstName': 'Firstname', 'lastName': 'Lastname'},
+                    'path')],
             'group': [
                 tool.entities.FreeIPAUserGroup(
                     'group-two', {
-                        'memberOf': {'group': ['group-one']}})],
+                        'memberOf': {'group': ['group-one']}}, 'path')],
             'hostgroup': [
                 tool.entities.FreeIPAHostGroup(
                     'group-one-hosts', {
-                        'memberOf': {'hostgroup': ['group-two']}})]
+                        'memberOf': {'hostgroup': ['group-two']}}, 'path')]
         }
 
     def _sample_entities_member_invalidtype(self):
@@ -275,9 +281,9 @@ class TestIntegrityChecker(object):
                 tool.entities.FreeIPAUser(
                     'firstname.lastname2',
                     {'firstName': 'Firstname', 'lastName': 'Lastname',
-                     'memberOf': {'hostgroup': ['group-one']}})],
+                     'memberOf': {'hostgroup': ['group-one']}}, 'path')],
             'hostgroup': [
-                tool.entities.FreeIPAHostGroup('group-one', {})]
+                tool.entities.FreeIPAHostGroup('group-one', {}, 'path')]
         }
 
     def _sample_entities_member_itself(self):

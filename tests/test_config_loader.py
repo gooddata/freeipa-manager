@@ -24,20 +24,21 @@ class TestConfigLoader(object):
     def setup_method(self, method):
         self.loader = tool.ConfigLoader(CONFIG_CORRECT, IGNORED_CORRECT)
         self.expected_hostgroups = [
-            CONFIG_CORRECT + '/hostgroups/%s.yaml' % group
-            for group in ['group_one', 'several']]
+            CONFIG_CORRECT + '/hostgroups/group_%s.yaml' % group
+            for group in ['one', 'three', 'two']]
         self.expected_users = [
             CONFIG_CORRECT + '/users/%s.yaml' % user
-            for user in ['archibald_jenkins', 'several']]
+            for user in ['archibald_jenkins', 'firstname_lastname',
+                         'firstname_lastname_2']]
         self.expected_groups = [
-            CONFIG_CORRECT + '/groups/%s.yaml' % group
-            for group in ['group_one', 'several']]
+            CONFIG_CORRECT + '/groups/group_%s.yaml' % group
+            for group in ['one', 'three', 'two']]
         self.expected_hbac_rules = [
-            CONFIG_CORRECT + '/hbacrules/%s.yaml' % rule
-            for rule in ['rule_one', 'several']]
+            CONFIG_CORRECT + '/hbacrules/rule_%s.yaml' % rule
+            for rule in ['one', 'three', 'two']]
         self.expected_sudo_rules = [
-            CONFIG_CORRECT + '/sudorules/%s.yaml' % rule
-            for rule in ['rule_one', 'several']]
+            CONFIG_CORRECT + '/sudorules/rule_%s.yaml' % rule
+            for rule in ['one', 'three', 'two']]
         for cls in utils.ENTITY_CLASSES:
             cls.ignored = []
 
@@ -86,19 +87,25 @@ class TestConfigLoader(object):
         data = {
             'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
         self.loader._parse(
-            data, entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
+            data, entities.FreeIPAUser,
+            '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
+        assert self.loader.entities.keys() == ['user']
+        assert len(self.loader.entities['user']) == 1
+        assert isinstance(
+            self.loader.entities['user'][0], entities.FreeIPAUser)
 
     def test_parse_empty(self):
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
-                {}, entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
+                {}, entities.FreeIPAUser,
+                '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
         assert exc.value[0] == 'Config must be a non-empty dictionary'
 
     def test_parse_bad_data_format(self):
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
-                [{'archibald.jenkins': {}}],
-                entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
+                [{'archibald.jenkins': {}}], entities.FreeIPAUser,
+                '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
         assert exc.value[0] == 'Config must be a non-empty dictionary'
 
     def test_parse_duplicit_entities(self):
@@ -111,7 +118,8 @@ class TestConfigLoader(object):
                     {'firstName': 'first', 'lastName': 'last'})]}
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
-                data, entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
+                data, entities.FreeIPAUser,
+                '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
         assert exc.value[0] == 'Duplicit definition of archibald.jenkins'
 
     @log_capture('ConfigLoader', level=logging.WARNING)
@@ -123,14 +131,15 @@ class TestConfigLoader(object):
                 'ipamanager.entities.FreeIPAUser.ignored',
                 ['archibald.jenkins']):
             self.loader._parse(
-                data, entities.FreeIPAUser, 'users/archibald_jenkins.yaml')
+                data, entities.FreeIPAUser,
+                '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
         assert self.loader.entities['user'] == []
         captured_warnings.check(('ConfigLoader', 'WARNING',
                                 ('Not creating ignored user archibald.jenkins '
                                  'from users/archibald_jenkins.yaml')))
 
-    @log_capture('ConfigLoader', level=logging.WARNING)
-    def test_load(self, captured_warnings):
+    @log_capture('ConfigLoader', level=logging.INFO)
+    def test_load(self, captured_log):
         self.loader.basepath = CONFIG_CORRECT
         self.loader.load()
         hostgroups = self.loader.entities['hostgroup']
@@ -145,18 +154,22 @@ class TestConfigLoader(object):
         assert len(groups) == 3
         assert set(g.name for g in groups) == set([
             'group-one-users', 'group-two', 'group-three-users'])
-        assert set(i.msg % i.args for i in captured_warnings.records) == set([
-            'More than one entity parsed from hbacrules/several.yaml (2)',
-            'More than one entity parsed from hostgroups/several.yaml (2)',
-            'More than one entity parsed from sudorules/several.yaml (2)',
-            'More than one entity parsed from groups/several.yaml (2)',
-            'More than one entity parsed from users/several.yaml (2)'])
+        captured_log.check(
+            ('ConfigLoader', 'INFO',
+             'Checking local configuration at %s' % CONFIG_CORRECT),
+            ('ConfigLoader', 'INFO', 'Parsed 3 hbacrules'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 hostgroups'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 sudorules'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 users'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 groups'))
 
     @log_capture('ConfigLoader', level=logging.WARNING)
     def test_load_empty(self, captured_warnings):
         self.loader.basepath = '/dev/null'
         self.loader.load()
-        assert self.loader.entities == dict()
+        assert self.loader.entities == {
+            'group': [], 'hbacrule': [],
+            'hostgroup': [], 'sudorule': [], 'user': []}
         assert set(i.msg % i.args for i in captured_warnings.records) == set([
             'No hbacrule files found',
             'No hostgroup files found',
@@ -168,14 +181,12 @@ class TestConfigLoader(object):
         self.loader.basepath = CONFIG_INVALID
         with pytest.raises(tool.ConfigError) as exc:
             self.loader.load()
-        err = exc.value[0]
-        for i in [
-                'hbacrules/extrakey.yaml', 'hostgroups/extrakey.yaml',
-                'sudorules/extrakey.yaml', 'groups/extrakey.yaml',
-                'users/extrakey.yaml']:
-            assert i in err
-        assert ('users/duplicit.yaml' in err or
-                'users/duplicit2.yaml' in err)
+        assert exc.value[0] == (
+            'There have been errors in 8 configuration files: '
+            '[hbacrules/extrakey.yaml, hostgroups/extrakey.yaml, '
+            'hostgroups/invalidmember.yaml, sudorules/extrakey.yaml, '
+            'users/duplicit.yaml, users/duplicit2.yaml, users/extrakey.yaml, '
+            'users/invalidmember.yaml]')
 
     @log_capture('ConfigLoader', level=logging.DEBUG)
     def test_load_ignored_no_file(self, captured_log):

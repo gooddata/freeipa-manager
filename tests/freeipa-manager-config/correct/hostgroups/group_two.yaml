@@ -1,0 +1,6 @@
+---
+group-two:
+  description: Sample meta host group two.
+  memberOf:
+    hostgroup:
+      - group-one-hosts
