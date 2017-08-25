@@ -4,5 +4,5 @@ rule-three:
   options: ['!authenticate', '!requiretty']
   cmdCategory: 'all'
   runAsUserCategory: 'all'
-  memberHost: group-two
-  memberUser: group-two
+  memberHost: [group-two]
+  memberUser: [group-two]

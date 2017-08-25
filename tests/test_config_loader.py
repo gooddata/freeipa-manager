@@ -1,18 +1,15 @@
 import logging
 import mock
-import os
+import os.path
 import pytest
-import sys
 from testfixtures import log_capture
 
-
-testpath = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(testpath, '..'))
+from _utils import _import
+tool = _import('ipamanager', 'config_loader')
+entities = _import('ipamanager', 'entities')
+utils = _import('ipamanager', 'utils')
 modulename = 'ipamanager.config_loader'
-
-import ipamanager.config_loader as tool
-import ipamanager.entities as entities
-import ipamanager.utils as utils
+testpath = os.path.dirname(os.path.abspath(__file__))
 
 CONFIG_CORRECT = os.path.join(testpath, 'freeipa-manager-config/correct')
 CONFIG_INVALID = os.path.join(testpath, 'freeipa-manager-config/invalid')
@@ -121,6 +118,19 @@ class TestConfigLoader(object):
                 data, entities.FreeIPAUser,
                 '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
         assert exc.value[0] == 'Duplicit definition of archibald.jenkins'
+
+    def test_parse_two_entities_in_file(self):
+        data = {
+            'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'},
+            'archibald.jenkins2': {'firstName': 'first', 'lastName': 'last'}}
+        self.loader.entities = {'user': []}
+        with pytest.raises(tool.ConfigError) as exc:
+            self.loader._parse(
+                data, entities.FreeIPAUser,
+                '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
+        assert exc.value[0] == (
+            'More than one entity parsed from users/archibald_jenkins.yaml (2)'
+        )
 
     @log_capture('ConfigLoader', level=logging.WARNING)
     def test_parse_ignored(self, captured_warnings):

@@ -1,5 +1,5 @@
 ---
 rule-one:
   description: Sample sudo rule one
-  memberHost: group-two
-  memberUser: group-two
+  memberHost: [group-two]
+  memberUser: [group-two]

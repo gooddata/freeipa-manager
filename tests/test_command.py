@@ -1,15 +1,10 @@
 import logging
 import mock
-import os
 import pytest
-import sys
 from testfixtures import log_capture
 
-
-testpath = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(testpath, '..'))
-
-import ipamanager.command as tool
+from _utils import _import
+tool = _import('ipamanager', 'command')
 
 
 class TestCommand(object):

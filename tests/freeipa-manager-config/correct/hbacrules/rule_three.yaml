@@ -1,5 +1,5 @@
 ---
 rule-three:
   description: Sample HBAC rule 3.
-  memberHost: group-two
-  memberUser: group-two
+  memberHost: [group-two]
+  memberUser: [group-two]

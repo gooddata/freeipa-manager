@@ -1,18 +1,14 @@
 import logging
 import mock
-import os
 import pytest
 import sys
 from testfixtures import log_capture
 
-
-testpath = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(testpath, '..'))
-
-import ipamanager.freeipa_manager as tool
-import ipamanager.errors as errors
+from _utils import _import
 sys.modules['ipalib'] = mock.Mock()
-ipa_connector = __import__('ipamanager.ipa_connector')
+tool = _import('ipamanager', 'freeipa_manager')
+errors = _import('ipamanager', 'errors')
+ipa_connector = _import('ipamanager', 'ipa_connector')
 modulename = 'ipamanager.freeipa_manager'
 
 
@@ -23,6 +19,22 @@ class TestFreeIPAManagerBase(object):
 
 
 class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
+    def test_run_threshold_bad_type(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            self._init_tool(['check', 'config_path', '-t', '42a'])
+        assert exc.value[0] == 2
+        _, err = capsys.readouterr()
+        assert ("manager: error: argument -t/--threshold: invalid literal "
+                "for int() with base 10: '42a'") in err
+
+    def test_run_threshold_bad_range(self, capsys):
+        with pytest.raises(SystemExit) as exc:
+            self._init_tool(['check', 'config_path', '-t', '102'])
+        assert exc.value[0] == 2
+        _, err = capsys.readouterr()
+        assert ("manager: error: argument -t/--threshold: "
+                "must be a number in range 1-100") in err
+
     @mock.patch('%s.IntegrityChecker' % modulename)
     @mock.patch('%s.ConfigLoader' % modulename)
     def test_run_check(self, mock_config, mock_check):
@@ -49,10 +61,9 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             manager.integrity_checker = mock.Mock()
             manager.integrity_checker.entity_dict = dict()
             with mock.patch(
-                    'ipamanager.ipa_connector.IpaConnector') as mock_conn:
+                    'ipamanager.freeipa_manager.IpaUploader') as mock_conn:
                 manager.run()
-                # entities, threshold, force, enable deletion, debug
-                mock_conn.assert_called_with({}, 10, True, False, True)
+                mock_conn.assert_called_with({}, 10, True, False)
 
     def test_run_push_enable_deletion(self):
         with mock.patch('%s.FreeIPAManager.check' % modulename):
@@ -61,10 +72,9 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             manager.integrity_checker = mock.Mock()
             manager.integrity_checker.entity_dict = dict()
             with mock.patch(
-                    'ipamanager.ipa_connector.IpaConnector') as mock_conn:
+                    'ipamanager.freeipa_manager.IpaUploader') as mock_conn:
                 manager.run()
-                # entities, threshold, force, enable deletion, debug
-                mock_conn.assert_called_with({}, 10, True, True, True)
+                mock_conn.assert_called_with({}, 10, True, True)
 
     def test_run_push_dry_run(self):
         with mock.patch('%s.FreeIPAManager.check' % modulename):
@@ -72,10 +82,9 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             manager.integrity_checker = mock.Mock()
             manager.integrity_checker.entity_dict = dict()
             with mock.patch(
-                    'ipamanager.ipa_connector.IpaConnector') as mock_conn:
+                    'ipamanager.freeipa_manager.IpaUploader') as mock_conn:
                 manager.run()
-                # entities, threshold, force, enable deletion, debug
-                mock_conn.assert_called_with({}, 20, False, False, False)
+                mock_conn.assert_called_with({}, 20, False, False)
 
     def test_run_push_dry_run_enable_deletion(self):
         with mock.patch('%s.FreeIPAManager.check' % modulename):
@@ -83,13 +92,18 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             manager.integrity_checker = mock.Mock()
             manager.integrity_checker.entity_dict = dict()
             with mock.patch(
-                    'ipamanager.ipa_connector.IpaConnector') as mock_conn:
+                    'ipamanager.freeipa_manager.IpaUploader') as mock_conn:
                 manager.run()
-                # entities, threshold, force, enable deletion, debug
-                mock_conn.assert_called_with({}, 20, False, True, False)
+                mock_conn.assert_called_with({}, 20, False, True)
 
     def test_run_pull(self):
-        manager = self._init_tool(['pull'])
-        with pytest.raises(NotImplementedError) as exc:
-            manager.run()
-        assert exc.value[0] == 'Config pulling not available yet.'
+        with mock.patch('%s.FreeIPAManager.check' % modulename):
+            manager = self._init_tool(['pull', '--force', '-v'])
+            manager.integrity_checker = mock.Mock()
+            manager.integrity_checker.entity_dict = dict()
+            with mock.patch(
+                    'ipamanager.freeipa_manager.IpaDownloader') as mock_conn:
+                manager.run()
+            mock_conn.assert_called_with(
+                {}, '/opt/freeipa-manager/entities', True, False)
+            manager.downloader.pull.assert_called()
