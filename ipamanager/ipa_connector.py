@@ -80,7 +80,7 @@ class IpaConnector(FreeIPAManagerCore):
         self.remote_count = sum(len(i) for i in self.remote.itervalues())
         self.lg.info('Parsed %d entities from FreeIPA API', self.remote_count)
 
-    def _prepare_commands(self):
+    def _prepare_push(self):
         """
         Prepare the queue of commands to execute as part of FreeIPA update.
         The commands include addition/modification/deletion of entities,
@@ -167,7 +167,7 @@ class IpaConnector(FreeIPAManagerCore):
                         Command(
                             command, {}, name, entity_class.entity_id_type))
 
-    def execute_update(self):
+    def push(self):
         """
         Execute update by running commands from the execution queue
         prepared by the `prepare_update` method.
@@ -175,7 +175,7 @@ class IpaConnector(FreeIPAManagerCore):
         exceed the `threshold` attribute.
         :raises ManagerError: in case of exceeded threshold/API error
         """
-        self._prepare_commands()
+        self._prepare_push()
         if not self.commands:
             self.lg.info('FreeIPA consistent with local config, nothing to do')
             return

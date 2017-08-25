@@ -122,8 +122,7 @@ class IntegrityChecker(FreeIPAManagerCore):
         if not errs:
             cyclic_path = self._check_cycles(entity)
             if cyclic_path:
-                errs.append('Cyclic membership of %ss: %s'
-                            % (entity.entity_name, cyclic_path))
+                errs.append('Cyclic membership: %s' % (cyclic_path))
         return errs
 
     def _check_member_rules(self, member, member_name, target):

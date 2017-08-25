@@ -26,20 +26,26 @@ class FreeIPAEntity(FreeIPAManagerCore):
     key_mapping = {}  # attribute name mapping between local config and FreeIPA
     ignored = []  # list of ignored entities for each entity type
 
-    def __init__(self, name, data):
+    def __init__(self, name, data, path=None):
         """
         :param str name: entity name (user login, group name etc.)
         :param dict data: dictionary of entity configuration values
+        :param str path: path to file the entity was parsed from
         """
         super(FreeIPAEntity, self).__init__()
         if not data:  # may be None; we want to ensure dictionary
             data = dict()
-        try:
-            self.validation_schema(data)
-        except voluptuous.Error as e:
-            raise ConfigError('Error validating %s: %s' % (name, e))
         self.name = name
-        self.data = self._convert(data)
+        self.path = path
+        if self.path:  # created from local config
+            try:
+                self.validation_schema(data)
+            except voluptuous.Error as e:
+                raise ConfigError('Error validating %s: %s' % (name, e))
+            self.data = self._convert(data)
+            self.raw = data
+        else:
+            self.data = data
 
     def _convert(self, data):
         """
@@ -53,7 +59,7 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 which are processed separately without direct upload to API)
         """
         result = dict()
-        for key, value in data.items():
+        for key, value in data.iteritems():
             new_key = self.key_mapping.get(key, key)
             if new_key == 'memberOf':
                 self._check_memberof(value)
@@ -126,6 +132,9 @@ class FreeIPAEntity(FreeIPAManagerCore):
         """
 
     def __repr__(self):
+        return '%s %s' % (self.entity_name, self.name)
+
+    def __str__(self):
         return self.name
 
     def __eq__(self, other):

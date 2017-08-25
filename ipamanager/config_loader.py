@@ -73,21 +73,21 @@ class ConfigLoader(FreeIPAManagerCore):
         self.lg.info('Checking local configuration at %s', self.basepath)
         paths = self._retrieve_paths()
         for entity_class in ENTITY_CLASSES:
+            self.entities[entity_class.entity_name] = list()
             entity_paths = paths.get(entity_class.entity_name, [])
             if not entity_paths:
                 continue
-            self.entities[entity_class.entity_name] = list()
             self.lg.debug('Loading %s configs', entity_class.entity_name)
             errcount = 0
             for path in entity_paths:
-                fname = self._short_path(path)
+                fname = os.path.relpath(path, self.basepath)
                 self.lg.debug('Loading config from %s', fname)
                 try:
                     with open(path, 'r') as confsource:
                         contents = confsource.read()
                     self._run_yamllint_check(contents, fname)
                     data = yaml.safe_load(contents)
-                    self._parse(data, entity_class, fname)
+                    self._parse(data, entity_class, path)
                 except (IOError, ConfigError, yaml.YAMLError) as e:
                     self.lg.error('%s: %s', fname, e)
                     self.errs.append(fname)
@@ -113,29 +113,31 @@ class ConfigLoader(FreeIPAManagerCore):
             raise ConfigError('yamllint errors: %s' % lint_errs)
         self.lg.debug('%s yamllint check passed successfully', fname)
 
-    def _parse(self, data, entity_class, fname):
+    def _parse(self, data, entity_class, path):
         """
         Parse entity instances from loaded YAML dictionary.
         :param dict data: contents of loaded YAML configuration file
         :param FreeIPAEntity entity_class: entity class to create instances of
-        :param str fname: short configuration file path
+        :param str path: configuration file path
         """
         if not data or not isinstance(data, dict):
             raise ConfigError('Config must be a non-empty dictionary')
         parsed = []
+        fname = os.path.relpath(path, self.basepath)
         for name, attrs in data.iteritems():
             self.lg.debug('Creating entity %s', name)
             if name in entity_class.ignored:
                 self.lg.warning('Not creating ignored %s %s from %s',
                                 entity_class.entity_name, name, fname)
                 continue
-            entity = entity_class(name, attrs)
+            entity = entity_class(name, attrs, path)
             if entity in self.entities[entity_class.entity_name]:
                 raise ConfigError('Duplicit definition of %s' % entity)
             parsed.append(entity)
         if len(parsed) > 1:
-            self.lg.warning(
-                'More than one entity parsed from %s (%d)', fname, len(parsed))
+            raise ConfigError(
+                'More than one entity parsed from %s (%d)'
+                % (fname, len(parsed)))
         self.entities[entity_class.entity_name].extend(parsed)
 
     def _retrieve_paths(self):
@@ -155,11 +157,3 @@ class ConfigLoader(FreeIPAManagerCore):
                 continue
             filepaths[entity_class.entity_name] = entity_filepaths
         return filepaths
-
-    def _short_path(self, path):
-        """
-        Compose a shorter configuration file path for better log readability
-        (relative to the repo path, e.g. users/name.yaml).
-        """
-        return os.path.join(
-            os.path.basename(os.path.dirname(path)), os.path.basename(path))
