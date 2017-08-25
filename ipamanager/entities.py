@@ -7,13 +7,15 @@ Object representations of the entities configured in FreeIPA.
 Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
+import os
 import voluptuous
+import yaml
 from abc import ABCMeta, abstractproperty
 
 import schemas
 from command import Command
 from core import FreeIPAManagerCore
-from errors import ConfigError
+from errors import ConfigError, ManagerError
 
 
 class FreeIPAEntity(FreeIPAManagerCore):
@@ -30,7 +32,8 @@ class FreeIPAEntity(FreeIPAManagerCore):
         """
         :param str name: entity name (user login, group name etc.)
         :param dict data: dictionary of entity configuration values
-        :param str path: path to file the entity was parsed from
+        :param str path: path to file the entity was parsed from;
+                         if None, indicates creation of entity from FreeIPA
         """
         super(FreeIPAEntity, self).__init__()
         if not data:  # may be None; we want to ensure dictionary
@@ -42,32 +45,53 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 self.validation_schema(data)
             except voluptuous.Error as e:
                 raise ConfigError('Error validating %s: %s' % (name, e))
-            self.data = self._convert(data)
-            self.raw = data
-        else:
-            self.data = data
+            self.data_ipa = self._convert_to_ipa(data)
+            self.data_repo = data
+        else:  # created from FreeIPA
+            self.data_ipa = data
+            self.data_repo = self._convert_to_repo(data)
 
-    def _convert(self, data):
+    def _convert_to_ipa(self, data):
         """
-        Convert entry from config format to LDAP format. This is needed
-        because LDAP configuration storing has some specifics which would
-        not be practical to copy in the local configuration (non-intuitive
-        attribute names, each attribute as a list and so on).
-        :param dict data: entity data parsed from configuration
-        :returns: data transformed to FreeIPA-compatible format
-        :rtype: dict with values of tuples (except for membership attributes,
-                which are processed separately without direct upload to API)
+        Convert entity data to IPA format.
+        :param dict data: entity data in repository format
+        :returns: dictionary of data in IPA format
+        :rtype: dict
         """
         result = dict()
         for key, value in data.iteritems():
-            new_key = self.key_mapping.get(key, key)
-            if new_key == 'memberOf':
+            new_key = self.key_mapping.get(key, key).lower()
+            if new_key == 'memberof':
                 self._check_memberof(value)
                 result[new_key] = value
             elif isinstance(value, list):
                 result[new_key] = tuple(value)
             else:
                 result[new_key] = (value,)
+        return result
+
+    def _convert_to_repo(self, data):
+        """
+        Convert entity data to repo format.
+        :param dict data: entity data in IPA format
+        :returns: dictionary of data in repository format
+        :rtype: dict
+        """
+        result = dict()
+        for attr in self.managed_attributes_pull:
+            if attr.lower() in data:
+                key = attr
+                if attr in self.key_mapping.itervalues():
+                    key = [
+                        k for k, v in self.key_mapping.items() if v == attr][0]
+                value = data[attr.lower()]
+                if isinstance(value, tuple):
+                    if len(value) > 1:
+                        result[key] = [str(i) for i in value]
+                    else:
+                        result[key] = str(value[0])
+                else:
+                    result[key] = str(value)
         return result
 
     def _check_memberof(self, member_of):
@@ -83,18 +107,18 @@ class FreeIPAEntity(FreeIPAManagerCore):
         """
         Create commands to execute in order
         to sync entity with its FreeIPA counterpart.
-        :param dict remote_entity: remote entity data
+        :param FreeIPAEntity remote_entity: remote entity
         :returns: list of Command objects to execute
         :rtype: list(Command)
         """
         diff = dict()
-        for key in self.managed_attributes:
-            local_value = self.data.get(key, ())
+        for key in self.managed_attributes_push:
+            local_value = self.data_ipa.get(key.lower(), ())
             if not remote_entity:
                 if local_value:
                     diff[key.lower()] = local_value
             else:
-                remote_value = remote_entity.get(key.lower(), ())
+                remote_value = remote_entity.data_ipa.get(key.lower(), ())
                 if sorted(local_value) != sorted(remote_value):
                     diff[key.lower()] = local_value
         if diff or not remote_entity:  # create entity even without params
@@ -104,6 +128,40 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 command = '%s_add' % self.entity_name
             return [Command(command, diff, self.name, self.entity_id_type)]
         return []
+
+    def update_repo_data(self, additional):
+        """
+        Update repo-format data with additional attributes.
+        Used for adding membership attributes to data.
+        :param dict additional: dictionary to update entity data with
+        :rtype: None
+        """
+        self.data_repo.update(additional or {})
+
+    def write_to_file(self):
+        if not self.path:
+            raise ManagerError(
+                '%s has no file path, nowhere to write.' % repr(self))
+        try:
+            with open(self.path, 'w') as target:
+                data = {self.name: self.data_repo or None}
+                yaml.dump(data, stream=target, Dumper=EntityDumper,
+                          default_flow_style=False, explicit_start=True)
+                self.lg.debug('%s written to file', self)
+        except (IOError, OSError, yaml.YAMLError) as e:
+            raise ConfigError(
+                'Cannot write %s to %s: %s' % (repr(self), self.path, e))
+
+    def delete_file(self):
+        if not self.path:
+            raise ManagerError(
+                '%s has no file path, cannot delete.' % repr(self))
+        try:
+            os.unlink(self.path)
+            self.lg.debug('%s config file deleted', self)
+        except OSError as e:
+            raise ConfigError(
+                'Cannot delete %s at %s: %s' % (repr(self), self.path, e))
 
     @staticmethod
     def get_entity_class(name):
@@ -122,14 +180,25 @@ class FreeIPAEntity(FreeIPAManagerCore):
         """
 
     @abstractproperty
-    def managed_attributes(self):
+    def managed_attributes_push(self):
         """
-        Return a list of properties that are managed for given entity type.
+        Return a list of properties that are managed for given entity type
+        when pushing configuration from local repo to FreeIPA.
         NOTE: the list should NOT include attributes that are managed via
         separate commands, like memberOf/memberHost/memberUser or ipasudoopt.
         :returns: list of entity's managed attributes
         :rtype: list(str)
         """
+
+    @property
+    def managed_attributes_pull(self):
+        """
+        Return a list of properties that are managed for given entity type.
+        when pulling configuration from FreeIPA to local repository.
+        :returns: list of entity's managed attributes
+        :rtype: list(str)
+        """
+        return self.managed_attributes_push
 
     def __repr__(self):
         return '%s %s' % (self.entity_name, self.name)
@@ -146,7 +215,7 @@ class FreeIPAEntity(FreeIPAManagerCore):
 
 class FreeIPAGroup(FreeIPAEntity):
     """Abstract representation a FreeIPA group entity (host/user group)."""
-    managed_attributes = ['description']
+    managed_attributes_push = ['description']
     meta_group_suffix = ''
 
     @property
@@ -180,8 +249,8 @@ class FreeIPAUserGroup(FreeIPAGroup):
 class FreeIPAUser(FreeIPAEntity):
     """Representation of a FreeIPA user entity."""
     entity_name = 'user'
-    managed_attributes = ['givenName', 'sn', 'initials', 'mail',
-                          'ou', 'manager', 'carLicense', 'title']
+    managed_attributes_push = ['givenName', 'sn', 'initials', 'mail',
+                               'ou', 'manager', 'carLicense', 'title']
     key_mapping = {
         'emailAddress': 'mail',
         'firstName': 'givenName',
@@ -217,12 +286,13 @@ class FreeIPARule(FreeIPAEntity):
         :param FreeIPArule remote_entity: remote entity data (may be None)
         """
         commands = []
-        for key, member_type, cmd_key in (('memberHost', 'hostgroup', 'host'),
-                                          ('memberUser', 'group', 'user')):
-            local_members = set(self.data.get(key, []))
+        for key, member_type, cmd_key in (('memberhost', 'hostgroup', 'host'),
+                                          ('memberuser', 'group', 'user')):
+            local_members = set(self.data_ipa.get(key, []))
             if remote_entity:
-                search_key = '%s_%s' % (key.lower(), member_type)
-                remote_members = set(remote_entity.get(search_key, []))
+                search_key = '%s_%s' % (key, member_type)
+                remote_members = set(
+                    remote_entity.data_ipa.get(search_key, []))
             else:
                 remote_members = set()
             command = '%s_add_%s' % (self.entity_name, cmd_key)
@@ -241,22 +311,29 @@ class FreeIPARule(FreeIPAEntity):
 class FreeIPAHBACRule(FreeIPARule):
     """Representation of a FreeIPA HBAC (host-based access control) rule."""
     entity_name = 'hbacrule'
-    managed_attributes = ['description']
+    managed_attributes_push = ['description']
     validation_schema = voluptuous.Schema(schemas.schema_hbac)
 
 
 class FreeIPASudoRule(FreeIPARule):
     """Representation of a FreeIPA sudo rule."""
     entity_name = 'sudorule'
-    managed_attributes = [
+    managed_attributes_push = [
         'cmdCategory', 'description',
         'ipaSudoRunAsGroupCategory', 'ipaSudoRunAsUserCategory']
+    managed_attributes_pull = managed_attributes_push + ['ipaSudoOpt']
     key_mapping = {
         'options': 'ipaSudoOpt',
         'runAsGroupCategory': 'ipaSudoRunAsGroupCategory',
         'runAsUserCategory': 'ipaSudoRunAsUserCategory'
     }
     validation_schema = voluptuous.Schema(schemas.schema_sudo)
+
+    def _convert_to_repo(self, data):
+        result = super(FreeIPASudoRule, self)._convert_to_repo(data)
+        if isinstance(result.get('options'), str):
+            result['options'] = [result['options']]
+        return result
 
     def create_commands(self, remote_entity=None):
         """
@@ -280,9 +357,9 @@ class FreeIPASudoRule(FreeIPARule):
         :rtype: list(Command)
         """
         commands = []
-        local_options = set(self.data.get('ipaSudoOpt', []))
+        local_options = set(self.data_repo.get('options', []))
         if remote_entity:
-            remote_options = set(remote_entity.get('ipasudoopt', []))
+            remote_options = set(remote_entity.data_ipa.get('ipasudoopt', []))
         else:
             remote_options = set()
         command = 'sudorule_add_option'
@@ -296,3 +373,22 @@ class FreeIPASudoRule(FreeIPARule):
             commands.append(
                 Command(command, diff, self.name, self.entity_id_type))
         return commands
+
+
+class EntityDumper(yaml.SafeDumper):
+    """YAML dumper subclass used to fix under-indent of lists when dumping."""
+    def __init__(self, *args, **kwargs):
+        super(EntityDumper, self).__init__(*args, **kwargs)
+        self.add_representer(type(None), self._none_representer())
+
+    def increase_indent(self, flow=False, indentless=False):
+        return super(EntityDumper, self).increase_indent(flow, False)
+
+    def _none_representer(self):
+        """
+        Enable correct representation of empty values in config
+        by representing None as empty string instead of 'null'.
+        """
+        def representer(dumper, value):
+            return dumper.represent_scalar(u'tag:yaml.org,2002:null', '')
+        return representer

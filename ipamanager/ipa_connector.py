@@ -9,12 +9,13 @@ Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
 from ipalib import api
+import os
 
 import entities
 from command import Command
 from core import FreeIPAManagerCore
 from entities import FreeIPAEntity
-from errors import CommandError, ManagerError
+from errors import CommandError, ConfigError, ManagerError
 from utils import ENTITY_CLASSES
 
 
@@ -22,42 +23,20 @@ class IpaConnector(FreeIPAManagerCore):
     """
     Responsible for updating FreeIPA server with changed configuration.
     """
-    def __init__(self, parsed, threshold, force=False,
-                 enable_deletion=False, debug=False):
-        """
-        Initialize an IPA connector object.
-        :param dict parsed: dictionary of entities from `IntegrityChecker`
-        :param int threshold: max percentage of entities to edit (1-100)
-        :param bool force: execute changes (dry run if False)
-        :param bool enable_deletion: enable deleting entities
-        :param bool debug: verbose API library output if True
-        """
-        super(IpaConnector, self).__init__()
-        self.local = parsed
-        self.threshold = threshold
-        self.force = force
-        self.enable_deletion = enable_deletion
-        self._init_api_connection(debug)
-
-    def _init_api_connection(self, debug):
-        api.bootstrap(context='cli', verbose=debug)
-        api.finalize()
-        api.Backend.rpcclient.connect()
-        self.lg.debug('API connection initialized')
-
-    def load_remote(self):
+    def load_ipa_entities(self):
         """
         Load entities defined on the FreeIPA via API.
-        Entity data is saved in `self.remote` dictionary with keys
+        Entity data is saved in `self.ipa_entities` dictionary with keys
         being a tuple (entity type, name) (e.g., ('hostgroup', 'group-one')).
         :raises ManagerError: if there is an error communicating with the API
-        :returns: None (entities saved in the `self.remote` dict)
+        :returns: None (entities saved in the `self.ipa_entities` dict)
         """
         self.lg.debug('Loading entities from FreeIPA API')
-        self.remote = dict()
+        self.ipa_entities = dict()
         for entity_class in ENTITY_CLASSES:
-            self.remote[entity_class.entity_name] = dict()
-            command = '%s_find' % entity_class.entity_name
+            entity_type = entity_class.entity_name
+            self.ipa_entities[entity_type] = dict()
+            command = '%s_find' % entity_type
             self.lg.debug('Running API command %s', command)
             try:
                 parsed = api.Command[command](all=True)
@@ -65,20 +44,39 @@ class IpaConnector(FreeIPAManagerCore):
                 raise ManagerError('Undefined API command %s' % command)
             except Exception as e:
                 raise ManagerError('Error loading %s entities from API: %s'
-                                   % (entity_class.entity_name, e))
-            for entity in parsed['result']:
-                name = entity[entity_class.entity_id_type][0]
+                                   % (entity_type, e))
+            for data in parsed['result']:
+                name = data[entity_class.entity_id_type][0]
                 if name in entity_class.ignored:
                     self.lg.debug('Not parsing ignored %s %s',
-                                  entity_class.entity_name, name)
+                                  entity_type, name)
                     continue
-                self.remote[entity_class.entity_name][name] = entity
-            self.lg.debug('Found %d %s entities: %s',
-                          len(self.remote[entity_class.entity_name]),
-                          entity_class.entity_name,
-                          sorted(self.remote[entity_class.entity_name].keys()))
-        self.remote_count = sum(len(i) for i in self.remote.itervalues())
-        self.lg.info('Parsed %d entities from FreeIPA API', self.remote_count)
+                self.ipa_entities[entity_type][name] = entity_class(name, data)
+            self.lg.debug(
+                'Found %d %s entities: %s',
+                len(self.ipa_entities[entity_type]),
+                entity_type,
+                sorted(self.ipa_entities[entity_type].keys()))
+        self.ipa_entity_count = sum(
+            len(i) for i in self.ipa_entities.itervalues())
+        self.lg.info(
+            'Parsed %d entities from FreeIPA API', self.ipa_entity_count)
+
+
+class IpaUploader(IpaConnector):
+    def __init__(self, parsed, threshold, force=False, enable_deletion=False):
+        """
+        Initialize an IPA connector object.
+        :param dict parsed: dictionary of entities from `IntegrityChecker`
+        :param int threshold: max percentage of entities to edit (1-100)
+        :param bool force: execute changes (dry run if False)
+        :param bool enable_deletion: enable deleting entities
+        """
+        super(IpaUploader, self).__init__()
+        self.repo_entities = parsed
+        self.threshold = threshold
+        self.force = force
+        self.enable_deletion = enable_deletion
 
     def _prepare_push(self):
         """
@@ -89,9 +87,9 @@ class IpaConnector(FreeIPAManagerCore):
         """
         self.lg.debug('Preparing IPA update commands')
         self.commands = []
-        for entity_type in self.local:
+        for entity_type in self.repo_entities:
             self.lg.debug('Processing %s entities', entity_type)
-            for entity in self.local[entity_type].itervalues():
+            for entity in self.repo_entities[entity_type].itervalues():
                 self.lg.debug('Processing entity %s', entity)
                 self._parse_entity_diff(entity)
         if self.enable_deletion:
@@ -107,7 +105,7 @@ class IpaConnector(FreeIPAManagerCore):
         sudorule option add/delete) that is special-cased by auxiliary methods.
         :param FreeIPAEntity entity: local entity instance to process
         """
-        remote_entity = self.remote[entity.entity_name].get(entity.name)
+        remote_entity = self.ipa_entities[entity.entity_name].get(entity.name)
         if not isinstance(entity, entities.FreeIPARule):
             self._process_membership(entity)
         commands = entity.create_commands(remote_entity)
@@ -123,44 +121,45 @@ class IpaConnector(FreeIPAManagerCore):
         :param FreeIPAEntity entity: entity to process
         """
         self.lg.debug('Processing membership for %s', entity)
-        member_of = entity.data.get('memberOf', dict())
+        member_of = entity.data_repo.get('memberOf', dict())
         key = 'member_%s' % entity.entity_name
         for target_type in member_of:
             for target_name in member_of[target_type]:
-                local_group = self.local[target_type][target_name]
-                remote_group = self.remote[target_type].get(target_name)
-                if remote_group and entity.name in remote_group.get(key, []):
+                repo_group = self.repo_entities[target_type][target_name]
+                ipa_group = self.ipa_entities[target_type].get(target_name)
+                if ipa_group and entity.name in ipa_group.data_ipa.get(
+                        key, []):
                     self.lg.debug(
-                        '%s already member of %s', entity, local_group)
+                        '%s already member of %s', entity, repo_group)
                     continue
-                command = '%s_add_member' % local_group.entity_name
+                command = '%s_add_member' % repo_group.entity_name
                 self.commands.append(
                     Command(command, {entity.entity_name: (entity.name,)},
-                            local_group.name, local_group.entity_id_type))
+                            repo_group.name, repo_group.entity_id_type))
         # FIXME target types should be based on membership rules YAML
         if isinstance(entity, entities.FreeIPAUser):
             target_type = 'group'
         else:
             target_type = entity.entity_name
-        for group_name, group in self.remote[target_type].iteritems():
-            members = group.get('member_%s' % entity.entity_name, [])
+        for group in self.ipa_entities[target_type].itervalues():
+            members = group.data_ipa.get('member_%s' % entity.entity_name, [])
             if entity.name in members:
-                if group_name not in member_of.get(target_type, []):
+                if group.name not in member_of.get(target_type, []):
                     command = '%s_remove_member' % target_type
                     diff = {entity.entity_name: (entity.name,)}
                     self.commands.append(
-                        Command(command, diff, group_name, 'cn'))
+                        Command(command, diff, group.name, 'cn'))
 
     def _prepare_deletion_commands(self):
         """
         Prepare commands to handle deletion of entities that are not in config.
         This is only called if the `enable_deletion` flag is set to True.
         """
-        for entity_type in self.remote:
+        for entity_type in self.ipa_entities:
             entity_class = FreeIPAEntity.get_entity_class(entity_type)
             self.lg.debug('Preparing deletion of %s entities', entity_type)
-            for name, entity in self.remote[entity_type].iteritems():
-                if name not in self.local.get(entity_type, dict()):
+            for name, entity in self.ipa_entities[entity_type].iteritems():
+                if name not in self.repo_entities.get(entity_type, dict()):
                     self.lg.debug('Marking %s for deletion', name)
                     command = '%s_del' % entity_type
                     self.commands.append(
@@ -175,6 +174,7 @@ class IpaConnector(FreeIPAManagerCore):
         exceed the `threshold` attribute.
         :raises ManagerError: in case of exceeded threshold/API error
         """
+        self.load_ipa_entities()
         self._prepare_push()
         if not self.commands:
             self.lg.info('FreeIPA consistent with local config, nothing to do')
@@ -196,14 +196,110 @@ class IpaConnector(FreeIPAManagerCore):
                     'There were %d errors executing update' % len(self.errs))
 
     def _check_threshold(self):
-        if not self.remote_count:  # avoid divison by zero on empty IPA
+        if not self.ipa_entity_count:  # avoid divison by zero on empty IPA
             ratio = 100
         else:
-            ratio = 100 * float(len(self.commands))/self.remote_count
+            ratio = 100 * float(len(self.commands))/self.ipa_entity_count
         self.lg.debug('%d commands, %d remote entities (%.2f %%)',
-                      len(self.commands), self.remote_count, ratio)
+                      len(self.commands), self.ipa_entity_count, ratio)
         if ratio > self.threshold:
             raise ManagerError(
                 'Threshold exceeded (%.2f %% > %.f %%), aborting'
                 % (ratio, self.threshold))
         self.lg.debug('Threshold check passed')
+
+
+class IpaDownloader(IpaConnector):
+    def __init__(self, parsed, repo_path, force=False, enable_deletion=True):
+        """
+        Initialize an IPA connector object.
+        :param dict parsed: dictionary of entities from `IntegrityChecker`
+        :param str repo_path: path to configuration repository
+        :param bool force: execute changes (dry run if False)
+        :param bool enable_deletion: enable deleting entities
+        """
+        super(IpaDownloader, self).__init__()
+        self.repo_entities = parsed
+        self.basepath = repo_path
+        self.force = force
+        self.enable_deletion = enable_deletion
+
+    def _prepare_pull(self):
+        """
+        Prepare entities for creation/update/deletion during pull execution.
+        """
+
+    def pull(self):
+        """
+        Pull configuration from FreeIPA server
+        and update local configuration files to match it.
+        """
+        self.load_ipa_entities()
+        for cls in ENTITY_CLASSES:
+            self.lg.debug('Processing %s entities', cls.entity_name)
+            for ipa_entity in self.ipa_entities[cls.entity_name].itervalues():
+                self._update_entity_membership(ipa_entity)
+                repo_entity = self.repo_entities[cls.entity_name].get(
+                    ipa_entity.name)
+                if repo_entity:
+                    if repo_entity.data_repo != ipa_entity.data_repo:
+                        ipa_entity.path = repo_entity.path
+                        if self.force:
+                            ipa_entity.write_to_file()
+                        else:
+                            self.lg.info('Would update %s', repr(ipa_entity))
+                else:
+                    self._generate_filename(ipa_entity)
+                    if self.force:
+                        ipa_entity.write_to_file()
+                    else:
+                        self.lg.info('Would create %s', repr(ipa_entity))
+            if self.enable_deletion:
+                for name in self.repo_entities[cls.entity_name]:
+                    repo_entity = self.repo_entities[cls.entity_name][name]
+                    if name not in self.ipa_entities[cls.entity_name]:
+                        if self.force:
+                            repo_entity.delete_file()
+                        else:
+                            self.lg.info('Would delete %s', repr(repo_entity))
+
+    def _update_entity_membership(self, entity):
+        entity.update_repo_data(self._dump_membership(entity))
+
+    def _dump_membership(self, entity):
+        if isinstance(entity, entities.FreeIPARule):
+            result = dict()
+            for i in (('memberHost', 'hostgroup'), ('memberUser', 'group')):
+                config_key, member_type = i
+                key = '%s_%s' % (config_key.lower(), member_type)
+                result[config_key] = entity.data_ipa.get(key, [])
+            if any(result.itervalues()):
+                return result
+            return None
+        if isinstance(entity, entities.FreeIPAUser):
+            target_type = 'group'
+        elif isinstance(entity, entities.FreeIPAGroup):
+            target_type = entity.entity_name
+        member_of = [str(group.name)
+                     for group in self.ipa_entities[target_type].itervalues()
+                     if entity.name in
+                     group.data_ipa.get('member_%s' % entity.entity_name, [])]
+        if member_of:
+            return {'memberOf': {target_type: member_of}}
+        return None
+
+    def _generate_filename(self, entity):
+        if entity.path:
+            raise ConfigError(
+                '%s already has filepath (%s)' % (entity, entity.path))
+        used_names = [
+            os.path.relpath(i.path, self.basepath) for i
+            in self.repo_entities[entity.entity_name].itervalues()]
+        clean_name = entity.name
+        for char in ['.', '-', ' ']:
+            clean_name = clean_name.replace(char, '_')
+        fname = '%ss/%s.yaml' % (entity.entity_name, clean_name)
+        if fname in used_names:
+            raise ConfigError('%s filename already used' % fname)
+        self.lg.debug('Setting %s file path to %s', entity, fname)
+        entity.path = os.path.join(self.basepath, fname)

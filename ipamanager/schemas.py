@@ -40,16 +40,16 @@ schema_hostgroups = {
 
 schema_hbac = {
     'description': str,
-    'memberHost': _item_or_list,
-    'memberUser': _item_or_list
+    'memberHost': [str],
+    'memberUser': [str]
 }
 
 
 schema_sudo = {
     'cmdCategory': str,
     'description': str,
-    'memberHost': _item_or_list,
-    'memberUser': _item_or_list,
+    'memberHost': [str],
+    'memberUser': [str],
     'options': [str],
     'runAsGroupCategory': str,
     'runAsUserCategory': str

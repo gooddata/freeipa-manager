@@ -14,6 +14,7 @@ from core import FreeIPAManagerCore
 from config_loader import ConfigLoader
 from errors import ManagerError
 from integrity_checker import IntegrityChecker
+from ipa_connector import IpaDownloader, IpaUploader
 
 
 class FreeIPAManager(FreeIPAManagerCore):
@@ -66,24 +67,28 @@ class FreeIPAManager(FreeIPAManagerCore):
         :raises ManagerError: in case of API connection error or update error
         """
         self.check()
-        self._api_connect()
-        self.connector.load_remote()
-        self.connector.execute_update()
-
-    def _api_connect(self):
-        """
-        Initialize connection to FreeIPA API via `IpaConnector` object.
-        The object is imported here to allow running configuration check
-        locally on developer machines without dependency problems.
-        :raises ManagerError: in case of API connection error
-        """
-        from ipa_connector import IpaConnector
-        self.connector = IpaConnector(
+        utils._init_api_connection(self.args.debug)
+        self.uploader = IpaUploader(
             self.integrity_checker.entity_dict, self.args.threshold,
-            self.args.force, self.args.enable_deletion, self.args.debug)
+            self.args.force, self.args.enable_deletion)
+        self.uploader.push()
 
     def pull(self):
-        raise NotImplementedError('Config pulling not available yet.')
+        """
+        Run upload of configuration to FreeIPA via API.
+        This can only be run locally on FreeIPA nodes.
+        Arguments to the IpaConnector instance
+        are passed from `self.args` in the `_api_connect` method.
+        :raises ConfigError: in case of configuration syntax errors
+        :raises IntegrityError: in case of config entity integrity violations
+        :raises ManagerError: in case of API connection error or update error
+        """
+        self.check()
+        utils._init_api_connection(self.args.debug)
+        self.downloader = IpaDownloader(
+            self.integrity_checker.entity_dict, self.args.config,
+            self.args.force, self.args.enable_deletion)
+        self.downloader.pull()
 
 
 def main():

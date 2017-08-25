@@ -79,7 +79,7 @@ class IntegrityChecker(FreeIPAManagerCore):
         for key, member_type in [
                 ('memberHost', 'hostgroup'),
                 ('memberUser', 'group')]:
-            member_names = entity.data.get(key, [])
+            member_names = entity.data_repo.get(key, [])
             if not member_names:
                 errs.append('no %s' % key)
                 continue
@@ -101,7 +101,7 @@ class IntegrityChecker(FreeIPAManagerCore):
         :param FreeIPAEntity entity: entity to check
         """
         errs = []
-        member_of = entity.data.get('memberOf', dict())
+        member_of = entity.data_repo.get('memberOf', dict())
         for target_type, targets in member_of.iteritems():
             for target_name in targets:
                 target = self._find_entity(target_type, target_name)
@@ -189,7 +189,7 @@ class IntegrityChecker(FreeIPAManagerCore):
             current, path = stack.pop()
             visited.add(current)
             path.append(current)
-            member_of = current.data.get('memberOf', dict())
+            member_of = current.data_repo.get('memberOf', dict())
             for item in member_of.get(current.entity_name, []):
                 target = self._find_entity(current.entity_name, item)
                 if not target:  # non-existent entity

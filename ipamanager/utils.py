@@ -27,6 +27,13 @@ def init_logging(loglevel):
     logging.basicConfig(level=loglevel, format=fmt)
 
 
+def _init_api_connection(debug):
+    from ipalib import api
+    api.bootstrap(context='cli', verbose=debug)
+    api.finalize()
+    api.Backend.rpcclient.connect()
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='FreeIPA management CLI tool')
     parser.add_argument('action', choices=['check', 'pull', 'push'])
