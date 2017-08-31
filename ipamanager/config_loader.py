@@ -11,13 +11,11 @@ Kristian Lesko <kristian.lesko@gooddata.com>
 import glob
 import os
 import yaml
-from yamllint.linter import run as yamllint_check
-from yamllint.config import YamlLintConfig
 
 from core import FreeIPAManagerCore
 from entities import FreeIPAEntity
 from errors import ConfigError, ManagerError
-from utils import ENTITY_CLASSES
+from utils import ENTITY_CLASSES, run_yamllint_check
 
 
 class ConfigLoader(FreeIPAManagerCore):
@@ -35,7 +33,6 @@ class ConfigLoader(FreeIPAManagerCore):
         self.basepath = basepath
         self.ignored_file = ignored_file
         self.entities = dict()
-        self.yamllint_config = YamlLintConfig('extends: default')
 
     def load_ignored(self):
         """
@@ -85,7 +82,8 @@ class ConfigLoader(FreeIPAManagerCore):
                 try:
                     with open(path, 'r') as confsource:
                         contents = confsource.read()
-                    self._run_yamllint_check(contents, fname)
+                    run_yamllint_check(contents)
+                    self.lg.debug('%s yamllint check passed', fname)
                     data = yaml.safe_load(contents)
                     self._parse(data, entity_class, path)
                 except (IOError, ConfigError, yaml.YAMLError) as e:
@@ -100,18 +98,6 @@ class ConfigLoader(FreeIPAManagerCore):
             raise ConfigError(
                 'There have been errors in %d configuration files: [%s]' %
                 (len(self.errs), ', '.join(sorted(self.errs))))
-
-    def _run_yamllint_check(self, data, fname):
-        """
-        Run a yamllint check on parsed file contents
-        to verify that the file syntax is correct.
-        :param str data: contents of the configuration file to check
-        :raises ConfigError: in case of yamllint errors
-        """
-        lint_errs = [err for err in yamllint_check(data, self.yamllint_config)]
-        if lint_errs:
-            raise ConfigError('yamllint errors: %s' % lint_errs)
-        self.lg.debug('%s yamllint check passed successfully', fname)
 
     def _parse(self, data, entity_class, path):
         """

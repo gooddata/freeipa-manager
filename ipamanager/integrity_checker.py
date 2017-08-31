@@ -12,7 +12,8 @@ import yaml
 
 import entities
 from core import FreeIPAManagerCore
-from errors import IntegrityError, ManagerError
+from errors import ConfigError, IntegrityError, ManagerError
+from utils import run_yamllint_check
 
 
 class IntegrityChecker(FreeIPAManagerCore):
@@ -227,7 +228,11 @@ class IntegrityChecker(FreeIPAManagerCore):
         self.lg.debug('Using integrity check rules from %s', path)
         try:
             with open(path) as src:
-                    self.rules = yaml.safe_load(src)
+                raw = src.read()
+            run_yamllint_check(raw)
         except IOError as e:
             raise ManagerError('Cannot open rules file: %s' % e)
+        except ConfigError as e:
+            raise ManagerError('Rules file invalid: %s' % e)
+        self.rules = yaml.safe_load(raw)
         self.lg.debug('Settings parsed: %s', self.rules)

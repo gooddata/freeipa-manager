@@ -64,15 +64,13 @@ class TestConfigLoader(object):
     @log_capture('ConfigLoader', level=logging.DEBUG)
     def test_run_yamllint_check_ok(self, captured_log):
         data = '---\ntest-group:\n  description: A test group.\n'
-        self.loader._run_yamllint_check(data, 'groups/test_group.yaml')
-        captured_log.check(
-            ('ConfigLoader', 'DEBUG',
-             'groups/test_group.yaml yamllint check passed successfully'))
+        tool.run_yamllint_check(data)
+        captured_log.check()
 
     def test_run_yamllint_check_error(self):
         data = 'test-group:\n  description: A test group.\n  description: test'
         with pytest.raises(tool.ConfigError) as exc:
-            self.loader._run_yamllint_check(data, 'groups/test_group.yaml')
+            tool.run_yamllint_check(data)
         assert exc.value[0] == (
             'yamllint errors: [1:1: missing document start "---" '
             '(document-start), 3:3: duplication of key "description" '

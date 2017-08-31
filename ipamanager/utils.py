@@ -9,14 +9,19 @@ Kristian Lesko <kristian.lesko@gooddata.com>
 
 import argparse
 import logging
+from yamllint.config import YamlLintConfig
+from yamllint.linter import run as yamllint_check
 
 import entities
+from errors import ConfigError
 
 
 # supported FreeIPA entity types
 ENTITY_CLASSES = [
     entities.FreeIPAHBACRule, entities.FreeIPAHostGroup,
     entities.FreeIPASudoRule, entities.FreeIPAUser, entities.FreeIPAUserGroup]
+
+yamllint_config = YamlLintConfig('extends: default')
 
 
 def init_logging(loglevel):
@@ -60,3 +65,16 @@ def _type_threshold(value):
     if number < 1 or number > 100:
         raise argparse.ArgumentTypeError('must be a number in range 1-100')
     return number
+
+
+def run_yamllint_check(data):
+    """
+    Run a yamllint check on parsed file contents
+    to verify that the file syntax is correct.
+    :param str data: contents of the configuration file to check
+    :param yamllint.config.YamlLintConfig: yamllint config to use
+    :raises ConfigError: in case of yamllint errors
+    """
+    lint_errs = [err for err in yamllint_check(data, yamllint_config)]
+    if lint_errs:
+        raise ConfigError('yamllint errors: %s' % lint_errs)

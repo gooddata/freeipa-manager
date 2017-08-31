@@ -7,12 +7,14 @@ from _utils import _import
 tool = _import('ipamanager', 'integrity_checker')
 testpath = os.path.dirname(os.path.abspath(__file__))
 
+RULES_CORRECT = os.path.join(testpath, 'freeipa-manager-config/rules.yaml')
+RULES_INVALID = os.path.join(
+    testpath, 'freeipa-manager-config/rules_invalid.yaml')
+
 
 class TestIntegrityChecker(object):
     def _create_checker(self, entities):
-        settings_path = os.path.join(
-            testpath, 'freeipa-manager-config/integrity_config.yaml')
-        self.checker = tool.IntegrityChecker(settings_path, entities)
+        self.checker = tool.IntegrityChecker(RULES_CORRECT, entities)
         self.checker.errs = dict()
 
     def test_build_dict(self):
@@ -44,6 +46,14 @@ class TestIntegrityChecker(object):
         assert exc.value[0] == (
             "Cannot open rules file: "
             "[Errno 2] No such file or directory: 'invalid/path/~'")
+
+    def test_load_rule_invalid(self):
+        with pytest.raises(tool.ManagerError) as exc:
+            tool.IntegrityChecker(RULES_INVALID, dict())
+        assert exc.value[0] == (
+            'Rules file invalid: yamllint errors: '
+            '[1:1: missing document start "---" (document-start), '
+            '12:3: duplication of key "user" in mapping (key-duplicates)]')
 
     @log_capture('IntegrityChecker', level=logging.WARNING)
     def test_check_empty(self, captured_warnings):

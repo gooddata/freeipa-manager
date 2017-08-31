@@ -1,0 +1,12 @@
+---
+hbacrule:
+  memberHost: [meta]
+  memberUser: [meta]
+sudorule:
+  memberHost: [meta]
+  memberUser: [meta]
+hostgroup:
+  hostgroup:
+group:
+  group:
+  user: [member_of_nonmeta]

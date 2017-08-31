@@ -7,5 +7,6 @@ sudorule:
 hostgroup:
   hostgroup:
 group:
-  group:
   user: [member_of_nonmeta]
+  group:
+  user: [member_of_meta]
