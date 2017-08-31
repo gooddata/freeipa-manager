@@ -61,7 +61,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             manager.integrity_checker = mock.Mock()
             manager.integrity_checker.entity_dict = dict()
             with mock.patch(
-                    'ipamanager.freeipa_manager.IpaUploader') as mock_conn:
+                    'ipamanager.ipa_connector.IpaUploader') as mock_conn:
                 manager.run()
                 mock_conn.assert_called_with({}, 10, True, False)
 
@@ -72,7 +72,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             manager.integrity_checker = mock.Mock()
             manager.integrity_checker.entity_dict = dict()
             with mock.patch(
-                    'ipamanager.freeipa_manager.IpaUploader') as mock_conn:
+                    'ipamanager.ipa_connector.IpaUploader') as mock_conn:
                 manager.run()
                 mock_conn.assert_called_with({}, 10, True, True)
 
@@ -82,7 +82,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             manager.integrity_checker = mock.Mock()
             manager.integrity_checker.entity_dict = dict()
             with mock.patch(
-                    'ipamanager.freeipa_manager.IpaUploader') as mock_conn:
+                    'ipamanager.ipa_connector.IpaUploader') as mock_conn:
                 manager.run()
                 mock_conn.assert_called_with({}, 20, False, False)
 
@@ -92,7 +92,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             manager.integrity_checker = mock.Mock()
             manager.integrity_checker.entity_dict = dict()
             with mock.patch(
-                    'ipamanager.freeipa_manager.IpaUploader') as mock_conn:
+                    'ipamanager.ipa_connector.IpaUploader') as mock_conn:
                 manager.run()
                 mock_conn.assert_called_with({}, 20, False, True)
 
@@ -102,7 +102,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             manager.integrity_checker = mock.Mock()
             manager.integrity_checker.entity_dict = dict()
             with mock.patch(
-                    'ipamanager.freeipa_manager.IpaDownloader') as mock_conn:
+                    'ipamanager.ipa_connector.IpaDownloader') as mock_conn:
                 manager.run()
             mock_conn.assert_called_with(
                 {}, '/opt/freeipa-manager/entities', True, False)

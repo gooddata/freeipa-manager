@@ -14,7 +14,6 @@ from core import FreeIPAManagerCore
 from config_loader import ConfigLoader
 from errors import ManagerError
 from integrity_checker import IntegrityChecker
-from ipa_connector import IpaDownloader, IpaUploader
 
 
 class FreeIPAManager(FreeIPAManagerCore):
@@ -67,6 +66,7 @@ class FreeIPAManager(FreeIPAManagerCore):
         :raises ManagerError: in case of API connection error or update error
         """
         self.check()
+        from ipa_connector import IpaUploader
         utils._init_api_connection(self.args.debug)
         self.uploader = IpaUploader(
             self.integrity_checker.entity_dict, self.args.threshold,
@@ -84,6 +84,7 @@ class FreeIPAManager(FreeIPAManagerCore):
         :raises ManagerError: in case of API connection error or update error
         """
         self.check()
+        from ipa_connector import IpaDownloader
         utils._init_api_connection(self.args.debug)
         self.downloader = IpaDownloader(
             self.integrity_checker.entity_dict, self.args.config,
