@@ -725,7 +725,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
             u'description': (u'Sample sudo rule two',)}
         rule2 = entities.FreeIPAHBACRule('rule-two', data)
         assert self.downloader._dump_membership(rule2) == {
-            'memberHost': ('group-two',), 'memberUser': ('group-two',)}
+            'memberHost': ['group-two'], 'memberUser': ['group-two']}
 
     def test_generate_filename(self):
         self._create_downloader(repo_path='entities')

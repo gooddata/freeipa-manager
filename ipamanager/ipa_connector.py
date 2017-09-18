@@ -39,7 +39,7 @@ class IpaConnector(FreeIPAManagerCore):
             command = '%s_find' % entity_type
             self.lg.debug('Running API command %s', command)
             try:
-                parsed = api.Command[command](all=True)
+                parsed = api.Command[command](all=True, sizelimit=0)
             except KeyError:
                 raise ManagerError('Undefined API command %s' % command)
             except Exception as e:
@@ -272,7 +272,7 @@ class IpaDownloader(IpaConnector):
             for i in (('memberHost', 'hostgroup'), ('memberUser', 'group')):
                 config_key, member_type = i
                 key = '%s_%s' % (config_key.lower(), member_type)
-                result[config_key] = entity.data_ipa.get(key, [])
+                result[config_key] = sorted(list(entity.data_ipa.get(key, [])))
             if any(result.itervalues()):
                 return result
             return None
@@ -285,7 +285,7 @@ class IpaDownloader(IpaConnector):
                      if entity.name in
                      group.data_ipa.get('member_%s' % entity.entity_name, [])]
         if member_of:
-            return {'memberOf': {target_type: member_of}}
+            return {'memberOf': {target_type: sorted(member_of)}}
         return None
 
     def _generate_filename(self, entity):
