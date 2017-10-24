@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import logging
 import mock
 import pytest
@@ -136,11 +138,23 @@ class TestFreeIPAUser(object):
         }
         user = tool.FreeIPAUser('some.name', data, 'path')
         assert user._convert_to_ipa(data) == {
-            'givenname': ('Firstname',),
-            'sn': ('Lastname',),
-            'initials': ('FL',),
-            'ou': ('TEST',)
+            'givenname': (u'Firstname',),
+            'sn': (u'Lastname',),
+            'initials': (u'FL',),
+            'ou': (u'TEST',)
         }
+
+    def test_convert_to_ipa_extended_latin(self):
+        data = {
+            'firstName': 'Firstname',
+            'lastName': u'Laštname',
+            'initials': 'FL',
+            'organizationUnit': 'TEST'
+        }
+        user = tool.FreeIPAUser('some.name', data, 'path')
+        assert user._convert_to_ipa(data) == {
+            'givenname': (u'Firstname',), 'initials': (u'FL',),
+            'ou': (u'TEST',), 'sn': (u'La\u0161tname',)}
 
     def test_convert_to_repo(self):
         data = {
@@ -172,7 +186,8 @@ class TestFreeIPAUser(object):
             u'gecos': (u'Firstname Lastname',), u'sn': (u'Lastname',),
             u'ou': (u'CISTA',), u'initials': (u'FLA',)}
         user = tool.FreeIPAUser('firstname.lastname', {})
-        assert user._convert_to_repo(data) == {
+        result = user._convert_to_repo(data)
+        assert result == {
             'initials': 'FLA',
             'title': 'Sr. SW Enginner',
             'firstName': 'Firstname',
@@ -180,6 +195,7 @@ class TestFreeIPAUser(object):
             'emailAddress': 'firstname.lastname@gooddata.com',
             'githubLogin': 'github-account-one',
             'organizationUnit': 'CISTA'}
+        assert all(isinstance(i, unicode) for i in result.itervalues())
 
 
 class TestFreeIPAUserGroup(object):
@@ -199,6 +215,7 @@ class TestFreeIPAUserGroup(object):
             'memberof': {'group': ['group-one'],
                          'hbacrule': ['rule-one'],
                          'sudorule': ['rule-one']}}
+        assert isinstance(group.data_ipa['description'][0], unicode)
 
     def test_create_usergroup_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
@@ -224,7 +241,7 @@ class TestFreeIPAUserGroup(object):
         group = tool.FreeIPAUserGroup('group-three-users', {})
         result = group._convert_to_repo(data)
         assert result == {'description': 'Sample group three.'}
-        assert isinstance(result['description'], str)
+        assert isinstance(result['description'], unicode)
 
     def test_write_to_file(self):
         output = dict()
@@ -411,6 +428,8 @@ class TestFreeIPASudoRule(object):
         assert rule.name == 'rule-one'
         assert rule.data_repo == {'description': 'Sample sudo rule one',
                                   'options': ['!authenticate']}
+        assert isinstance(rule.data_repo['description'], unicode)
+        assert isinstance(rule.data_repo['options'][0], unicode)
         assert rule.data_ipa == self.ipa_data
 
     def test_create_commands_option_add(self):
@@ -441,6 +460,9 @@ class TestFreeIPASudoRule(object):
 
     def test_convert_to_repo(self):
         rule = tool.FreeIPASudoRule('rule-one', {})
-        assert rule._convert_to_repo(self.ipa_data) == {
+        result = rule._convert_to_repo(self.ipa_data)
+        assert result == {
             'description': 'Sample sudo rule one',
             'options': ['!authenticate']}
+        assert isinstance(result['description'], unicode)
+        assert isinstance(result['options'][0], unicode)

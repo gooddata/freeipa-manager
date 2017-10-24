@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import logging
 import mock
 import pytest
@@ -164,6 +166,22 @@ class TestIpaUploader(TestIpaConnectorBase):
         assert cmd.payload == {
             'givenname': u'Test', 'sn': u'User', 'uid': u'test.user'}
 
+    def test_parse_entity_diff_extended_latin(self):
+        name = yaml.load(u'Tešt')
+        entity = entities.FreeIPAUser(
+            'test.user', {'firstName': name, 'lastName': 'User'}, 'path')
+        self.uploader.ipa_entities = {'user': dict(), 'group': dict()}
+        self.uploader.commands = []
+        self.uploader._parse_entity_diff(entity)
+        assert len(self.uploader.commands) == 1
+        cmd = self.uploader.commands[0]
+        assert cmd.command == 'user_add'
+        print cmd.description
+        assert cmd.description == (
+            u'user_add test.user (givenname=Te\u0161t; sn=User)')
+        assert cmd.payload == {
+            'givenname': u'Te\u0161t', 'sn': u'User', 'uid': u'test.user'}
+
     def test_parse_entity_diff_mod(self):
         entity = entities.FreeIPAUser(
             'test.user',
@@ -186,6 +204,44 @@ class TestIpaUploader(TestIpaConnectorBase):
         assert cmd.payload == {
             'carlicense': (u'gh1', u'gh2'), 'givenname': u'Test',
             'mail': (), 'sn': u'User', 'uid': u'test.user'}
+
+    def test_parse_entity_diff_mod_extended_latin_same(self):
+        name = yaml.load(u'Tešt')
+        entity = entities.FreeIPAUser(
+            'test.user',
+            {'firstName': name, 'lastName': 'User',
+             'githubLogin': ['gh1']}, 'path')
+        self.uploader.ipa_entities = {
+            'user': {
+                'test.user': entities.FreeIPAUser('test.user', {
+                    'givenname': (u'Te\u0161t',),
+                    'sn': (u'User',),
+                    'carlicense': (u'gh1',)})},
+            'group': dict()}
+        self.uploader.commands = []
+        self.uploader._parse_entity_diff(entity)
+        assert len(self.uploader.commands) == 0
+
+    def test_parse_entity_diff_mod_extended_latin(self):
+        name = yaml.load(u'Tešt')
+        entity = entities.FreeIPAUser(
+            'test.user',
+            {'firstName': name, 'lastName': 'User',
+             'githubLogin': ['gh1']}, 'path')
+        self.uploader.ipa_entities = {
+            'user': {
+                'test.user': entities.FreeIPAUser('test.user', {
+                    'givenname': (u'Test',),
+                    'sn': (u'User',),
+                    'carlicense': (u'gh1',)})},
+            'group': dict()}
+        self.uploader.commands = []
+        self.uploader._parse_entity_diff(entity)
+        assert len(self.uploader.commands) == 1
+        cmd = self.uploader.commands[0]
+        assert cmd.command == 'user_mod'
+        assert cmd.description == u'user_mod test.user (givenname=Te\u0161t)'
+        assert cmd.payload == {'givenname': u'Te\u0161t', 'uid': u'test.user'}
 
     def test_parse_entity_diff_memberof_add(self):
         self.uploader.repo_entities = {
@@ -762,7 +818,8 @@ class TestIpaDownloader(TestIpaConnectorBase):
         log.check(
             ('IpaDownloader', 'INFO', 'Would create hostgroup group-one'),
             ('IpaDownloader', 'INFO', 'Would update user test.user'),
-            ('IpaDownloader', 'INFO', 'Would update group group-two'))
+            ('IpaDownloader', 'INFO', 'Would update group group-two'),
+            ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
 
     def test_pull_dry_run_enable_deletion(self):
         self._create_downloader(enable_deletion=True)
@@ -775,7 +832,8 @@ class TestIpaDownloader(TestIpaConnectorBase):
             ('IpaDownloader', 'INFO', 'Would delete hbacrule rule-one'),
             ('IpaDownloader', 'INFO', 'Would create hostgroup group-one'),
             ('IpaDownloader', 'INFO', 'Would update user test.user'),
-            ('IpaDownloader', 'INFO', 'Would update group group-two'))
+            ('IpaDownloader', 'INFO', 'Would update group group-two'),
+            ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
 
     def test_pull(self):
         self._create_downloader(force=True)
@@ -808,7 +866,8 @@ class TestIpaDownloader(TestIpaConnectorBase):
             ('IpaDownloader', 'DEBUG', 'Processing user entities'),
             ('FreeIPAUser', 'DEBUG', 'test.user written to file'),
             ('IpaDownloader', 'DEBUG', 'Processing group entities'),
-            ('FreeIPAUserGroup', 'DEBUG', 'group-two written to file'))
+            ('FreeIPAUserGroup', 'DEBUG', 'group-two written to file'),
+            ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
 
     def test_pull_enable_deletion(self):
         self._create_downloader(enable_deletion=True, force=True)
@@ -844,7 +903,8 @@ class TestIpaDownloader(TestIpaConnectorBase):
             ('IpaDownloader', 'DEBUG', 'Processing user entities'),
             ('FreeIPAUser', 'DEBUG', 'test.user written to file'),
             ('IpaDownloader', 'DEBUG', 'Processing group entities'),
-            ('FreeIPAUserGroup', 'DEBUG', 'group-two written to file'))
+            ('FreeIPAUserGroup', 'DEBUG', 'group-two written to file'),
+            ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
         mock_delete.assert_called_with('rule-one')
 
     def _pull_entities(self):

@@ -262,6 +262,7 @@ class IpaDownloader(IpaConnector):
                             repo_entity.delete_file()
                         else:
                             self.lg.info('Would delete %s', repr(repo_entity))
+        self.lg.info('Entity pulling finished.')
 
     def _update_entity_membership(self, entity):
         entity.update_repo_data(self._dump_membership(entity))

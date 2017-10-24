@@ -65,9 +65,9 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 self._check_memberof(value)
                 result[new_key] = value
             elif isinstance(value, list):
-                result[new_key] = tuple(value)
+                result[new_key] = tuple(unicode(i) for i in value)
             else:
-                result[new_key] = (value,)
+                result[new_key] = (unicode(value),)
         return result
 
     def _convert_to_repo(self, data):
@@ -87,11 +87,11 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 value = data[attr.lower()]
                 if isinstance(value, tuple):
                     if len(value) > 1:
-                        result[key] = [str(i) for i in value]
+                        result[key] = list(value)
                     else:
-                        result[key] = str(value[0])
+                        result[key] = value[0]
                 else:
-                    result[key] = str(value)
+                    result[key] = value
         return result
 
     def _check_memberof(self, member_of):
@@ -331,7 +331,7 @@ class FreeIPASudoRule(FreeIPARule):
 
     def _convert_to_repo(self, data):
         result = super(FreeIPASudoRule, self)._convert_to_repo(data)
-        if isinstance(result.get('options'), str):
+        if isinstance(result.get('options'), unicode):
             result['options'] = [result['options']]
         return result
 

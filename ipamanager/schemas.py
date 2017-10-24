@@ -9,13 +9,13 @@ Kristian Lesko <kristian.lesko@gooddata.com>
 
 from voluptuous import Any, Required
 
-
+_name_type = Any(str, unicode)
 _item_or_list = Any(str, [str])
 _schema_memberof = {str: [str]}
 
 schema_users = {
-    Required('firstName'): str,
-    Required('lastName'): str,
+    Required('firstName'): _name_type,
+    Required('lastName'): _name_type,
     'initials': str,
     'emailAddress': _item_or_list,
     'organizationUnit': str,
