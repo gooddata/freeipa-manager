@@ -139,7 +139,7 @@ class ConfigLoader(FreeIPAManagerCore):
                 'Retrieved %s config paths: [%s]',
                 entity_class.entity_name, ', '.join(entity_filepaths))
             if not entity_filepaths:
-                self.lg.warning('No %s files found', entity_class.entity_name)
+                self.lg.info('No %s files found', entity_class.entity_name)
                 continue
             filepaths[entity_class.entity_name] = entity_filepaths
         return filepaths

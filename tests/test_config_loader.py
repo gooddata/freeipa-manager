@@ -49,12 +49,12 @@ class TestConfigLoader(object):
         assert sorted(paths['hbacrule']) == self.expected_hbac_rules
         assert sorted(paths['sudorule']) == self.expected_sudo_rules
 
-    @log_capture('ConfigLoader', level=logging.WARNING)
-    def test_retrieve_paths_empty(self, captured_warnings):
+    @log_capture('ConfigLoader', level=logging.INFO)
+    def test_retrieve_paths_empty(self, captured_log):
         self.loader.basepath = '/dev/null'
         paths = self.loader._retrieve_paths()
         assert paths.keys() == []
-        assert set(i.msg % i.args for i in captured_warnings.records) == set([
+        assert set(i.msg % i.args for i in captured_log.records) == set([
             'No hbacrule files found',
             'No hostgroup files found',
             'No sudorule files found',
@@ -171,14 +171,15 @@ class TestConfigLoader(object):
             ('ConfigLoader', 'INFO', 'Parsed 3 users'),
             ('ConfigLoader', 'INFO', 'Parsed 3 groups'))
 
-    @log_capture('ConfigLoader', level=logging.WARNING)
-    def test_load_empty(self, captured_warnings):
+    @log_capture('ConfigLoader', level=logging.INFO)
+    def test_load_empty(self, captured_log):
         self.loader.basepath = '/dev/null'
         self.loader.load()
         assert self.loader.entities == {
             'group': [], 'hbacrule': [],
             'hostgroup': [], 'sudorule': [], 'user': []}
-        assert set(i.msg % i.args for i in captured_warnings.records) == set([
+        assert set(i.msg % i.args for i in captured_log.records) == set([
+            'Checking local configuration at /dev/null',
             'No hbacrule files found',
             'No hostgroup files found',
             'No sudorule files found',
