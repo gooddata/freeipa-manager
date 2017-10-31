@@ -34,11 +34,7 @@ class TestIntegrityChecker(object):
 
     def test_load_rule_correct(self):
         self._create_checker(dict())
-        assert self.checker.rules == {
-            'group': {'group': None, 'user': ['member_of_nonmeta']},
-            'hbacrule': {'memberHost': ['meta'], 'memberUser': ['meta']},
-            'hostgroup': {'hostgroup': None},
-            'sudorule': {'memberHost': ['meta'], 'memberUser': ['meta']}}
+        assert self.checker.user_group_regex == '^role-.+|.+-users$'
 
     def test_load_rule_incorrect(self):
         with pytest.raises(tool.ManagerError) as exc:
@@ -52,8 +48,7 @@ class TestIntegrityChecker(object):
             tool.IntegrityChecker(RULES_INVALID, dict())
         assert exc.value[0] == (
             'Rules file invalid: yamllint errors: '
-            '[1:1: missing document start "---" (document-start), '
-            '12:3: duplication of key "user" in mapping (key-duplicates)]')
+            '[2:1: missing document start "---" (document-start)]')
 
     @log_capture('IntegrityChecker', level=logging.WARNING)
     def test_check_empty(self, captured_warnings):
@@ -79,6 +74,18 @@ class TestIntegrityChecker(object):
             ('user', 'firstname.lastname2'): [
                 'memberOf non-existent group group-one']}
 
+    def test_check_memberof_meta_violation(self):
+        data = {
+            'group': [tool.entities.FreeIPAUserGroup('group-one', {}, 'path')],
+            'user': [tool.entities.FreeIPAUser('user.one', {
+                     'firstName': 'User', 'lastName': 'One',
+                     'memberOf': {'group': ['group-one']}}, 'path2')]}
+        self._create_checker(data)
+        with pytest.raises(tool.IntegrityError):
+            self.checker.check()
+        assert self.checker.errs == {
+            ('user', 'user.one'): ['group-one cannot contain users directly']}
+
     def test_check_rule_member_nonexistent(self):
         data = {
             'hbacrule': [
@@ -93,7 +100,7 @@ class TestIntegrityChecker(object):
                 'non-existent memberHost no',
                 'non-existent memberUser no']}
 
-    def test_check_rule_member_rule_violation(self):
+    def test_check_rule_meta_violation(self):
         data = {
             'hbacrule': [
                 tool.entities.FreeIPAHBACRule(
@@ -108,11 +115,7 @@ class TestIntegrityChecker(object):
         with pytest.raises(tool.IntegrityError):
             self.checker.check()
         assert self.checker.errs == {
-            ('hbacrule', 'rule-one'): [
-                ('group-one-hosts must be a meta group '
-                 'to be a member of rule-one'),
-                ('group-one-users must be a meta group '
-                 'to be a member of rule-one')]}
+            ('hbacrule', 'rule-one'): ['group-one-users can contain users']}
 
     def test_check_rule_member_missing_attribute(self):
         data = {
@@ -130,7 +133,7 @@ class TestIntegrityChecker(object):
             self.checker.check()
         assert self.checker.errs == {
             ('user', 'firstname.lastname2'): [
-                'cannot be a member of a hostgroup (group-one)']}
+                "group-one can only have members of type ['hostgroup']"]}
 
     def test_check_memberof_itself(self):
         self._create_checker(self._sample_entities_member_itself())
@@ -164,61 +167,34 @@ class TestIntegrityChecker(object):
                 ('Cyclic membership: '
                  '[group group-two, group group-three, group group-one]')]}
 
-    def test_check_member_rule_meta(self):
-        self._create_checker(dict())
-        group_one = tool.entities.FreeIPAUserGroup(
-            'group-one-users', {}, 'path')
-        rule_one = tool.entities.FreeIPAHBACRule('rule-one', {}, 'path')
-        with pytest.raises(tool.IntegrityError) as exc:
-            self.checker._check_member_rule(group_one, rule_one, 'meta')
-        assert exc.value[0] == (
-            'group-one-users must be a meta group to be a member of rule-one')
-
-    def test_check_member_rule_nonmeta(self):
-        self._create_checker(dict())
-        hbac_member = {'memberOf': {'hbacrule': ['rule-one']}}
-        group_one = tool.entities.FreeIPAUserGroup(
-            'group-one', hbac_member)
-        rule_one = tool.entities.FreeIPAHBACRule('rule-one', {})
-        with pytest.raises(tool.IntegrityError) as exc:
-            self.checker._check_member_rule(group_one, rule_one, 'nonmeta')
-        assert exc.value[0] == (
-            'group-one must not be a meta group to be a member of rule-one')
-
-    def test_check_member_rule_member_of_meta(self):
-        self._create_checker(dict())
-        user_one = tool.entities.FreeIPAUser(
-            'firstname.lastname',
-            {'firstName': 'Firstname', 'lastName': 'Lastname',
-             'memberOf': {'group': ['group-one-users']}})
-        group_one = tool.entities.FreeIPAUserGroup(
-            'group-one-users', {})
-        with pytest.raises(tool.IntegrityError) as exc:
-            self.checker._check_member_rule(
-                user_one, group_one, 'member_of_meta')
-        assert exc.value[0] == (
-            'group-one-users must be a meta group '
-            'to have firstname.lastname as a member')
-
-    def test_check_member_rule_member_of_nonmeta(self):
+    def test_check_member_type_ok(self):
         self._create_checker(dict())
         user_one = tool.entities.FreeIPAUser(
             'firstname.lastname',
             {'firstName': 'Firstname', 'lastName': 'Lastname',
              'memberOf': {'group': ['group-one-users']}})
         group_one = tool.entities.FreeIPAUserGroup('group-one', {})
-        with pytest.raises(tool.IntegrityError) as exc:
-            self.checker._check_member_rule(
-                user_one, group_one, 'member_of_nonmeta')
-        assert exc.value[0] == (
-            'group-one must not be a meta group '
-            'to have firstname.lastname as a member')
+        self.checker._check_member_type(user_one, group_one)
 
-    def test_check_member_rule_invalid(self):
+    def test_check_member_type_wrong_target_type(self):
         self._create_checker(dict())
-        with pytest.raises(tool.ManagerError) as exc:
-            self.checker._check_member_rule(None, None, 'invalid-rule')
-        assert exc.value[0] == 'Undefined rule: invalid-rule'
+        user_one = tool.entities.FreeIPAUser(
+            'firstname.lastname',
+            {'firstName': 'Firstname', 'lastName': 'Lastname',
+             'memberOf': {'group': ['group-one-users']}})
+        rule_one = tool.entities.FreeIPAHBACRule('rule-one', {})
+        with pytest.raises(tool.IntegrityError) as exc:
+            self.checker._check_member_type(user_one, rule_one)
+        assert exc.value[0] == 'rule-one not group, cannot have members'
+
+    def test_check_member_type_wrong_member_type(self):
+        self._create_checker(dict())
+        user_one = tool.entities.FreeIPAHostGroup('hostgroup-one', {})
+        group_one = tool.entities.FreeIPAUserGroup('group-one', {})
+        with pytest.raises(tool.IntegrityError) as exc:
+            self.checker._check_member_type(user_one, group_one)
+        assert exc.value[0] == (
+            "group-one can only have members of type ['user', 'group']")
 
     def _sample_entities_correct(self):
         return {

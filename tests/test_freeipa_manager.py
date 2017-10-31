@@ -40,7 +40,8 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
     def test_run_check(self, mock_config, mock_check):
         manager = self._init_tool(['check', 'config_path', '-r', 'rules_path'])
         manager.run()
-        mock_config.assert_called_with('config_path', None)
+        mock_config.assert_called_with(
+            'config_path', '/opt/freeipa-manager/ignored.yaml')
         mock_check.assert_called_with(
             'rules_path', manager.config_loader.entities)
 

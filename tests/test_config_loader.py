@@ -218,15 +218,17 @@ class TestConfigLoader(object):
         assert entities.FreeIPAHBACRule.ignored == ['rule1']
         assert entities.FreeIPASudoRule.ignored == []
 
-    def test_load_ignored_error(self):
+    @log_capture('ConfigLoader', level=logging.DEBUG)
+    def test_load_ignored_not_found(self, captured_log):
         self.loader.ignored_file = 'some/path'
         with mock.patch('__builtin__.open') as mock_open:
             mock_open.side_effect = IOError('[Errno 2] No such file or dir')
-            with pytest.raises(tool.ManagerError) as exc:
-                self.loader.load_ignored()
-        assert exc.value[0] == (
-            'Error opening ignored entities file: '
-            '[Errno 2] No such file or dir')
+            self.loader.load_ignored()
+        captured_log.check(
+            ('ConfigLoader', 'DEBUG',
+             'Loading ignored entity list from some/path'),
+            ('ConfigLoader', 'WARNING',
+             'Cannot open ignored file, not ignoring entities.'))
 
     def test_load_ignored_invalid(self):
         self.loader.ignored_file = IGNORED_INVALID

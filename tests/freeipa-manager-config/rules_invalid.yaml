@@ -1,12 +1,2 @@
-hbacrule:
-  memberHost: [meta]
-  memberUser: [meta]
-sudorule:
-  memberHost: [meta]
-  memberUser: [meta]
-hostgroup:
-  hostgroup:
-group:
-  user: [member_of_nonmeta]
-  group:
-  user: [member_of_meta]
+# groups with name mathing this regex can contain users directly
+user-group-pattern: '^role-.+|.+-users$'

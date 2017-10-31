@@ -10,6 +10,8 @@ from _utils import _import, _mock_dump
 tool = _import('ipamanager', 'entities')
 modulename = 'ipamanager.entities'
 
+USER_GROUP_REGEX = r'^role-.+|.+-users$'
+
 
 class TestFreeIPAEntity(object):
     def test_create_entity(self):
@@ -47,35 +49,7 @@ class TestFreeIPAGroup(object):
             tool.FreeIPAGroup('sample-group', {}, 'path')
         assert exc.value[0] == (
             "Can't instantiate abstract class FreeIPAGroup "
-            "with abstract methods validation_schema")
-
-    def test_create_usergroup_nonmeta(self):
-        group = tool.FreeIPAUserGroup('sample-group-users', {}, 'path')
-        assert not group.is_meta
-
-    def test_create_usergroup_meta(self):
-        group = tool.FreeIPAUserGroup('sample-group', {}, 'path')
-        assert group.is_meta
-
-    def test_create_usergroup_meta_not_enforced(self):
-        with mock.patch(
-                '%s.FreeIPAUserGroup.meta_group_suffix' % modulename, ''):
-            group = tool.FreeIPAUserGroup('sample-group', {}, 'path')
-            assert not group.is_meta
-
-    def test_create_hostgroup_nonmeta(self):
-        group = tool.FreeIPAHostGroup('sample-group-hosts', {}, 'path')
-        assert not group.is_meta
-
-    def test_create_hostgroup_meta_not_enforced(self):
-        with mock.patch(
-                '%s.FreeIPAHostGroup.meta_group_suffix' % modulename, ''):
-            group = tool.FreeIPAHostGroup('sample-group', {}, 'path')
-            assert not group.is_meta
-
-    def test_create_hostgroup_meta(self):
-        group = tool.FreeIPAHostGroup('sample-group', {}, 'path')
-        assert group.is_meta
+            "with abstract methods allowed_members, validation_schema")
 
 
 class TestFreeIPAHostGroup(object):
@@ -242,6 +216,38 @@ class TestFreeIPAUserGroup(object):
         result = group._convert_to_repo(data)
         assert result == {'description': 'Sample group three.'}
         assert isinstance(result['description'], unicode)
+
+    def test_can_contain_users_yes(self):
+        group = tool.FreeIPAUserGroup('group-one-users', {}, 'path')
+        assert group.can_contain_users(USER_GROUP_REGEX)
+
+    def test_can_contain_users_no(self):
+        group = tool.FreeIPAUserGroup('group-one', {}, 'path')
+        assert not group.can_contain_users(USER_GROUP_REGEX)
+
+    def test_can_contain_users_yes_not_enforced(self):
+        group = tool.FreeIPAUserGroup('group-one-users', {}, 'path')
+        assert group.can_contain_users(pattern=None)
+
+    def test_can_contain_users_no_not_enforced(self):
+        group = tool.FreeIPAUserGroup('group-one', {}, 'path')
+        assert group.can_contain_users(pattern=None)
+
+    def test_cannot_contain_users_yes(self):
+        group = tool.FreeIPAUserGroup('group-one', {}, 'path')
+        assert group.cannot_contain_users(USER_GROUP_REGEX)
+
+    def test_cannot_contain_users_no(self):
+        group = tool.FreeIPAUserGroup('role-group-one', {}, 'path')
+        assert not group.cannot_contain_users(USER_GROUP_REGEX)
+
+    def test_cannot_contain_users_yes_not_enforced(self):
+        group = tool.FreeIPAUserGroup('group-one-users', {}, 'path')
+        assert group.cannot_contain_users(pattern=None)
+
+    def test_cannot_contain_users_no_not_enforced(self):
+        group = tool.FreeIPAUserGroup('group-one', {}, 'path')
+        assert group.cannot_contain_users(pattern=None)
 
     def test_write_to_file(self):
         output = dict()
