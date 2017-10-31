@@ -45,7 +45,10 @@ class ConfigLoader(FreeIPAManagerCore):
         try:
             with open(self.ignored_file) as ignored:
                 data = yaml.safe_load(ignored)
-        except (IOError, yaml.YAMLError) as e:
+        except IOError as e:
+            self.lg.warning('Cannot open ignored file, not ignoring entities.')
+            return
+        except yaml.YAMLError as e:
             raise ManagerError('Error opening ignored entities file: %s' % e)
         if not isinstance(data, dict):
             raise ManagerError('Ignored entities file error: must be a dict')

@@ -52,7 +52,8 @@ def parse_args():
                         help='Actually make changes (no dry run)')
     parser.add_argument('-d', '--enable-deletion', action='store_true',
                         help='Enable deletion of entities')
-    parser.add_argument('-i', '--ignored', help='Ignored entities list file')
+    parser.add_argument('-i', '--ignored', help='Ignored entities list file',
+                        default='/opt/freeipa-manager/ignored.yaml')
     parser.add_argument('-v', '--verbose', dest='debug', action='store_true')
     return parser.parse_args()
 

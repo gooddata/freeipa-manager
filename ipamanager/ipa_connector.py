@@ -136,7 +136,6 @@ class IpaUploader(IpaConnector):
                 self.commands.append(
                     Command(command, {entity.entity_name: (entity.name,)},
                             repo_group.name, repo_group.entity_id_type))
-        # FIXME target types should be based on membership rules YAML
         if isinstance(entity, entities.FreeIPAUser):
             target_type = 'group'
         else:

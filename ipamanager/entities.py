@@ -8,6 +8,7 @@ Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
 import os
+import re
 import voluptuous
 import yaml
 from abc import ABCMeta, abstractproperty
@@ -216,34 +217,44 @@ class FreeIPAEntity(FreeIPAManagerCore):
 class FreeIPAGroup(FreeIPAEntity):
     """Abstract representation a FreeIPA group entity (host/user group)."""
     managed_attributes_push = ['description']
-    meta_group_suffix = ''
 
-    @property
-    def is_meta(self):
+    @abstractproperty
+    def allowed_members(self):
         """
-        Check whether the group is a meta-group.
-        A meta-group can only contain other groups, not hosts/users.
-        If meta_group_suffix is an empty string, this is not enforced.
+        :returns: list of entity types that can be members of this entity
+        :rtype: list(FreeIPAEntity)
         """
-        return self.meta_suffix and not self.name.endswith(self.meta_suffix)
-
-    @property
-    def meta_suffix(self):
-        return self.meta_group_suffix
 
 
 class FreeIPAHostGroup(FreeIPAGroup):
     """Representation of a FreeIPA host group entity."""
     entity_name = 'hostgroup'
-    meta_group_suffix = '-hosts'
     validation_schema = voluptuous.Schema(schemas.schema_hostgroups)
+    allowed_members = ['hostgroup']
 
 
 class FreeIPAUserGroup(FreeIPAGroup):
     """Representation of a FreeIPA user group entity."""
     entity_name = 'group'
-    meta_group_suffix = '-users'
     validation_schema = voluptuous.Schema(schemas.schema_usergroups)
+    allowed_members = ['user', 'group']
+
+    def can_contain_users(self, pattern):
+        """
+        Check whether the group can contain users directly.
+        If the pattern is None, no restrictions are applied.
+        :param str pattern: regex to check name by (not enforced if empty)
+        """
+        return not pattern or re.match(pattern, self.name)
+
+    def cannot_contain_users(self, pattern):
+        """
+        Check whether the group can not contain users directly.
+        Used for determining if the group can be a member of a sudo/HBAC rule.
+        If the pattern is None, no restrictions are applied.
+        :param str pattern: regex to check name by (not enforced if empty)
+        """
+        return not pattern or not re.match(pattern, self.name)
 
 
 class FreeIPAUser(FreeIPAEntity):

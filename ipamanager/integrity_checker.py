@@ -7,7 +7,6 @@ Tools for checking integrity of entity configurations.
 Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
-import re
 import yaml
 
 import entities
@@ -53,8 +52,8 @@ class IntegrityChecker(FreeIPAManagerCore):
         """
         Check integrity of a single entity. It is verified that it is only
         a member of existing entities (and not of itself), that membership
-        adheres to rules defined in the rules file, and that there is no cyclic
-        membership (if the entity is a group).
+        adheres to rules defined in the rules file (if any), and that
+        there is no cyclic membership (if the entity is a group).
         :param FreeIPAEntity entity: entity to check
         :returns: None (any errors are written to the `self.errs` dictionary)
         """
@@ -89,10 +88,10 @@ class IntegrityChecker(FreeIPAManagerCore):
                 if not member:
                     errs.append('non-existent %s %s' % (key, name))
                     continue
-                try:
-                    self._check_member_rules(member, key, entity)
-                except IntegrityError as e:
-                    errs.append(str(e))
+                # check that group does not contain users directly
+                if isinstance(member, entities.FreeIPAUserGroup):
+                    if not member.cannot_contain_users(self.user_group_regex):
+                        errs.append('%s can contain users' % name)
         return errs
 
     def _check_single_member_entity(self, entity):
@@ -114,11 +113,15 @@ class IntegrityChecker(FreeIPAManagerCore):
                     errs.append('memberOf itself')
                     continue
                 try:
-                    self._check_member_rules(
-                        entity, entity.entity_name, target)
+                    self._check_member_type(entity, target)
                 except IntegrityError as e:
                     errs.append(str(e))
                     continue
+                if isinstance(entity, entities.FreeIPAUser) and isinstance(
+                        target, entities.FreeIPAUserGroup):
+                    if not target.can_contain_users(self.user_group_regex):
+                        errs.append('%s cannot contain users directly'
+                                    % target_name)
         # check for cyclic membership
         if not errs:
             cyclic_path = self._check_cycles(entity)
@@ -126,54 +129,18 @@ class IntegrityChecker(FreeIPAManagerCore):
                 errs.append('Cyclic membership: %s' % (cyclic_path))
         return errs
 
-    def _check_member_rules(self, member, member_name, target):
+    def _check_member_type(self, member, target):
         """
         Check that the membership between given entities adheres
-        to all rules specified in the integrity check rules file.
+        to type constraints of the FreeIPA memberOf relationship.
         :param FreeIPAEntity member: member entity
-        :param str member_name: key used to specify member type in rules file
-            (for HBAC/sudo rules, this is memberHost/memberUser;
-             for other entities, it is normal entity type (hostgroups etc.))
         :param FreeIPAEntity target: membership target entity
         """
-        try:
-            rules = self.rules[target.entity_name][member_name]
-        except KeyError:
-            raise IntegrityError(
-                'cannot be a member of a %s (%s)'
-                % (target.entity_name, target))
-        if not rules:
-            return
-        for rule in rules:
-            self._check_member_rule(member, target, rule)
-
-    def _check_member_rule(self, member, target, rule):
-        """
-        Check whether relationship between `member` and `target` obeys `rule`.
-        :param FreeIPAEntity member: checked member entity
-        :param FreeIPAEntity target: membership target entity
-        :param str rule: rule to check - (member_)(non)meta
-        :raises IntegrityError: if a rule is violated
-        :returns: None (everything OK if no error is raised)
-        """
-        match = re.match(r'(member_of_|)(non|)meta', rule)
-        if not match:
-            raise ManagerError('Undefined rule: %s' % rule)
-        member_of, negation = match.groups()
-        if member_of:
-            checkable = target
-            err_msg = '%s must%s be a meta group to have %s as a member' % (
-                target, ' not' if negation else '', member)
-        else:
-            checkable = member
-            err_msg = '%s must%s be a meta group to be a member of %s' % (
-                member, ' not' if negation else '', target)
-        if checkable.is_meta:
-            if negation:
-                raise IntegrityError(err_msg)
-        else:
-            if not negation:
-                raise IntegrityError(err_msg)
+        if not isinstance(target, entities.FreeIPAGroup):
+            raise IntegrityError('%s not group, cannot have members' % target)
+        if member.entity_name not in target.allowed_members:
+            raise IntegrityError('%s can only have members of type %s'
+                                 % (target, target.allowed_members))
 
     def _check_cycles(self, entity):
         """
@@ -221,8 +188,8 @@ class IntegrityChecker(FreeIPAManagerCore):
 
     def _load_rules(self, path):
         """
-        Load the rules file for the integrity check
-        and generate respective membership checking functions.
+        Load the rules file for the integrity check.
+        Currently, only the user-group-pattern attribute is used from the file.
         :param str path: path to the rules file
         """
         self.lg.debug('Using integrity check rules from %s', path)
@@ -234,5 +201,6 @@ class IntegrityChecker(FreeIPAManagerCore):
             raise ManagerError('Cannot open rules file: %s' % e)
         except ConfigError as e:
             raise ManagerError('Rules file invalid: %s' % e)
-        self.rules = yaml.safe_load(raw)
-        self.lg.debug('Settings parsed: %s', self.rules)
+        settings = yaml.safe_load(raw)
+        self.lg.debug('Settings parsed: %s', settings)
+        self.user_group_regex = settings.get('user-group-pattern')
