@@ -754,8 +754,8 @@ class TestIpaDownloader(TestIpaConnectorBase):
         self.downloader = tool.IpaDownloader(
             parsed=args.get('parsed', {}),
             repo_path=args.get('repo_path', 'some_path'),
-            force=args.get('force', False),
-            enable_deletion=args.get('enable_deletion', False))
+            dry_run=args.get('dry_run', False),
+            add_only=args.get('add_only', False))
 
     def test_dump_membership_user(self):
         user = self.downloader.ipa_entities['user']['test.user']
@@ -812,17 +812,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
         assert exc.value[0] == 'users/test_user.yaml filename already used'
 
     def test_pull_dry_run(self):
-        with mock.patch('%s.IpaDownloader.load_ipa_entities' % modulename):
-            with LogCapture('IpaDownloader', level=logging.INFO) as log:
-                self.downloader.pull()
-        log.check(
-            ('IpaDownloader', 'INFO', 'Would create hostgroup group-one'),
-            ('IpaDownloader', 'INFO', 'Would update user test.user'),
-            ('IpaDownloader', 'INFO', 'Would update group group-two'),
-            ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
-
-    def test_pull_dry_run_enable_deletion(self):
-        self._create_downloader(enable_deletion=True)
+        self._create_downloader(dry_run=True)
         self.downloader.ipa_entities, self.downloader.repo_entities = (
             self._pull_entities())
         with mock.patch('%s.IpaDownloader.load_ipa_entities' % modulename):
@@ -835,8 +825,22 @@ class TestIpaDownloader(TestIpaConnectorBase):
             ('IpaDownloader', 'INFO', 'Would update group group-two'),
             ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
 
-    def test_pull(self):
-        self._create_downloader(force=True)
+    def test_pull_dry_run_enable_deletion(self):
+        self._create_downloader(dry_run=True, add_only=False)
+        self.downloader.ipa_entities, self.downloader.repo_entities = (
+            self._pull_entities())
+        with mock.patch('%s.IpaDownloader.load_ipa_entities' % modulename):
+            with LogCapture('IpaDownloader', level=logging.INFO) as log:
+                self.downloader.pull()
+        log.check(
+            ('IpaDownloader', 'INFO', 'Would delete hbacrule rule-one'),
+            ('IpaDownloader', 'INFO', 'Would create hostgroup group-one'),
+            ('IpaDownloader', 'INFO', 'Would update user test.user'),
+            ('IpaDownloader', 'INFO', 'Would update group group-two'),
+            ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
+
+    def test_pull_add_only(self):
+        self._create_downloader(dry_run=False, add_only=True)
         self.downloader.ipa_entities, self.downloader.repo_entities = (
             self._pull_entities())
         output = dict()
@@ -869,10 +873,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
             ('FreeIPAUserGroup', 'DEBUG', 'group-two written to file'),
             ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
 
-    def test_pull_enable_deletion(self):
-        self._create_downloader(enable_deletion=True, force=True)
-        self.downloader.ipa_entities, self.downloader.repo_entities = (
-            self._pull_entities())
+    def test_pull(self):
         output = dict()
         with mock.patch('yaml.dump', _mock_dump(output, yaml.dump)):
             with mock.patch('__builtin__.open'):
