@@ -6,14 +6,14 @@ Main entry point of the tooling, responsible for delegating the tasks.
 Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
-import logging
 import sys
 
-import utils
 from core import FreeIPAManagerCore
 from config_loader import ConfigLoader
 from errors import ManagerError
+from github_forwarder import GitHubForwarder
 from integrity_checker import IntegrityChecker
+from utils import init_api_connection, init_logging, parse_args
 
 
 class FreeIPAManager(FreeIPAManagerCore):
@@ -22,11 +22,8 @@ class FreeIPAManager(FreeIPAManagerCore):
     """
     def __init__(self):
         super(FreeIPAManager, self).__init__()
-        self._parse_args()
-
-    def _parse_args(self):
-        self.args = utils.parse_args()
-        utils.init_logging(logging.DEBUG if self.args.debug else logging.INFO)
+        self.args = parse_args()
+        init_logging(self.args.loglevel)
 
     def run(self):
         """
@@ -52,7 +49,7 @@ class FreeIPAManager(FreeIPAManagerCore):
         self.config_loader = ConfigLoader(self.args.config, self.args.ignored)
         self.config_loader.load()
         self.integrity_checker = IntegrityChecker(
-            self.args.rules_file, self.config_loader.entities)
+            self.args.rules, self.config_loader.entities)
         self.integrity_checker.check()
 
     def push(self):
@@ -67,10 +64,10 @@ class FreeIPAManager(FreeIPAManagerCore):
         """
         self.check()
         from ipa_connector import IpaUploader
-        utils._init_api_connection(self.args.debug)
+        init_api_connection(self.args.loglevel)
         self.uploader = IpaUploader(
             self.integrity_checker.entity_dict, self.args.threshold,
-            self.args.force, self.args.enable_deletion)
+            self.args.force, self.args.deletion)
         self.uploader.push()
 
     def pull(self):
@@ -83,13 +80,23 @@ class FreeIPAManager(FreeIPAManagerCore):
         :raises IntegrityError: in case of config entity integrity violations
         :raises ManagerError: in case of API connection error or update error
         """
+        self.forwarder = GitHubForwarder(
+            self.args.config, self.args.base, self.args.branch)
+        if self.args.commit or self.args.pull_request:
+            self.forwarder.checkout_base()
         self.check()
         from ipa_connector import IpaDownloader
-        utils._init_api_connection(self.args.debug)
+        init_api_connection(self.args.loglevel)
         self.downloader = IpaDownloader(
             self.integrity_checker.entity_dict, self.args.config,
-            self.args.force, self.args.enable_deletion)
+            self.args.dry_run, self.args.add_only)
         self.downloader.pull()
+        if self.args.commit:
+            self.forwarder.commit()
+        if self.args.pull_request:
+            self.forwarder.create_pull_request(
+                self.args.owner, self.args.repo,
+                self.args.user, self.args.token)
 
 
 def main():

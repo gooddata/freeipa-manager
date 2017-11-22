@@ -209,7 +209,7 @@ class IpaUploader(IpaConnector):
 
 
 class IpaDownloader(IpaConnector):
-    def __init__(self, parsed, repo_path, force=False, enable_deletion=True):
+    def __init__(self, parsed, repo_path, dry_run=False, add_only=False):
         """
         Initialize an IPA connector object.
         :param dict parsed: dictionary of entities from `IntegrityChecker`
@@ -220,8 +220,8 @@ class IpaDownloader(IpaConnector):
         super(IpaDownloader, self).__init__()
         self.repo_entities = parsed
         self.basepath = repo_path
-        self.force = force
-        self.enable_deletion = enable_deletion
+        self.dry_run = dry_run
+        self.add_only = add_only
 
     def _prepare_pull(self):
         """
@@ -243,24 +243,24 @@ class IpaDownloader(IpaConnector):
                 if repo_entity:
                     if repo_entity.data_repo != ipa_entity.data_repo:
                         ipa_entity.path = repo_entity.path
-                        if self.force:
-                            ipa_entity.write_to_file()
-                        else:
+                        if self.dry_run:
                             self.lg.info('Would update %s', repr(ipa_entity))
+                        else:
+                            ipa_entity.write_to_file()
                 else:
                     self._generate_filename(ipa_entity)
-                    if self.force:
-                        ipa_entity.write_to_file()
-                    else:
+                    if self.dry_run:
                         self.lg.info('Would create %s', repr(ipa_entity))
-            if self.enable_deletion:
+                    else:
+                        ipa_entity.write_to_file()
+            if not self.add_only:
                 for name in self.repo_entities[cls.entity_name]:
                     repo_entity = self.repo_entities[cls.entity_name][name]
                     if name not in self.ipa_entities[cls.entity_name]:
-                        if self.force:
-                            repo_entity.delete_file()
-                        else:
+                        if self.dry_run:
                             self.lg.info('Would delete %s', repr(repo_entity))
+                        else:
+                            repo_entity.delete_file()
         self.lg.info('Entity pulling finished.')
 
     def _update_entity_membership(self, entity):
