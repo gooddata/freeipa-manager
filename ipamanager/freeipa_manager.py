@@ -11,7 +11,6 @@ import sys
 from core import FreeIPAManagerCore
 from config_loader import ConfigLoader
 from errors import ManagerError
-from github_forwarder import GitHubForwarder
 from integrity_checker import IntegrityChecker
 from utils import init_api_connection, init_logging, parse_args
 
@@ -80,10 +79,6 @@ class FreeIPAManager(FreeIPAManagerCore):
         :raises IntegrityError: in case of config entity integrity violations
         :raises ManagerError: in case of API connection error or update error
         """
-        self.forwarder = GitHubForwarder(
-            self.args.config, self.args.base, self.args.branch)
-        if self.args.commit or self.args.pull_request:
-            self.forwarder.checkout_base()
         self.check()
         from ipa_connector import IpaDownloader
         init_api_connection(self.args.loglevel)
@@ -91,12 +86,6 @@ class FreeIPAManager(FreeIPAManagerCore):
             self.integrity_checker.entity_dict, self.args.config,
             self.args.dry_run, self.args.add_only)
         self.downloader.pull()
-        if self.args.commit:
-            self.forwarder.commit()
-        if self.args.pull_request:
-            self.forwarder.create_pull_request(
-                self.args.owner, self.args.repo,
-                self.args.user, self.args.token)
 
 
 def main():

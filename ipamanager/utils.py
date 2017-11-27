@@ -67,24 +67,8 @@ def _args_common():
     return common
 
 
-def _args_pull_common(parents):
-    pull_common = argparse.ArgumentParser(add_help=False, parents=parents)
-    pull_common.set_defaults(
-        action='pull', commit=False, pull_request=False)
-    pull_common.add_argument(
-        '-a', '--add-only', action='store_true', help='Add-only mode')
-    pull_common.add_argument(
-        '-d', '--dry-run', action='store_true', help='Dry-run mode')
-    pull_common.add_argument(
-        '-B', '--base', help='Base branch', default='master')
-    pull_common.add_argument(
-        '-b', '--branch', help='Branch to commit into (default: generated)')
-    return pull_common
-
-
 def parse_args():
     common = _args_common()
-    pull_common = _args_pull_common(parents=[common])
 
     parser = argparse.ArgumentParser(description='FreeIPA Manager')
     actions = parser.add_subparsers(help='action to execute')
@@ -101,18 +85,12 @@ def parse_args():
     push.add_argument('-t', '--threshold', type=_type_threshold,
                       metavar='(%)', help='Change threshold', default=10)
 
-    actions.add_parser('pull', parents=[pull_common])
-    pull_commit = actions.add_parser('pull-commit', parents=[pull_common])
-    pull_commit.set_defaults(commit=True)
-    pull_request = actions.add_parser('pull-request', parents=[pull_common])
-    pull_request.set_defaults(commit=True, pull_request=True)
-    pull_request.add_argument(
-        '-o', '--owner', help='Repo owner', default='gooddata')
-    pull_request.add_argument(
-        '-R', '--repo', help='Repo name', default='freeipa-manager-config')
-    pull_request.add_argument('-t', '--token', help='GitHub API token')
-    pull_request.add_argument(
-        '-u', '--user', help='GitHub user', default='yenkins')
+    pull = actions.add_parser('pull', parents=[common])
+    pull.set_defaults(action='pull')
+    pull.add_argument(
+        '-a', '--add-only', action='store_true', help='Add-only mode')
+    pull.add_argument(
+        '-d', '--dry-run', action='store_true', help='Dry-run mode')
 
     args = parser.parse_args()
     # type & action cannot be combined in arg constructor, so parse -v here

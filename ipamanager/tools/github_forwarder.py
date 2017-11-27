@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 GoodData FreeIPA tooling
 GitHub forwarding tool
@@ -6,9 +7,12 @@ Tool for committing changes pulled from FreeIPA
 and forwarding them to a GitHub repository via a pull request.
 
 Kristian Lesko <kristian.lesko@gooddata.com>
+PAAS-12476
 """
 
+import argparse
 import json
+import logging
 import os
 import re
 import requests
@@ -16,49 +20,40 @@ import sh
 import socket
 import time
 
-from core import FreeIPAManagerCore
-from errors import ManagerError
+from ipamanager.errors import ManagerError
+from ipamanager.utils import init_logging
 
 
-class GitHubForwarder(FreeIPAManagerCore):
+class GitHubForwarder(object):
     """
     Responsible for updating FreeIPA server with changed configuration.
     """
-    def __init__(self, config_path, base,
-                 branch=None, timestamp=time.strftime('%Y-%m-%dT%H-%M-%S')):
+    def __init__(self):
         """
         Create a GitHub forwarder object.
-        :param str config_path: path to configuration repository
-        :param str base: base branch to use (e.g., master)
-        :param str branch: Git branch to use (generated if not supplied)
-        :param str timestamp: commit message timestamp (default: current time)
         """
-        super(GitHubForwarder, self).__init__()
         self.name = socket.getfqdn().replace('.int.', '.')
-        self.timestamp = timestamp
-        self.base = base
-        self.branch = branch or self._generate_branch_name()
-        self.path = config_path
+        self.timestamp = time.strftime('%Y-%m-%dT%H-%M-%S')
+        self._parse_args()
+        init_logging(self.args.loglevel)
+        self.lg = logging.getLogger(self.__class__.__name__)
         # configure the repo path to be used for all git command calls
-        self.git = sh.git.bake(_cwd=self.path)
+        self.git = sh.git.bake(_cwd=self.args.path)
         self.changes = False
-        self.lg.debug('Using name %s, timestamp %s, branch %s, path %s',
-                      self.name, self.timestamp, self.branch, self.path)
 
-    def checkout_base(self):
+    def run(self):
         """
-        Checkout the `self.base` branch (before pulling).
-        :rtype: None
-        :raises ManagerError: when checkout
+        Run forwarding action based on arguments.
+        :rtype: NoneType
         """
-        self.lg.debug('Checking out branch %s in %s', self.base, self.path)
-        try:
-            self.git.checkout([self.base])
-        except sh.ErrorReturnCode as e:
-            raise ManagerError('Checkout failed: %s' % e.stderr)
-        self.lg.info('Repo %s branch %s checked out', self.path, self.base)
+        self.lg.debug('Running the GitHubForwarder plugin')
+        if self.args.commit:
+            self._commit()
+        elif self.args.pull_request:
+            self._commit()
+            self._create_pull_request()
 
-    def commit(self):
+    def _commit(self):
         """
         Checkout the defined branch and create a commit
         from changes in given config path.
@@ -70,7 +65,7 @@ class GitHubForwarder(FreeIPAManagerCore):
         self.msg = '%s dump at %s' % (self.name, self.timestamp)
         self.lg.debug('Using commit message: %s', self.msg)
         try:
-            self.git.checkout(['-B', self.branch])
+            self.git.checkout(['-B', self.args.branch])
             self.git.add(['.'])
             self.git.commit(['-m', self.msg])
         except sh.ErrorReturnCode_1 as e:
@@ -85,47 +80,44 @@ class GitHubForwarder(FreeIPAManagerCore):
         self.changes = True
         self.lg.info('Committed successfully')
 
-    def _push(self, remote):
+    def _push(self):
         """
         Push the commited change to given remote branch.
-        NOTE: the remote has to be pre-configured in the repo (e.g., by Puppet)
-        :param str remote: Git repository remote name
-        :rtype: None
+        NOTE: The remote name used is identical to GitHub user name supplied.
+              The remote has to be pre-configured in the repo (e.g. by Puppet).
+        :rtype: NoneType
         :raises ManagerError: when pushing fails (bad credentials etc.)
         """
         try:
-            self.git.push([remote, self.branch, '-f'])
+            self.git.push([self.args.user, self.args.branch, '-f'])
         except sh.ErrorReturnCode as e:
             raise ManagerError('Pushing failed: %s' % e.stderr)
-        self.lg.debug('Pushed to %s/%s successfully', remote, self.branch)
+        self.lg.debug('Pushed to %s/%s successfully',
+                      self.args.user, self.args.branch)
 
     def _generate_branch_name(self):
         """
         Generate branch name from IPA identification (which can be environment
         it is in - prod/int - or hostname as a fallback) and timestamp.
         :returns: branch name to use
-        :rtype str:
+        :rtype: str
         """
-        ipa_identification = os.getenv('EC2DATA_ENVIRONMENT', self.name)
-        return '%s-%s' % (ipa_identification, self.timestamp)
+        return '%s-%s' % (
+            os.getenv('EC2DATA_ENVIRONMENT', self.name), self.timestamp)
 
-    def _make_request(self, owner, repo, fork, token):
+    def _make_request(self):
         """
         Make a POST request to create a pull request in the given GitHub repo.
-        :param str owner: GitHub repository owner (usually gooddata)
-        :param str repo: GitHub repository name
-        :param str fork: name of GitHub user from whose fork to create PR
-                         (should be equivalent to the relevant Git remote name)
-        :param str token: GitHub API token with which to authorize request
         :returns: response to the made request
         :rtype: requests.models.Response
         """
-        url = 'https://api.github.com/repos/%s/%s/pulls' % (owner, repo)
-        headers = {'Authorization': 'token %s' % token}
+        url = 'https://api.github.com/repos/%s/%s/pulls' % (
+            self.args.owner, self.args.repo)
+        headers = {'Authorization': 'token %s' % self.args.token}
         data = {
             'title': self.msg,
-            'head': '%s:%s' % (fork, self.branch),
-            'base': self.base
+            'head': '%s:%s' % (self.args.user, self.args.branch),
+            'base': self.args.base
         }
         return requests.post(url, headers=headers, data=json.dumps(data))
 
@@ -150,25 +142,20 @@ class GitHubForwarder(FreeIPAManagerCore):
             return '%s (%s)' % (msg, '; '.join(err_details))
         return msg
 
-    def create_pull_request(self, owner, repo, remote, token):
+    def _create_pull_request(self):
         """
         Create a GitHub pull request with pulled changes. As pull request head,
         the branch supplied/generated during forwarder initialization is used.
         Pushing & PR creation is executed only if `self.changes` flag
-        was set to True by the `commit` method (i.e. there is a new commit).
-        :param str owner: GitHub repository owner (usually gooddata)
-        :param str repo: GitHub repository name
-        :param str remote: GitHub remote of fork from which to create PR
-                           (usually equivalent to the user that creates the PR)
-        :param str token: GitHub API token with which to authorize request
+        was set to True by the `_commit` method (i.e. there is a new commit).
         :rtype: None
         :raises ManagerError: if PR creation fails
         """
         if not self.changes:
             self.lg.info('Not creating PR because there were no changes')
             return
-        self._push(remote)
-        response = self._make_request(owner, repo, remote, token)
+        self._push()
+        response = self._make_request()
         parsed = response.json()
         if response.ok:
             url = parsed['html_url']
@@ -176,3 +163,40 @@ class GitHubForwarder(FreeIPAManagerCore):
         else:
             err = self._parse_github_error(parsed)
             raise ManagerError('Creating PR failed: %s' % err)
+
+    def _parse_args(self):
+        parser = argparse.ArgumentParser(description='GitHubForwarder')
+        parser.add_argument('path', help='Config repository path')
+        parser.add_argument('-b', '--branch', help='Branch to commit to',
+                            default=self._generate_branch_name())
+        parser.add_argument('-B', '--base', default='master',
+                            help='PR base branch')
+        parser.add_argument('-o', '--owner', default='gooddata',
+                            help='GitHub repository owner')
+        parser.add_argument('-r', '--repo', default='freeipa-manager-config',
+                            help='GitHub repository name')
+        parser.add_argument('-t', '--token', help='GitHub API token')
+        parser.add_argument('-u', '--user', default='yenkins',
+                            help='GitHub user/fork remote name')
+        actions = parser.add_mutually_exclusive_group()
+        actions.add_argument('-c', '--commit', action='store_true',
+                             help='Create a commit')
+        actions.add_argument('-p', '--pull-request', action='store_true',
+                             help='Create a pull request')
+        parser_verbose = parser.add_mutually_exclusive_group()
+        parser_verbose.set_defaults(loglevel=logging.WARNING)
+        parser_verbose.add_argument(
+            '-v', '--verbose', action='store_const',
+            dest='loglevel', const=logging.INFO, help='Verbose mode')
+        parser_verbose.add_argument(
+            '-d', '--debug', action='store_const',
+            dest='loglevel', const=logging.DEBUG, help='Debug mode')
+        self.args = parser.parse_args()
+
+
+def main():
+    GitHubForwarder().run()
+
+
+if __name__ == '__main__':
+    main()
