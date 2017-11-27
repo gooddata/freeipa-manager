@@ -95,8 +95,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager.run()
                 mock_conn.assert_called_with({}, 10, False, True)
 
-    @mock.patch('%s.GitHubForwarder' % modulename)
-    def test_run_pull(self, mock_fwd):
+    def test_run_pull(self):
         with mock.patch('%s.FreeIPAManager.check' % modulename):
             manager = self._init_tool(['pull', 'dump_repo'])
             manager.integrity_checker = mock.Mock()
@@ -105,16 +104,9 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                     'ipamanager.ipa_connector.IpaDownloader') as mock_conn:
                 manager.run()
             mock_conn.assert_called_with({}, 'dump_repo', False, False)
-            mock_fwd.assert_called_with('dump_repo', 'master', None)
-            manager.forwarder.checkout_base.assert_not_called()
             manager.downloader.pull.assert_called_with()
-            assert not manager.args.commit
-            manager.forwarder.commit.assert_not_called()
-            assert not manager.args.pull_request
-            manager.forwarder.create_pull_request.assert_not_called()
 
-    @mock.patch('%s.GitHubForwarder' % modulename)
-    def test_run_pull_dry_run(self, mock_fwd):
+    def test_run_pull_dry_run(self):
         with mock.patch('%s.FreeIPAManager.check' % modulename):
             manager = self._init_tool(['pull', 'dump_repo', '--dry-run'])
             manager.integrity_checker = mock.Mock()
@@ -123,14 +115,9 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                     'ipamanager.ipa_connector.IpaDownloader') as mock_conn:
                 manager.run()
             mock_conn.assert_called_with({}, 'dump_repo', True, False)
-            mock_fwd.assert_called_with('dump_repo', 'master', None)
-            manager.forwarder.checkout_base.assert_not_called()
             manager.downloader.pull.assert_called()
-            assert not manager.args.commit
-            assert not manager.args.pull_request
 
-    @mock.patch('%s.GitHubForwarder' % modulename)
-    def test_run_pull_add_only(self, mock_fwd):
+    def test_run_pull_add_only(self):
         with mock.patch('%s.FreeIPAManager.check' % modulename):
             manager = self._init_tool(['pull', 'dump_repo', '--add-only'])
             manager.integrity_checker = mock.Mock()
@@ -139,65 +126,4 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                     'ipamanager.ipa_connector.IpaDownloader') as mock_conn:
                 manager.run()
             mock_conn.assert_called_with({}, 'dump_repo', False, True)
-            mock_fwd.assert_called_with('dump_repo', 'master', None)
-            manager.forwarder.checkout_base.assert_not_called()
             manager.downloader.pull.assert_called()
-            assert not manager.args.commit
-            assert not manager.args.pull_request
-
-    @mock.patch('%s.GitHubForwarder' % modulename)
-    def test_run_pull_commit(self, mock_fwd):
-        with mock.patch('%s.FreeIPAManager.check' % modulename):
-            manager = self._init_tool(['pull-commit', '-vv', 'dump_repo'])
-            manager.integrity_checker = mock.Mock()
-            manager.integrity_checker.entity_dict = dict()
-            with mock.patch(
-                    'ipamanager.ipa_connector.IpaDownloader') as mock_conn:
-                manager.run()
-            mock_conn.assert_called_with({}, 'dump_repo', False, False)
-            mock_fwd.assert_called_with('dump_repo', 'master', None)
-            manager.forwarder.checkout_base.assert_called_with()
-            manager.downloader.pull.assert_called()
-            assert manager.args.commit
-            assert not manager.args.pull_request
-            assert manager.args.loglevel == logging.DEBUG
-            manager.forwarder.commit.assert_called_with()
-
-    @mock.patch('%s.GitHubForwarder' % modulename)
-    def test_run_pull_request(self, mock_fwd):
-        with mock.patch('%s.FreeIPAManager.check' % modulename):
-            manager = self._init_tool(['pull-request', '-v', 'dump_repo'])
-            manager.integrity_checker = mock.Mock()
-            manager.integrity_checker.entity_dict = dict()
-            with mock.patch(
-                    'ipamanager.ipa_connector.IpaDownloader') as mock_conn:
-                manager.run()
-            mock_conn.assert_called_with({}, 'dump_repo', False, False)
-            mock_fwd.assert_called_with('dump_repo', 'master', None)
-            manager.forwarder.checkout_base.assert_called_with()
-            manager.downloader.pull.assert_called()
-            assert manager.args.commit
-            assert manager.args.pull_request
-            manager.forwarder.commit.assert_called_with()
-            manager.forwarder.create_pull_request.assert_called_with(
-                'gooddata', 'freeipa-manager-config', 'yenkins', None)
-
-    @mock.patch('%s.GitHubForwarder' % modulename)
-    def test_run_pull_request_branch(self, mock_fwd):
-        with mock.patch('%s.FreeIPAManager.check' % modulename):
-            manager = self._init_tool(
-                ['pull-request', '-v', 'dump_repo', '-b', 'branch1'])
-            manager.integrity_checker = mock.Mock()
-            manager.integrity_checker.entity_dict = dict()
-            with mock.patch(
-                    'ipamanager.ipa_connector.IpaDownloader') as mock_conn:
-                manager.run()
-            mock_conn.assert_called_with({}, 'dump_repo', False, False)
-            mock_fwd.assert_called_with('dump_repo', 'master', 'branch1')
-            manager.forwarder.checkout_base.assert_called_with()
-            manager.downloader.pull.assert_called()
-            assert manager.args.commit
-            assert manager.args.pull_request
-            manager.forwarder.commit.assert_called_with()
-            manager.forwarder.create_pull_request.assert_called_with(
-                'gooddata', 'freeipa-manager-config', 'yenkins', None)

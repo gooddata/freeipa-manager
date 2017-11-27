@@ -4,13 +4,17 @@ import mock
 import os
 import pytest
 import requests_mock
+import sys
 import sh
 from testfixtures import log_capture
 
-from _utils import _import
-tool = _import('ipamanager', 'github_forwarder')
-modulename = 'ipamanager.github_forwarder'
-responses = os.path.join(os.path.dirname(__file__), 'api-responses')
+testdir = os.path.dirname(__file__)
+sys.path.insert(0, testdir.replace('/tests/tools', ''))
+print testdir.replace('/tests/tools', '')
+import ipamanager.tools.github_forwarder as tool
+
+modulename = 'ipamanager.tools.github_forwarder'
+responses = os.path.join(testdir, 'api-responses')
 
 
 class TestGitHubForwarder(object):
@@ -18,8 +22,10 @@ class TestGitHubForwarder(object):
         self.ts = '2017-12-29T23-59-59'
         self.gh = 'https://api.github.com/repos'
         with mock.patch('%s.socket.getfqdn' % modulename, lambda: 'ipa.dummy'):
-            self.forwarder = tool.GitHubForwarder(
-                'config', 'master', None, self.ts)
+            with mock.patch('time.strftime', lambda _: self.ts):
+                with mock.patch('sys.argv', ['ipamanager-pr', 'dump_repo']):
+                    self.forwarder = tool.GitHubForwarder()
+        self.forwarder.args.repo = 'config-repo'
         self.forwarder.name = 'ipa.dummy'
         self.forwarder.msg = 'Awesome pull request'
         if method.func_name.startswith('test_pull_request_'):
@@ -29,9 +35,8 @@ class TestGitHubForwarder(object):
             self.gh_mock = requests_mock.mock()
             try:
                 self.resp = self._load_resp('create_pr_%s' % method_end)
-                self.gh_mock.post(
-                    '%s/gooddata/freeipa-manager-config/pulls' % self.gh,
-                    text=self.resp, status_code=422)
+                self.gh_mock.post('%s/gooddata/config-repo/pulls' % self.gh,
+                                  text=self.resp, status_code=422)
             except IOError:
                 pass
 
@@ -39,28 +44,10 @@ class TestGitHubForwarder(object):
         with open('%s/%s.json' % (responses, name), 'r') as f:
             return f.read()
 
-    @log_capture('GitHubForwarder', level=logging.DEBUG)
-    def test_checkout_base(self, captured_log):
-        self.forwarder.git = mock.Mock()
-        self.forwarder.checkout_base()
-        captured_log.check(('GitHubForwarder', 'DEBUG',
-                            'Checking out branch master in config'),
-                           ('GitHubForwarder', 'INFO',
-                            'Repo config branch master checked out'))
-
-    def test_checkout_base_error(self):
-        err = "pathspec 'branch1' did not match any file(s) known to git."
-        self.forwarder.git = mock.Mock()
-        self.forwarder.git.checkout.side_effect = sh.ErrorReturnCode_1(
-            '/usr/bin/git checkout branch1', '', 'error: %s' % err, False)
-        with pytest.raises(tool.ManagerError) as exc:
-            self.forwarder.checkout_base()
-        assert exc.value[0] == 'Checkout failed: error: %s' % err
-
     def test_commit(self):
         self.forwarder.git = mock.Mock()
         with mock.patch('%s.socket.getfqdn' % modulename, lambda: 'ipa.dummy'):
-            self.forwarder.commit()
+            self.forwarder._commit()
             self.forwarder.git.checkout.assert_called_with(
                 ['-B', 'ipa.dummy-2017-12-29T23-59-59'])
             self.forwarder.git.add.assert_called_with(['.'])
@@ -69,83 +56,73 @@ class TestGitHubForwarder(object):
 
     @log_capture('GitHubForwarder', level=logging.INFO)
     def test_commit_no_changes(self, captured_log):
-        forwarder = tool.GitHubForwarder('wrong_path', self.ts)
-        forwarder.git = mock.Mock()
+        self.forwarder.git = mock.Mock()
         cmd = "/usr/bin/git commit -m 'ipa.dummy dump at 2017-12-29T23-59-59'"
         stdout = ("On branch master\nYour branch is up-to-date with "
                   "'origin/master'.\nnothing to commit, working tree clean\n")
-        forwarder.git.commit.side_effect = sh.ErrorReturnCode_1(
+        self.forwarder.git.commit.side_effect = sh.ErrorReturnCode_1(
             cmd, stdout, '', False)
         with mock.patch('%s.socket.getfqdn' % modulename, lambda: 'ipa.dummy'):
-            forwarder.commit()
+            self.forwarder._commit()
         captured_log.check(('GitHubForwarder', 'INFO',
                             'No changes, nothing to commit'))
 
     def test_commit_error(self):
-        forwarder = tool.GitHubForwarder('config_path', self.ts)
-        forwarder.git = mock.Mock()
-        forwarder.git.commit.side_effect = sh.ErrorReturnCode_1(
+        self.forwarder.git = mock.Mock()
+        self.forwarder.git.commit.side_effect = sh.ErrorReturnCode_1(
             "/usr/bin/git commit -am 'msg'", '', 'an error occured', False)
         with pytest.raises(tool.ManagerError) as exc:
-            forwarder.commit()
+            self.forwarder._commit()
         assert exc.value[0] == 'Committing failed: an error occured'
 
     def test_commit_no_repo(self):
-        forwarder = tool.GitHubForwarder('wrong_path', self.ts)
-        forwarder.git = mock.Mock()
+        self.forwarder.git = mock.Mock()
+        self.forwarder.args.path = 'wrong_path'
         err_msg = "[Errno 2] No such file or directory: 'wrong_path'"
-        forwarder.git.commit.side_effect = OSError(err_msg)
+        self.forwarder.git.commit.side_effect = OSError(err_msg)
         with pytest.raises(tool.ManagerError) as exc:
-            forwarder.commit()
+            self.forwarder._commit()
         assert exc.value[0] == "Committing failed: %s" % err_msg
 
     def test_push(self):
-        forwarder = tool.GitHubForwarder(
-            'config_path', 'master', 'branch1', self.ts)
-        forwarder.git = mock.Mock()
-        forwarder._push('yenkins')
-        forwarder.git.push.assert_called_with(['yenkins', 'branch1', '-f'])
+        self.forwarder.git = mock.Mock()
+        self.forwarder.args.branch = 'branch'
+        self.forwarder._push()
+        self.forwarder.git.push.assert_called_with(['yenkins', 'branch', '-f'])
 
     def test_push_error(self):
-        forwarder = tool.GitHubForwarder('config_path', None, self.ts)
-        forwarder.git = mock.Mock()
+        self.forwarder.git = mock.Mock()
         cmd = '/usr/bin/git push yenkins some-branch'
         stderr = ("error: src refspec master does not match any.\n"
                   "error: failed to push some refs to "
                   "'ssh://git@github.com/gooddata/gdc-ipa-utils.git'\n")
-        forwarder.git.push.side_effect = sh.ErrorReturnCode_1(
+        self.forwarder.git.push.side_effect = sh.ErrorReturnCode_1(
             cmd, '', stderr, False)
         with pytest.raises(tool.ManagerError) as exc:
-            forwarder._push('yenkins')
+            self.forwarder._push()
         assert exc.value[0] == (
             "Pushing failed: error: src refspec master does not match any.\n"
             "error: failed to push some refs to "
             "'ssh://git@github.com/gooddata/gdc-ipa-utils.git'\n")
 
-    @mock.patch.dict(os.environ, {'EC2DATA_ENVIRONMENT': 'prod'})
-    def test_generate_branch_name(self):
-        forwarder = tool.GitHubForwarder('config_path', 'base', None, self.ts)
-        assert forwarder._generate_branch_name() == 'prod-2017-12-29T23-59-59'
-
     @mock.patch.dict(os.environ, {'EC2DATA_ENVIRONMENT': 'int'})
-    def test_generate_branch_name_no_timestamp(self):
-        forwarder = tool.GitHubForwarder('config_path', 'master')
-        forwarder.timestamp = '2018-01-01T01-02-03'
-        assert forwarder._generate_branch_name() == 'int-2018-01-01T01-02-03'
+    def test_generate_branch_name(self):
+        self.forwarder.timestamp = '2018-01-01T01-02-03'
+        assert self.forwarder._generate_branch_name() == (
+            'int-2018-01-01T01-02-03')
 
     @mock.patch('%s.requests' % modulename)
     def test_make_request(self, mock_requests):
         def _mock_dump(x):
             return str(sorted(x.items()))
         with mock.patch('%s.json.dumps' % modulename, _mock_dump):
-            self.forwarder._make_request(
-                'gooddata', 'config-repo', 'yenkins', 'dummy-token')
+            self.forwarder._make_request()
         dumped_data = (
             "[('base', 'master'), ('head', 'yenkins:ipa.dummy-2017-12-29"
             "T23-59-59'), ('title', 'Awesome pull request')]")
         mock_requests.post.assert_called_with(
             'https://api.github.com/repos/gooddata/config-repo/pulls',
-            data=dumped_data, headers={'Authorization': 'token dummy-token'})
+            data=dumped_data, headers={'Authorization': 'token None'})
 
     def test_parse_github_error_messageonly(self):
         data = {'message': 'Bad Credentials'}
@@ -178,30 +155,27 @@ class TestGitHubForwarder(object):
     @log_capture('GitHubForwarder', level=logging.INFO)
     def test_pull_request_no_changes(self, captured_log):
         self.forwarder.changes = False
-        self.forwarder.create_pull_request(
-            'gooddata', 'freeipa-manager-config', 'yenkins', 'dummy-token')
+        self.forwarder._create_pull_request()
         self.forwarder._push.assert_not_called()
         captured_log.check(('GitHubForwarder', 'INFO',
                             'Not creating PR because there were no changes'))
 
     @log_capture('GitHubForwarder', level=logging.INFO)
     def test_pull_request_success(self, captured_log):
+        self.forwarder.args.repo = 'config-repo'
         with requests_mock.mock() as gh_mock:
-            gh_mock.post('%s/gooddata/freeipa-manager-config/pulls' % self.gh,
+            gh_mock.post('%s/gooddata/config-repo/pulls' % self.gh,
                          text=self._load_resp('create_pr_success'))
-            self.forwarder.create_pull_request(
-                'gooddata', 'freeipa-manager-config', 'yenkins', 'dummy-token')
-            self.forwarder._push.assert_called_with('yenkins')
+            self.forwarder._create_pull_request()
+            self.forwarder._push.assert_called_with()
         captured_log.check(('GitHubForwarder', 'INFO',
-                            ('Pull request https://github.com/gooddata/freeipa'
-                             '-manager-config/pull/42 created successfully')))
+                            ('Pull request https://github.com/gooddata/config-'
+                             'repo/pull/42 created successfully')))
 
     def test_pull_request_already_exists(self):
         with self.gh_mock:
             with pytest.raises(tool.ManagerError) as exc:
-                self.forwarder.create_pull_request(
-                    'gooddata', 'freeipa-manager-config',
-                    'yenkins', 'dummy-token')
+                self.forwarder._create_pull_request()
         assert exc.value[0] == (
             'Creating PR failed: Validation Failed '
             '(A pull request already exists for yenkins:same-branch.)')
@@ -209,35 +183,27 @@ class TestGitHubForwarder(object):
     def test_pull_request_bad_credentials(self):
         with self.gh_mock:
             with pytest.raises(tool.ManagerError) as exc:
-                self.forwarder.create_pull_request(
-                    'gooddata', 'freeipa-manager-config',
-                    'yenkins', 'dummy-token')
+                self.forwarder._create_pull_request()
         assert exc.value[0] == 'Creating PR failed: Bad credentials'
 
     def test_pull_request_base_invalid(self):
         with self.gh_mock:
             with pytest.raises(tool.ManagerError) as exc:
-                self.forwarder.create_pull_request(
-                    'gooddata', 'freeipa-manager-config',
-                    'yenkins', 'dummy-token')
+                self.forwarder._create_pull_request()
         assert exc.value[0] == (
             'Creating PR failed: Validation Failed (base invalid)')
 
     def test_pull_request_head_invalid(self):
         with self.gh_mock:
             with pytest.raises(tool.ManagerError) as exc:
-                self.forwarder.create_pull_request(
-                    'gooddata', 'freeipa-manager-config',
-                    'yenkins', 'dummy-token')
+                self.forwarder._create_pull_request()
         assert exc.value[0] == (
             'Creating PR failed: Validation Failed (head invalid)')
 
     def test_pull_request_no_commits(self):
         with self.gh_mock:
             with pytest.raises(tool.ManagerError) as exc:
-                self.forwarder.create_pull_request(
-                    'gooddata', 'freeipa-manager-config',
-                    'yenkins', 'dummy-token')
+                self.forwarder._create_pull_request()
         assert exc.value[0] == (
             'Creating PR failed: Validation Failed '
             '(No commits between gooddata:master and yenkins:some-branch)')
