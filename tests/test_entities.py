@@ -335,8 +335,10 @@ class TestFreeIPAHBACRule(object):
         rule = tool.FreeIPAHBACRule(
             'rule-one', {'description': 'Sample HBAC rule'}, 'path')
         assert rule.name == 'rule-one'
-        assert rule.data_repo == {'description': 'Sample HBAC rule'}
-        assert rule.data_ipa == {'description': ('Sample HBAC rule',)}
+        assert rule.data_repo == {
+            'description': 'Sample HBAC rule', 'serviceCategory': 'all'}
+        assert rule.data_ipa == {
+            'description': ('Sample HBAC rule',), 'servicecategory': (u'all',)}
 
     def test_create_hbac_rule_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
@@ -353,9 +355,10 @@ class TestFreeIPAHBACRule(object):
         }
         user = tool.FreeIPAHBACRule('rule-one', data, 'path')
         assert user._convert_to_ipa(data) == {
-            'description': ('A sample sudo rule.',),
-            'memberhost': ('hosts-one',),
-            'memberuser': ('users-one',)
+            'description': (u'A sample sudo rule.',),
+            'memberhost': (u'hosts-one',),
+            'memberuser': (u'users-one',),
+            'servicecategory': (u'all',)
         }
 
     def test_create_commands_member_same(self):
@@ -363,13 +366,15 @@ class TestFreeIPAHBACRule(object):
                                     'memberUser': ['group-one']}, 'path')
         remote_rule = tool.FreeIPAHBACRule('rule-one', {
             'cn': ('rule-one',), 'memberuser_group': ('group-one',),
-            'memberhost_hostgroup': ('group-one',)})
+            'memberhost_hostgroup': ('group-one',),
+            u'servicecategory': (u'all',)})
         assert not rule.create_commands(remote_rule)
 
     def test_create_commands_member_add(self):
         rule = tool.FreeIPAHBACRule('rule-one', {'memberHost': ['group-one'],
                                     'memberUser': ['group-one']}, 'path')
-        remote_rule = tool.FreeIPAHBACRule('rule-one', {'cn': ('rule-one',)})
+        remote_rule = tool.FreeIPAHBACRule(
+            'rule-one', {u'cn': (u'rule-one',), u'servicecategory': (u'all',)})
         commands = rule.create_commands(remote_rule)
         assert len(commands) == 2
         assert [i.command for i in commands] == [
@@ -412,15 +417,22 @@ class TestFreeIPASudoRule(object):
             u'memberuser_group': (u'group-two',),
             u'ipauniqueid': (u'd3086a54-7b60-11e7-947e-fa163e2e4384',),
             u'ipaenabledflag': (u'TRUE',),
-            u'ipasudoopt': (u'!authenticate',),
+            u'ipasudoopt': (u'!authenticate', u'!requiretty'),
             u'description': (u'Sample sudo rule one',)}
 
     def test_create_sudo_rule_repo_correct(self):
         rule = tool.FreeIPASudoRule(
             'rule-one', {'description': 'Sample sudo rule'}, 'path')
         assert rule.name == 'rule-one'
-        assert rule.data_repo == {'description': 'Sample sudo rule'}
-        assert rule.data_ipa == {'description': ('Sample sudo rule',)}
+        assert rule.data_repo == {
+            'cmdCategory': 'all', 'description': 'Sample sudo rule',
+            'options': ['!authenticate', '!requiretty'],
+            'runAsGroupCategory': 'all', 'runAsUserCategory': 'all'}
+        assert rule.data_ipa == {
+            'cmdcategory': (u'all',), 'description': (u'Sample sudo rule',),
+            'ipasudoopt': (u'!authenticate', u'!requiretty'),
+            'ipasudorunasgroupcategory': (u'all',),
+            'ipasudorunasusercategory': (u'all',)}
 
     def test_create_sudo_rule_repo_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
@@ -433,42 +445,75 @@ class TestFreeIPASudoRule(object):
         rule = tool.FreeIPASudoRule(u'rule-one', self.ipa_data)
         assert rule.name == 'rule-one'
         assert rule.data_repo == {'description': 'Sample sudo rule one',
-                                  'options': ['!authenticate']}
+                                  'options': ['!authenticate', '!requiretty']}
         assert isinstance(rule.data_repo['description'], unicode)
         assert isinstance(rule.data_repo['options'][0], unicode)
         assert rule.data_ipa == self.ipa_data
 
+    def test_create_commands_new(self):
+        rule = tool.FreeIPASudoRule('rule-one', {}, 'path')
+        commands = rule.create_commands(None)
+        assert len(commands) == 3
+        assert sorted([i.command for i in commands]) == [
+            'sudorule_add', 'sudorule_add_option', 'sudorule_add_option']
+        assert sorted([i.description for i in commands]) == [
+            (u'sudorule_add rule-one (cmdcategory=all; '
+             u'ipasudorunasgroupcategory=all; ipasudorunasusercategory=all)'),
+            u'sudorule_add_option rule-one (ipasudoopt=!authenticate)',
+            u'sudorule_add_option rule-one (ipasudoopt=!requiretty)']
+        assert sorted([i.payload for i in commands]) == [
+            {'cn': u'rule-one', 'ipasudoopt': u'!authenticate'},
+            {'cn': u'rule-one', 'ipasudoopt': u'!requiretty'},
+            {'cmdcategory': u'all', 'cn': u'rule-one',
+             'ipasudorunasgroupcategory': u'all',
+             'ipasudorunasusercategory': u'all'}]
+
     def test_create_commands_option_add(self):
-        rule = tool.FreeIPASudoRule(
-            'rule-one', {'options': ['!test', '!test2']}, 'path')
-        remote_rule = tool.FreeIPASudoRule('rule-one', {'cn': (u'rule-one',)})
+        rule = tool.FreeIPASudoRule('rule-one', {}, 'path')
+        remote_rule = tool.FreeIPASudoRule(
+            'rule-one', {'cn': (u'rule-one',), 'cmdcategory': (u'all',),
+                         'ipasudorunasgroupcategory': (u'all',),
+                         'ipasudorunasusercategory': (u'all',)})
         commands = rule.create_commands(remote_rule)
         assert len(commands) == 2
         assert all(i.command == 'sudorule_add_option' for i in commands)
         assert sorted([(i.description, i.payload) for i in commands]) == [
-            (u'sudorule_add_option rule-one (ipasudoopt=!test)',
-             {'cn': u'rule-one', 'ipasudoopt': u'!test'}),
-            (u'sudorule_add_option rule-one (ipasudoopt=!test2)',
-             {'cn': u'rule-one', 'ipasudoopt': u'!test2'})]
+            (u'sudorule_add_option rule-one (ipasudoopt=!authenticate)',
+             {'cn': u'rule-one', 'ipasudoopt': u'!authenticate'}),
+            (u'sudorule_add_option rule-one (ipasudoopt=!requiretty)',
+             {'cn': u'rule-one', 'ipasudoopt': u'!requiretty'})]
 
     def test_create_commands_option_remove(self):
-        rule = tool.FreeIPASudoRule('rule-one', {'options': ['!test']}, 'path')
+        rule = tool.FreeIPASudoRule('rule-one', {}, 'path')
         remote_rule = tool.FreeIPASudoRule(
             'rule-one', {'cn': (u'rule-one',),
                          'ipasudoopt': (u'!test', u'!test2')})
         commands = rule.create_commands(remote_rule)
-        assert len(commands) == 1
-        assert commands[0].command == 'sudorule_remove_option'
-        assert commands[0].description == (
-            'sudorule_remove_option rule-one (ipasudoopt=!test2)')
-        assert commands[0].payload == {
-            'cn': u'rule-one', 'ipasudoopt': u'!test2'}
+        assert len(commands) == 5
+        assert sorted([i.command for i in commands]) == [
+            'sudorule_add_option', 'sudorule_add_option', 'sudorule_mod',
+            'sudorule_remove_option', 'sudorule_remove_option']
+        assert sorted([i.description for i in commands]) == [
+            u'sudorule_add_option rule-one (ipasudoopt=!authenticate)',
+            u'sudorule_add_option rule-one (ipasudoopt=!requiretty)',
+            (u'sudorule_mod rule-one (cmdcategory=all; '
+             u'ipasudorunasgroupcategory=all; ipasudorunasusercategory=all)'),
+            u'sudorule_remove_option rule-one (ipasudoopt=!test)',
+            u'sudorule_remove_option rule-one (ipasudoopt=!test2)']
+        assert sorted([i.payload for i in commands]) == [
+            {'cn': u'rule-one', 'ipasudoopt': u'!authenticate'},
+            {'cn': u'rule-one', 'ipasudoopt': u'!requiretty'},
+            {'cn': u'rule-one', 'ipasudoopt': u'!test'},
+            {'cn': u'rule-one', 'ipasudoopt': u'!test2'},
+            {'cmdcategory': u'all', 'cn': u'rule-one',
+             'ipasudorunasgroupcategory': u'all',
+             'ipasudorunasusercategory': u'all'}]
 
     def test_convert_to_repo(self):
         rule = tool.FreeIPASudoRule('rule-one', {})
         result = rule._convert_to_repo(self.ipa_data)
         assert result == {
             'description': 'Sample sudo rule one',
-            'options': ['!authenticate']}
+            'options': ['!authenticate', '!requiretty']}
         assert isinstance(result['description'], unicode)
         assert isinstance(result['options'][0], unicode)

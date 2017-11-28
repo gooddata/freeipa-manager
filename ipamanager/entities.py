@@ -322,8 +322,19 @@ class FreeIPARule(FreeIPAEntity):
 class FreeIPAHBACRule(FreeIPARule):
     """Representation of a FreeIPA HBAC (host-based access control) rule."""
     entity_name = 'hbacrule'
-    managed_attributes_push = ['description']
+    managed_attributes_push = ['description', 'serviceCategory']
     validation_schema = voluptuous.Schema(schemas.schema_hbac)
+
+    def __init__(self, name, data, path=None):
+        """
+        Create a HBAC rule instance.
+        This override is needed to set the servicecat parameter.
+        """
+        if path:  # only edit local entities
+            if not data:
+                data = dict()
+            data.update({'serviceCategory': 'all'})
+        super(FreeIPAHBACRule, self).__init__(name, data, path)
 
 
 class FreeIPASudoRule(FreeIPARule):
@@ -339,6 +350,20 @@ class FreeIPASudoRule(FreeIPARule):
         'runAsUserCategory': 'ipaSudoRunAsUserCategory'
     }
     validation_schema = voluptuous.Schema(schemas.schema_sudo)
+
+    def __init__(self, name, data, path=None):
+        """
+        Create a sudorule instance.
+        This override is needed to set the options & runAs params.
+        """
+        if path:  # only edit local entities
+            if not data:
+                data = dict()
+            data.update({'options': ['!authenticate', '!requiretty'],
+                         'cmdCategory': 'all',
+                         'runAsUserCategory': 'all',
+                         'runAsGroupCategory': 'all'})
+        super(FreeIPASudoRule, self).__init__(name, data, path)
 
     def _convert_to_repo(self, data):
         result = super(FreeIPASudoRule, self)._convert_to_repo(data)

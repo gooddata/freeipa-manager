@@ -326,18 +326,17 @@ class TestIpaUploader(TestIpaConnectorBase):
                 'group-one', {}, 'path')},
             'sudorule': {
                 'rule-one': entities.FreeIPASudoRule(
-                    'rule-one', {'options': ['!test'],
-                                 'memberUser': ['group-one']}, 'path')}}
+                    'rule-one', {'memberUser': ['group-one']}, 'path')}}
         self.uploader.ipa_entities = {
             'group': {'group-one': entities.FreeIPAUserGroup(
                 'group-one', {'cn': ('group-one',)})},
             'sudorule': dict(), 'user': dict()}
         self.uploader._prepare_push()
-        assert len(self.uploader.commands) == 5
+        assert len(self.uploader.commands) == 6
         assert [i.command for i in sorted(self.uploader.commands)] == [
             'sudorule_add', 'user_add', 'group_add_member',
-            'sudorule_add_option', 'sudorule_add_user']
-        captured_log.check(('IpaUploader', 'INFO', '5 commands to execute'))
+            'sudorule_add_option', 'sudorule_add_option', 'sudorule_add_user']
+        captured_log.check(('IpaUploader', 'INFO', '6 commands to execute'))
 
     def test_prepare_push_changes_deletion_enabled(self):
         self._create_uploader(enable_deletion=True)
@@ -350,7 +349,7 @@ class TestIpaUploader(TestIpaConnectorBase):
             'group': {'group-one': entities.FreeIPAUserGroup(
                 'group-one', {}, 'path')},
             'sudorule': {'rule-one': entities.FreeIPASudoRule(
-                'rule-one', {'options': ['!test'],
+                'rule-one', {'options': ['!authenticate', '!requiretty'],
                              'memberUser': ['group-one']}, 'path')}
         }
         self.uploader.ipa_entities = {
@@ -362,10 +361,11 @@ class TestIpaUploader(TestIpaConnectorBase):
             'user': dict(),
             'sudorule': dict()}
         self.uploader._prepare_push()
-        assert len(self.uploader.commands) == 6
+        assert len(self.uploader.commands) == 7
         assert [i.command for i in sorted(self.uploader.commands)] == [
             'sudorule_add', 'user_add', 'group_add_member',
-            'sudorule_add_option', 'sudorule_add_user', 'group_del']
+            'sudorule_add_option', 'sudorule_add_option',
+            'sudorule_add_user', 'group_del']
 
     def test_prepare_push_memberof_add_new_group(self):
         self._create_uploader(debug=True)
