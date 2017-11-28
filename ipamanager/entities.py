@@ -331,7 +331,7 @@ class FreeIPAHBACRule(FreeIPARule):
         This override is needed to set the servicecat parameter.
         """
         if path:  # only edit local entities
-            if not data:
+            if not data:  # may be None; we want to ensure dictionary
                 data = dict()
             data.update({'serviceCategory': 'all'})
         super(FreeIPAHBACRule, self).__init__(name, data, path)
@@ -357,7 +357,7 @@ class FreeIPASudoRule(FreeIPARule):
         This override is needed to set the options & runAs params.
         """
         if path:  # only edit local entities
-            if not data:
+            if not data:  # may be None; we want to ensure dictionary
                 data = dict()
             data.update({'options': ['!authenticate', '!requiretty'],
                          'cmdCategory': 'all',

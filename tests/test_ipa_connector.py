@@ -329,8 +329,9 @@ class TestIpaUploader(TestIpaConnectorBase):
                     'rule-one', {'memberUser': ['group-one']}, 'path')}}
         self.uploader.ipa_entities = {
             'group': {'group-one': entities.FreeIPAUserGroup(
-                'group-one', {'cn': ('group-one',)})},
-            'sudorule': dict(), 'user': dict()}
+                'group-one', {'cn': ('group-one',)})}, 'user': dict(),
+            'sudorule': {'rule-two': entities.FreeIPASudoRule(
+                'rule-two', {'memberuser_group': (u'group_one',)})}}
         self.uploader._prepare_push()
         assert len(self.uploader.commands) == 6
         assert [i.command for i in sorted(self.uploader.commands)] == [
@@ -389,7 +390,7 @@ class TestIpaUploader(TestIpaConnectorBase):
         assert [i.command for i in sorted(self.uploader.commands)] == [
             'group_add', 'group_add_member']
 
-    def test_prepare_deletion_commands(self):
+    def test_prepare_del_commands(self):
         self.uploader.repo_entities = dict()
         self.uploader.ipa_entities = {
             'user': {
@@ -397,12 +398,21 @@ class TestIpaUploader(TestIpaConnectorBase):
             }
         }
         self.uploader.commands = []
-        self.uploader._prepare_deletion_commands()
+        self.uploader._prepare_del_commands()
         assert len(self.uploader.commands) == 1
         cmd = self.uploader.commands[0]
         assert cmd.command == 'user_del'
         assert cmd.description == 'user_del test.user ()'
         assert cmd.payload == {'uid': u'test.user'}
+
+    def test_filter_deletion_commands(self):
+        self.uploader.deletion_patterns = ['.+_add$']
+        old_cmds = [
+            tool.Command('user_add', {}, 'user1', 'user'),
+            tool.Command('group_add_member', {}, 'group-one', 'group')]
+        self.uploader.commands = old_cmds
+        self.uploader._filter_deletion_commands()
+        assert self.uploader.commands == old_cmds[1:]
 
     def test_add_command(self):
         cmd = tool.Command(

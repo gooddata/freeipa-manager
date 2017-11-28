@@ -8,8 +8,9 @@ from local entity configuration.
 Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
-from ipalib import api
+import re
 import os
+from ipalib import api
 
 import entities
 from command import Command
@@ -23,9 +24,11 @@ class IpaConnector(FreeIPAManagerCore):
     """
     Responsible for updating FreeIPA server with changed configuration.
     """
-    def __init__(self, settings):
+    def __init__(self, parsed, settings):
         super(IpaConnector, self).__init__()
         self.ignored = settings.get('ignore', dict())
+        self.repo_entities = parsed
+        self.ipa_entities = dict()
 
     def load_ipa_entities(self):
         """
@@ -36,7 +39,6 @@ class IpaConnector(FreeIPAManagerCore):
         :returns: None (entities saved in the `self.ipa_entities` dict)
         """
         self.lg.debug('Loading entities from FreeIPA API')
-        self.ipa_entities = dict()
         for entity_class in ENTITY_CLASSES:
             entity_type = entity_class.entity_name
             self.ipa_entities[entity_type] = dict()
@@ -78,11 +80,14 @@ class IpaUploader(IpaConnector):
         :param bool force: execute changes (dry run if False)
         :param bool enable_deletion: enable deleting entities
         """
-        super(IpaUploader, self).__init__(settings)
-        self.repo_entities = parsed
+        super(IpaUploader, self).__init__(parsed, settings)
         self.threshold = threshold
         self.force = force
         self.enable_deletion = enable_deletion
+        # deletion patterns used to filter commands in add-only mode
+        self.deletion_patterns = settings.get(
+            'deletion-patterns',
+            ['.+_del$', '.+_remove_member$', '.+_remove_option$'])
 
     def _prepare_push(self):
         """
@@ -98,9 +103,23 @@ class IpaUploader(IpaConnector):
             for entity in self.repo_entities[entity_type].itervalues():
                 self.lg.debug('Processing entity %s', entity)
                 self._parse_entity_diff(entity)
-        if self.enable_deletion:
-            self._prepare_deletion_commands()
+        self._prepare_del_commands()
+        self._filter_deletion_commands()
         self.lg.info('%d commands to execute', len(self.commands))
+
+    def _filter_deletion_commands(self):
+        """
+        Filter commands to execute in case deletion mode is not enabled.
+        """
+        if self.enable_deletion:  # all commands should be executed
+            return
+        filtered_commands = []
+        for command in self.commands:
+            cmd = command.command
+            if any(re.match(regex, cmd) for regex in self.deletion_patterns):
+                continue
+            filtered_commands.append(command)
+        self.commands = filtered_commands
 
     def _parse_entity_diff(self, entity):
         """
@@ -155,10 +174,11 @@ class IpaUploader(IpaConnector):
                     self.commands.append(
                         Command(command, diff, group.name, 'cn'))
 
-    def _prepare_deletion_commands(self):
+    def _prepare_del_commands(self):
         """
-        Prepare commands to handle deletion of entities that are not in config.
-        This is only called if the `enable_deletion` flag is set to True.
+        Prepare commands handling entity deletion (.+_del).
+        These entities may then be filtered out based on the setting
+        of `deletion_patterns` attribute & the value of `enable_deletion` flag.
         """
         for entity_type in self.ipa_entities:
             entity_class = FreeIPAEntity.get_entity_class(entity_type)
@@ -179,7 +199,6 @@ class IpaUploader(IpaConnector):
         exceed the `threshold` attribute.
         :raises ManagerError: in case of exceeded threshold/API error
         """
-        # FIXME deletion commands in settings file (PAAS-12474)
         self.load_ipa_entities()
         self._prepare_push()
         if not self.commands:
@@ -226,16 +245,10 @@ class IpaDownloader(IpaConnector):
         :param bool force: execute changes (dry run if False)
         :param bool enable_deletion: enable deleting entities
         """
-        super(IpaDownloader, self).__init__(settings)
-        self.repo_entities = parsed
+        super(IpaDownloader, self).__init__(parsed, settings)
         self.basepath = repo_path
         self.dry_run = dry_run
         self.add_only = add_only
-
-    def _prepare_pull(self):
-        """
-        Prepare entities for creation/update/deletion during pull execution.
-        """
 
     def pull(self):
         """

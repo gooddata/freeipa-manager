@@ -18,7 +18,8 @@ schema_settings = {
     'user-group-pattern': str,
     'ignore': {
         Any('user', 'group', 'hostgroup', 'hbacrule', 'sudorule'): [str]
-    }
+    },
+    'deletion-patterns': [str]
 }
 
 
