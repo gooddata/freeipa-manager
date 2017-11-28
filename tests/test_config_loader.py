@@ -1,5 +1,4 @@
 import logging
-import mock
 import os.path
 import pytest
 from testfixtures import log_capture
@@ -19,7 +18,7 @@ IGNORED_INVALID = os.path.join(CONFIG_INVALID, 'ignored.yaml')
 
 class TestConfigLoader(object):
     def setup_method(self, method):
-        self.loader = tool.ConfigLoader(CONFIG_CORRECT, IGNORED_CORRECT)
+        self.loader = tool.ConfigLoader(CONFIG_CORRECT, {})
         self.expected_hostgroups = [
             CONFIG_CORRECT + '/hostgroups/group_%s.yaml' % group
             for group in ['one', 'three', 'two']]
@@ -64,6 +63,12 @@ class TestConfigLoader(object):
     @log_capture('ConfigLoader', level=logging.DEBUG)
     def test_run_yamllint_check_ok(self, captured_log):
         data = '---\ntest-group:\n  description: A test group.\n'
+        tool.run_yamllint_check(data)
+        captured_log.check()
+
+    @log_capture('ConfigLoader', level=logging.DEBUG)
+    def test_run_yamllint_check_long_line(self, captured_log):
+        data = '---\ntest-group:\n  description: %s\n' % ('x' * 80)
         tool.run_yamllint_check(data)
         captured_log.check()
 
@@ -135,12 +140,10 @@ class TestConfigLoader(object):
         data = {
             'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
         self.loader.entities['user'] = []
-        with mock.patch(
-                'ipamanager.entities.FreeIPAUser.ignored',
-                ['archibald.jenkins']):
-            self.loader._parse(
-                data, entities.FreeIPAUser,
-                '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
+        self.loader.ignored['user'] = ['archibald.jenkins']
+        self.loader._parse(
+            data, entities.FreeIPAUser,
+            '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
         assert self.loader.entities['user'] == []
         captured_warnings.check(('ConfigLoader', 'WARNING',
                                 ('Not creating ignored user archibald.jenkins '
@@ -196,54 +199,3 @@ class TestConfigLoader(object):
             'hostgroups/invalidmember.yaml, sudorules/extrakey.yaml, '
             'users/duplicit.yaml, users/duplicit2.yaml, users/extrakey.yaml, '
             'users/invalidmember.yaml]')
-
-    @log_capture('ConfigLoader', level=logging.DEBUG)
-    def test_load_ignored_no_file(self, captured_log):
-        loader = tool.ConfigLoader(None, None)
-        loader.load_ignored()
-        captured_log.check(
-            ('ConfigLoader', 'DEBUG', 'No ignored entities file configured.'))
-
-    def test_load_ignored_correct(self):
-        assert entities.FreeIPAUser.ignored == []
-        assert entities.FreeIPAUserGroup.ignored == []
-        assert entities.FreeIPAHostGroup.ignored == []
-        assert entities.FreeIPAHBACRule.ignored == []
-        assert entities.FreeIPASudoRule.ignored == []
-        self.loader.ignored_file = IGNORED_CORRECT
-        self.loader.load_ignored()
-        assert entities.FreeIPAUser.ignored == ['admin']
-        assert entities.FreeIPAUserGroup.ignored == ['ipausers', 'testgroup']
-        assert entities.FreeIPAHostGroup.ignored == ['some-hosts']
-        assert entities.FreeIPAHBACRule.ignored == ['rule1']
-        assert entities.FreeIPASudoRule.ignored == []
-
-    @log_capture('ConfigLoader', level=logging.DEBUG)
-    def test_load_ignored_not_found(self, captured_log):
-        self.loader.ignored_file = 'some/path'
-        with mock.patch('__builtin__.open') as mock_open:
-            mock_open.side_effect = IOError('[Errno 2] No such file or dir')
-            self.loader.load_ignored()
-        captured_log.check(
-            ('ConfigLoader', 'DEBUG',
-             'Loading ignored entity list from some/path'),
-            ('ConfigLoader', 'WARNING',
-             'Cannot open ignored file, not ignoring entities.'))
-
-    def test_load_ignored_invalid(self):
-        self.loader.ignored_file = IGNORED_INVALID
-        with pytest.raises(tool.ManagerError) as exc:
-            self.loader.load_ignored()
-        assert exc.value[0] == (
-            'Ignored entities file error: values must be name lists')
-        with mock.patch('%s.yaml.safe_load' % modulename) as mock_load:
-            mock_load.return_value = ['entity1', 'entity2']
-            with pytest.raises(tool.ManagerError) as exc:
-                self.loader.load_ignored()
-            assert exc.value[0] == (
-                'Ignored entities file error: must be a dict')
-            mock_load.return_value = {'invalid': ['entity1']}
-            with pytest.raises(tool.ManagerError) as exc:
-                self.loader.load_ignored()
-            assert exc.value[0] == (
-                'Invalid type in ignored entities file: invalid')

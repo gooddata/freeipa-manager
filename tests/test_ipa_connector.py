@@ -2,6 +2,7 @@
 
 import logging
 import mock
+import os
 import pytest
 import sys
 import yaml
@@ -14,6 +15,8 @@ tool.api = mock.MagicMock()
 entities = _import('ipamanager', 'entities')
 modulename = 'ipamanager.ipa_connector'
 up_class = 'ipamanager.ipa_connector.IpaUploader'
+SETTINGS = os.path.join(
+    os.path.dirname(__file__), 'freeipa-manager-config/settings.yaml')
 
 
 class TestIpaConnectorBase(object):
@@ -27,7 +30,11 @@ class TestIpaConnectorBase(object):
             pass
 
     def _create_uploader(self, **args):
+        with open(SETTINGS) as settings_file:
+            self.settings = yaml.load(settings_file)
+
         self.uploader = tool.IpaUploader(
+            settings=self.settings,
             parsed=args.get('parsed', {}),
             threshold=args.get('threshold', 0),
             force=args.get('force', False),
@@ -122,9 +129,8 @@ class TestIpaConnector(TestIpaConnectorBase):
     @log_capture('IpaUploader', level=logging.DEBUG)
     def test_load_ipa_entities_ignore(self, captured_log):
         tool.api.Command.__getitem__.side_effect = self._api_call
-        with mock.patch(
-                'ipamanager.entities.FreeIPAUser.ignored', ['user.one']):
-            self.uploader.load_ipa_entities()
+        self.uploader.ignored['user'] = ['user.one']
+        self.uploader.load_ipa_entities()
         for cmd in ('group', 'hbacrule', 'hostgroup', 'sudorule', 'user'):
             tool.api.Command.__getitem__.assert_any_call(
                 '%s_find' % cmd)
@@ -149,9 +155,6 @@ class TestIpaConnector(TestIpaConnectorBase):
 
 
 class TestIpaUploader(TestIpaConnectorBase):
-    def setup_method(self, method):
-        self._create_uploader()
-
     def test_parse_entity_diff_add(self):
         entity = entities.FreeIPAUser(
             'test.user', {'firstName': 'Test', 'lastName': 'User'}, 'path')
@@ -176,7 +179,6 @@ class TestIpaUploader(TestIpaConnectorBase):
         assert len(self.uploader.commands) == 1
         cmd = self.uploader.commands[0]
         assert cmd.command == 'user_add'
-        print cmd.description
         assert cmd.description == (
             u'user_add test.user (givenname=Te\u0161t; sn=User)')
         assert cmd.payload == {
@@ -731,6 +733,8 @@ class TestIpaUploader(TestIpaConnectorBase):
 
 class TestIpaDownloader(TestIpaConnectorBase):
     def setup_method(self, method):
+        with open(SETTINGS) as settings_file:
+            self.settings = yaml.load(settings_file)
         self._create_downloader()
         if method.func_name.startswith('test_dump_membership'):
             self.downloader.ipa_entities = {
@@ -752,6 +756,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
 
     def _create_downloader(self, **args):
         self.downloader = tool.IpaDownloader(
+            settings=self.settings,
             parsed=args.get('parsed', {}),
             repo_path=args.get('repo_path', 'some_path'),
             dry_run=args.get('dry_run', False),

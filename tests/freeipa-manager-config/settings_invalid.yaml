@@ -1,0 +1,5 @@
+---
+user-group-pattern: '^role-.+|.+-users$'
+ignore:
+  groups: [ipausers, test.*]
+  user: [admin]

@@ -7,14 +7,11 @@ from _utils import _import
 tool = _import('ipamanager', 'integrity_checker')
 testpath = os.path.dirname(os.path.abspath(__file__))
 
-RULES_CORRECT = os.path.join(testpath, 'freeipa-manager-config/rules.yaml')
-RULES_INVALID = os.path.join(
-    testpath, 'freeipa-manager-config/rules_invalid.yaml')
-
 
 class TestIntegrityChecker(object):
     def _create_checker(self, entities):
-        self.checker = tool.IntegrityChecker(RULES_CORRECT, entities)
+        settings = {'user-group-pattern': '^role-.+|.+-users$'}
+        self.checker = tool.IntegrityChecker(entities, settings)
         self.checker.errs = dict()
 
     def test_build_dict(self):
@@ -31,24 +28,6 @@ class TestIntegrityChecker(object):
         assert isinstance(
             entity_dict['user']['firstname.lastname3'],
             tool.entities.FreeIPAUser)
-
-    def test_load_rule_correct(self):
-        self._create_checker(dict())
-        assert self.checker.user_group_regex == '^role-.+|.+-users$'
-
-    def test_load_rule_incorrect(self):
-        with pytest.raises(tool.ManagerError) as exc:
-            tool.IntegrityChecker('invalid/path/~', dict())
-        assert exc.value[0] == (
-            "Cannot open rules file: "
-            "[Errno 2] No such file or directory: 'invalid/path/~'")
-
-    def test_load_rule_invalid(self):
-        with pytest.raises(tool.ManagerError) as exc:
-            tool.IntegrityChecker(RULES_INVALID, dict())
-        assert exc.value[0] == (
-            'Rules file invalid: yamllint errors: '
-            '[2:1: missing document start "---" (document-start)]')
 
     @log_capture('IntegrityChecker', level=logging.WARNING)
     def test_check_empty(self, captured_warnings):

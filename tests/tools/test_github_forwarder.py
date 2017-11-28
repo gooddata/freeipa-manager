@@ -10,7 +10,6 @@ from testfixtures import log_capture
 
 testdir = os.path.dirname(__file__)
 sys.path.insert(0, testdir.replace('/tests/tools', ''))
-print testdir.replace('/tests/tools', '')
 import ipamanager.tools.github_forwarder as tool
 
 modulename = 'ipamanager.tools.github_forwarder'

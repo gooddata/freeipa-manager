@@ -1,2 +1,0 @@
-# groups with name mathing this regex can contain users directly
-user-group-pattern: '^role-.+|.+-users$'
