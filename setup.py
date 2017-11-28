@@ -16,7 +16,9 @@ params = {
     'version': '1.%s' % os.environ['CI_VERSION'],
     'packages': ['ipamanager'],
     'entry_points': {
-        'console_scripts': ['ipamanager=ipamanager.freeipa_manager:main']
+        'console_scripts': [
+            'ipamanager=ipamanager.freeipa_manager:main',
+            'ipamanager-pull-request=ipamanager.tools.github_forwarder:main']
     },
     'url': 'https://github.com/gooddata/gdc-ipa-utils',
     'license': 'Proprietary',

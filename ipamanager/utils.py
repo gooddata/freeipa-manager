@@ -9,6 +9,8 @@ Kristian Lesko <kristian.lesko@gooddata.com>
 
 import argparse
 import logging
+import re
+import yaml
 from yamllint.config import YamlLintConfig
 from yamllint.linter import run as yamllint_check
 
@@ -20,9 +22,6 @@ from errors import ConfigError
 ENTITY_CLASSES = [
     entities.FreeIPAHBACRule, entities.FreeIPAHostGroup,
     entities.FreeIPASudoRule, entities.FreeIPAUser, entities.FreeIPAUserGroup]
-
-# FIXME make long line warning-only (PAAS-12475)
-yamllint_config = YamlLintConfig('extends: default')
 
 
 def init_logging(loglevel):
@@ -57,13 +56,10 @@ def _type_verbosity(value):
 def _args_common():
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument('config', help='Config repository path')
+    common.add_argument('-s', '--settings', help='Settings file',
+                        default='/opt/freeipa-manager/settings.yaml')
     common.add_argument('-v', '--verbose', action='count', default=0,
                         dest='loglevel', help='Verbose mode (-vv for debug)')
-    common.add_argument('-r', '--rules', help='Config check rules file',
-                        default='/opt/freeipa-manager/rules.yaml')
-    # FIXME ignored entities can be taken from settings file (PAAS-12475)
-    common.add_argument('-i', '--ignored', help='Ignored entities file',
-                        default='/opt/freeipa-manager/ignored.yaml')
     return common
 
 
@@ -106,6 +102,22 @@ def run_yamllint_check(data):
     :param yamllint.config.YamlLintConfig: yamllint config to use
     :raises ConfigError: in case of yamllint errors
     """
-    lint_errs = [err for err in yamllint_check(data, yamllint_config)]
+    rules = {'extends': 'default', 'rules': {'line-length': 'disable'}}
+    lint_errs = list(yamllint_check(data, YamlLintConfig(yaml.dump(rules))))
     if lint_errs:
         raise ConfigError('yamllint errors: %s' % lint_errs)
+
+
+def check_ignored(entity_class, name, ignored):
+    """
+    Check if an entity should be ignored based on settings.
+    :param object entity_class: entity type
+    :param str name: entity name
+    :param dict ignored: ignored entity settings
+    :returns: True if entity should be ignored, False otherwise
+    :rtype: bool
+    """
+    for pattern in ignored.get(entity_class.entity_name, []):
+        if re.match(pattern, name):
+            return True
+    return False

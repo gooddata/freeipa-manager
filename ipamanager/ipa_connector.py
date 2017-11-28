@@ -16,13 +16,17 @@ from command import Command
 from core import FreeIPAManagerCore
 from entities import FreeIPAEntity
 from errors import CommandError, ConfigError, ManagerError
-from utils import ENTITY_CLASSES
+from utils import ENTITY_CLASSES, check_ignored
 
 
 class IpaConnector(FreeIPAManagerCore):
     """
     Responsible for updating FreeIPA server with changed configuration.
     """
+    def __init__(self, settings):
+        super(IpaConnector, self).__init__()
+        self.ignored = settings.get('ignore', dict())
+
     def load_ipa_entities(self):
         """
         Load entities defined on the FreeIPA via API.
@@ -47,7 +51,7 @@ class IpaConnector(FreeIPAManagerCore):
                                    % (entity_type, e))
             for data in parsed['result']:
                 name = data[entity_class.entity_id_type][0]
-                if name in entity_class.ignored:
+                if check_ignored(entity_class, name, self.ignored):
                     self.lg.debug('Not parsing ignored %s %s',
                                   entity_type, name)
                     continue
@@ -64,15 +68,17 @@ class IpaConnector(FreeIPAManagerCore):
 
 
 class IpaUploader(IpaConnector):
-    def __init__(self, parsed, threshold, force=False, enable_deletion=False):
+    def __init__(self, settings, parsed, threshold,
+                 force=False, enable_deletion=False):
         """
         Initialize an IPA connector object.
+        :param dict settings: parsed contents of the settings file
         :param dict parsed: dictionary of entities from `IntegrityChecker`
         :param int threshold: max percentage of entities to edit (1-100)
         :param bool force: execute changes (dry run if False)
         :param bool enable_deletion: enable deleting entities
         """
-        super(IpaUploader, self).__init__()
+        super(IpaUploader, self).__init__(settings)
         self.repo_entities = parsed
         self.threshold = threshold
         self.force = force
@@ -173,6 +179,7 @@ class IpaUploader(IpaConnector):
         exceed the `threshold` attribute.
         :raises ManagerError: in case of exceeded threshold/API error
         """
+        # FIXME deletion commands in settings file (PAAS-12474)
         self.load_ipa_entities()
         self._prepare_push()
         if not self.commands:
@@ -209,15 +216,17 @@ class IpaUploader(IpaConnector):
 
 
 class IpaDownloader(IpaConnector):
-    def __init__(self, parsed, repo_path, dry_run=False, add_only=False):
+    def __init__(self, settings, parsed, repo_path,
+                 dry_run=False, add_only=False):
         """
         Initialize an IPA connector object.
+        :param dict settings: parsed contents of the settings file
         :param dict parsed: dictionary of entities from `IntegrityChecker`
         :param str repo_path: path to configuration repository
         :param bool force: execute changes (dry run if False)
         :param bool enable_deletion: enable deleting entities
         """
-        super(IpaDownloader, self).__init__()
+        super(IpaDownloader, self).__init__(settings)
         self.repo_entities = parsed
         self.basepath = repo_path
         self.dry_run = dry_run

@@ -7,24 +7,21 @@ Tools for checking integrity of entity configurations.
 Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
-import yaml
-
 import entities
 from core import FreeIPAManagerCore
-from errors import ConfigError, IntegrityError, ManagerError
-from utils import run_yamllint_check
+from errors import IntegrityError
 
 
 class IntegrityChecker(FreeIPAManagerCore):
-    def __init__(self, rules_file, parsed):
+    def __init__(self, parsed, settings):
         """
         Create an integrity checker instance.
-        :param str rules_file: path to integrity check rules file
         :param dict parsed: entities parsed by `ConfigLoader` to check
+        :param dict settings: parsed settings file
         """
         super(IntegrityChecker, self).__init__()
-        self._load_rules(rules_file)
         self._build_dict(parsed)
+        self.user_group_regex = settings.get('user-group-pattern')
 
     def check(self):
         """
@@ -40,7 +37,6 @@ class IntegrityChecker(FreeIPAManagerCore):
         for entity_type in sorted(self.entity_dict):
             self.lg.debug('Checking %s entities', entity_type)
             for entity in self.entity_dict[entity_type].itervalues():
-                self.lg.debug('Checking entity %s', entity)
                 self._check_single(entity)
         if self.errs:
             raise IntegrityError(
@@ -57,6 +53,7 @@ class IntegrityChecker(FreeIPAManagerCore):
         :param FreeIPAEntity entity: entity to check
         :returns: None (any errors are written to the `self.errs` dictionary)
         """
+        self.lg.debug('Checking entity %s', entity)
         if isinstance(entity, entities.FreeIPARule):
             errs = self._check_single_rule_entity(entity)
         else:
@@ -185,22 +182,3 @@ class IntegrityChecker(FreeIPAManagerCore):
         if entity_subdict:
             return entity_subdict.get(name)
         return None
-
-    def _load_rules(self, path):
-        """
-        Load the rules file for the integrity check.
-        Currently, only the user-group-pattern attribute is used from the file.
-        :param str path: path to the rules file
-        """
-        self.lg.debug('Using integrity check rules from %s', path)
-        try:
-            with open(path) as src:
-                raw = src.read()
-            run_yamllint_check(raw)
-        except IOError as e:
-            raise ManagerError('Cannot open rules file: %s' % e)
-        except ConfigError as e:
-            raise ManagerError('Rules file invalid: %s' % e)
-        settings = yaml.safe_load(raw)
-        self.lg.debug('Settings parsed: %s', settings)
-        self.user_group_regex = settings.get('user-group-pattern')

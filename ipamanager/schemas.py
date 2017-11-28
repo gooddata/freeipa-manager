@@ -13,6 +13,15 @@ _name_type = Any(str, unicode)
 _item_or_list = Any(str, [str])
 _schema_memberof = {str: [str]}
 
+
+schema_settings = {
+    'user-group-pattern': str,
+    'ignore': {
+        Any('user', 'group', 'hostgroup', 'hbacrule', 'sudorule'): [str]
+    }
+}
+
+
 schema_users = {
     Required('firstName'): _name_type,
     Required('lastName'): _name_type,
