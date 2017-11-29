@@ -14,7 +14,7 @@ with open('requirements.txt') as deps_file:
 params = {
     'name': 'freeipa-manager',
     'version': '1.%s' % os.environ['CI_VERSION'],
-    'packages': ['ipamanager'],
+    'packages': ['ipamanager', 'ipamanager.tools'],
     'entry_points': {
         'console_scripts': [
             'ipamanager=ipamanager.freeipa_manager:main',
