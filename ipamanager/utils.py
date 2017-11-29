@@ -56,8 +56,7 @@ def _type_verbosity(value):
 def _args_common():
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument('config', help='Config repository path')
-    common.add_argument('-s', '--settings', help='Settings file',
-                        default='/opt/freeipa-manager/settings.yaml')
+    common.add_argument('-s', '--settings', help='Settings file')
     common.add_argument('-v', '--verbose', action='count', default=0,
                         dest='loglevel', help='Verbose mode (-vv for debug)')
     return common
@@ -91,6 +90,13 @@ def parse_args():
     args = parser.parse_args()
     # type & action cannot be combined in arg constructor, so parse -v here
     args.loglevel = _type_verbosity(args.loglevel)
+
+    # set default settings file based on action
+    if not args.settings:
+        if args.action == 'pull':
+            args.settings = '/opt/freeipa-manager/settings_pull.yaml'
+        else:
+            args.settings = '/opt/freeipa-manager/settings_push.yaml'
     return args
 
 

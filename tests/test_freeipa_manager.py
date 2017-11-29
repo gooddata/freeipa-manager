@@ -142,6 +142,21 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager.settings, {}, 'dump_repo', False, True)
             manager.downloader.pull.assert_called()
 
+    def test_settings_default_check(self):
+        with mock.patch.object(sys, 'argv', ['manager', 'check', 'repo']):
+            assert utils.parse_args().settings == (
+                '/opt/freeipa-manager/settings_push.yaml')
+
+    def test_settings_default_push(self):
+        with mock.patch.object(sys, 'argv', ['manager', 'push', 'repo']):
+            assert utils.parse_args().settings == (
+                '/opt/freeipa-manager/settings_push.yaml')
+
+    def test_settings_default_pull(self):
+        with mock.patch.object(sys, 'argv', ['manager', 'pull', 'repo']):
+            assert utils.parse_args().settings == (
+                '/opt/freeipa-manager/settings_pull.yaml')
+
     def test_load_settings(self):
         assert self._init_tool(['check', 'dump_repo']).settings == {
             'ignore': {'group': ['ipausers', 'test.*'], 'user': ['admin']},
