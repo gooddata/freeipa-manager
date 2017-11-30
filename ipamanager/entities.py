@@ -323,6 +323,7 @@ class FreeIPAHBACRule(FreeIPARule):
     """Representation of a FreeIPA HBAC (host-based access control) rule."""
     entity_name = 'hbacrule'
     managed_attributes_push = ['description', 'serviceCategory']
+    managed_attributes_pull = ['description']
     validation_schema = voluptuous.Schema(schemas.schema_hbac)
 
     def __init__(self, name, data, path=None):
@@ -343,7 +344,7 @@ class FreeIPASudoRule(FreeIPARule):
     managed_attributes_push = [
         'cmdCategory', 'description',
         'ipaSudoRunAsGroupCategory', 'ipaSudoRunAsUserCategory']
-    managed_attributes_pull = managed_attributes_push + ['ipaSudoOpt']
+    managed_attributes_pull = ['description']
     key_mapping = {
         'options': 'ipaSudoOpt',
         'runAsGroupCategory': 'ipaSudoRunAsGroupCategory',

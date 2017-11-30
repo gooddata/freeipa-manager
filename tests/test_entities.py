@@ -444,10 +444,8 @@ class TestFreeIPASudoRule(object):
     def test_create_sudo_rule_ipa(self):
         rule = tool.FreeIPASudoRule(u'rule-one', self.ipa_data)
         assert rule.name == 'rule-one'
-        assert rule.data_repo == {'description': 'Sample sudo rule one',
-                                  'options': ['!authenticate', '!requiretty']}
+        assert rule.data_repo == {'description': 'Sample sudo rule one'}
         assert isinstance(rule.data_repo['description'], unicode)
-        assert isinstance(rule.data_repo['options'][0], unicode)
         assert rule.data_ipa == self.ipa_data
 
     def test_create_commands_new(self):
@@ -512,8 +510,5 @@ class TestFreeIPASudoRule(object):
     def test_convert_to_repo(self):
         rule = tool.FreeIPASudoRule('rule-one', {})
         result = rule._convert_to_repo(self.ipa_data)
-        assert result == {
-            'description': 'Sample sudo rule one',
-            'options': ['!authenticate', '!requiretty']}
+        assert result == {'description': 'Sample sudo rule one'}
         assert isinstance(result['description'], unicode)
-        assert isinstance(result['options'][0], unicode)
