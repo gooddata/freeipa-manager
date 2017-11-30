@@ -162,7 +162,10 @@ class GitHubForwarder(object):
             self.lg.info('Pull request %s created successfully' % url)
         else:
             err = self._parse_github_error(parsed)
-            raise ManagerError('Creating PR failed: %s' % err)
+            if 'A pull request already exists' in err:
+                self.lg.info('PR already exists, not creating another one.')
+            else:
+                raise ManagerError('Creating PR failed: %s' % err)
 
     def _parse_args(self):
         parser = argparse.ArgumentParser(description='GitHubForwarder')

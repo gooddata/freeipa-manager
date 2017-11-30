@@ -172,13 +172,12 @@ class TestGitHubForwarder(object):
                             ('Pull request https://github.com/gooddata/config-'
                              'repo/pull/42 created successfully')))
 
-    def test_pull_request_already_exists(self):
+    @log_capture('GitHubForwarder', level=logging.INFO)
+    def test_pull_request_already_exists(self, captured_log):
         with self.gh_mock:
-            with pytest.raises(tool.ManagerError) as exc:
-                self.forwarder._create_pull_request()
-        assert exc.value[0] == (
-            'Creating PR failed: Validation Failed '
-            '(A pull request already exists for billie-jean:same-branch.)')
+            self.forwarder._create_pull_request()
+        captured_log.check(('GitHubForwarder', 'INFO',
+                            'PR already exists, not creating another one.'))
 
     def test_pull_request_bad_credentials(self):
         with self.gh_mock:
