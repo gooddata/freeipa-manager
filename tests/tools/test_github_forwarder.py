@@ -26,7 +26,6 @@ class TestGitHubForwarder(object):
                     self.forwarder = tool.GitHubForwarder()
         self.forwarder.args.repo = 'config-repo'
         self.forwarder.name = 'ipa.dummy'
-        self.forwarder.msg = 'Awesome pull request'
         if method.func_name.startswith('test_pull_request_'):
             method_end = method.func_name.replace('test_pull_request_', '')
             self.forwarder._push = mock.Mock()
@@ -48,10 +47,10 @@ class TestGitHubForwarder(object):
         with mock.patch('%s.socket.getfqdn' % modulename, lambda: 'ipa.dummy'):
             self.forwarder._commit()
             self.forwarder.git.checkout.assert_called_with(
-                ['-B', 'ipa.dummy-2017-12-29T23-59-59'])
+                ['-B', 'freeipa-dev'])
             self.forwarder.git.add.assert_called_with(['.'])
             self.forwarder.git.commit.assert_called_with(
-                ['-m', 'ipa.dummy dump at 2017-12-29T23-59-59'])
+                ['-m', 'Entity dump from ipa.dummy'])
 
     @log_capture('GitHubForwarder', level=logging.INFO)
     def test_commit_no_changes(self, captured_log):
@@ -107,9 +106,7 @@ class TestGitHubForwarder(object):
 
     @mock.patch.dict(os.environ, {'EC2DATA_ENVIRONMENT': 'int'})
     def test_generate_branch_name(self):
-        self.forwarder.timestamp = '2018-01-01T01-02-03'
-        assert self.forwarder._generate_branch_name() == (
-            'int-2018-01-01T01-02-03')
+        assert self.forwarder._generate_branch_name() == 'freeipa-int'
 
     @mock.patch('%s.requests' % modulename)
     def test_make_request(self, mock_requests):
@@ -117,9 +114,9 @@ class TestGitHubForwarder(object):
             return str(sorted(x.items()))
         with mock.patch('%s.json.dumps' % modulename, _mock_dump):
             self.forwarder._make_request()
-        dumped_data = (
-            "[('base', 'master'), ('head', 'billie-jean:ipa.dummy-2017-12-29"
-            "T23-59-59'), ('title', 'Awesome pull request')]")
+        dumped_data = ("[('base', 'master'), ('body', 'Entity dump from "
+                       "ipa.dummy'), ('head', 'billie-jean:freeipa-dev'), "
+                       "('title', 'Entity dump from ipa.dummy')]")
         mock_requests.post.assert_called_with(
             'https://api.github.com/repos/gooddata/config-repo/pulls',
             data=dumped_data, headers={'Authorization': 'token None'})

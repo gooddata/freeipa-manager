@@ -18,7 +18,6 @@ import re
 import requests
 import sh
 import socket
-import time
 
 from ipamanager.errors import ManagerError
 from ipamanager.utils import init_logging
@@ -33,7 +32,7 @@ class GitHubForwarder(object):
         Create a GitHub forwarder object.
         """
         self.name = socket.getfqdn().replace('.int.', '.')
-        self.timestamp = time.strftime('%Y-%m-%dT%H-%M-%S')
+        self.msg = 'Entity dump from %s' % self.name
         self._parse_args()
         init_logging(self.args.loglevel)
         self.lg = logging.getLogger(self.__class__.__name__)
@@ -62,7 +61,6 @@ class GitHubForwarder(object):
         :rtype: None
         :raises ManagerError: when checkout/add/commit fails
         """
-        self.msg = '%s dump at %s' % (self.name, self.timestamp)
         self.lg.debug('Using commit message: %s', self.msg)
         try:
             self.git.checkout(['-B', self.args.branch])
@@ -102,8 +100,7 @@ class GitHubForwarder(object):
         :returns: branch name to use
         :rtype: str
         """
-        return '%s-%s' % (
-            os.getenv('EC2DATA_ENVIRONMENT', self.name), self.timestamp)
+        return 'freeipa-%s' % os.getenv('EC2DATA_ENVIRONMENT', 'dev')
 
     def _make_request(self):
         """
@@ -117,7 +114,8 @@ class GitHubForwarder(object):
         data = {
             'title': self.msg,
             'head': '%s:%s' % (self.args.user, self.args.branch),
-            'base': self.args.base
+            'base': self.args.base,
+            'body': self.msg
         }
         return requests.post(url, headers=headers, data=json.dumps(data))
 
