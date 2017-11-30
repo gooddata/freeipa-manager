@@ -4,7 +4,7 @@
     {
       "resource": "PullRequest",
       "code": "custom",
-      "message": "No commits between gooddata:master and yenkins:some-branch"
+      "message": "No commits between gooddata:master and billie-jean:some-branch"
     }
   ],
   "documentation_url": "https://developer.github.com/v3/pulls/#create-a-pull-request"

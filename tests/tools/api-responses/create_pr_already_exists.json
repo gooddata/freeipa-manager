@@ -4,7 +4,7 @@
     {
       "resource": "PullRequest",
       "code": "custom",
-      "message": "A pull request already exists for yenkins:same-branch."
+      "message": "A pull request already exists for billie-jean:same-branch."
     }
   ],
   "documentation_url": "https://developer.github.com/v3/pulls/#create-a-pull-request"

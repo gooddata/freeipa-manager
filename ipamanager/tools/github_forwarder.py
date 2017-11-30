@@ -176,7 +176,7 @@ class GitHubForwarder(object):
         parser.add_argument('-r', '--repo', default='freeipa-manager-config',
                             help='GitHub repository name')
         parser.add_argument('-t', '--token', help='GitHub API token')
-        parser.add_argument('-u', '--user', default='yenkins',
+        parser.add_argument('-u', '--user', default='billie-jean',
                             help='GitHub user/fork remote name')
         actions = parser.add_mutually_exclusive_group()
         actions.add_argument('-c', '--commit', action='store_true',

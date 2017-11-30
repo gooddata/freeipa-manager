@@ -135,8 +135,8 @@ class TestConfigLoader(object):
             'More than one entity parsed from users/archibald_jenkins.yaml (2)'
         )
 
-    @log_capture('ConfigLoader', level=logging.WARNING)
-    def test_parse_ignored(self, captured_warnings):
+    @log_capture('ConfigLoader', level=logging.INFO)
+    def test_parse_ignored(self, captured_log):
         data = {
             'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
         self.loader.entities['user'] = []
@@ -145,9 +145,9 @@ class TestConfigLoader(object):
             data, entities.FreeIPAUser,
             '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
         assert self.loader.entities['user'] == []
-        captured_warnings.check(('ConfigLoader', 'WARNING',
-                                ('Not creating ignored user archibald.jenkins '
-                                 'from users/archibald_jenkins.yaml')))
+        captured_log.check(('ConfigLoader', 'INFO',
+                            ('Not creating ignored user archibald.jenkins '
+                             'from users/archibald_jenkins.yaml')))
 
     @log_capture('ConfigLoader', level=logging.INFO)
     def test_load(self, captured_log):

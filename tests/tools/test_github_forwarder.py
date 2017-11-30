@@ -87,11 +87,12 @@ class TestGitHubForwarder(object):
         self.forwarder.git = mock.Mock()
         self.forwarder.args.branch = 'branch'
         self.forwarder._push()
-        self.forwarder.git.push.assert_called_with(['yenkins', 'branch', '-f'])
+        self.forwarder.git.push.assert_called_with(
+            ['billie-jean', 'branch', '-f'])
 
     def test_push_error(self):
         self.forwarder.git = mock.Mock()
-        cmd = '/usr/bin/git push yenkins some-branch'
+        cmd = '/usr/bin/git push billie-jean some-branch'
         stderr = ("error: src refspec master does not match any.\n"
                   "error: failed to push some refs to "
                   "'ssh://git@github.com/gooddata/gdc-ipa-utils.git'\n")
@@ -117,7 +118,7 @@ class TestGitHubForwarder(object):
         with mock.patch('%s.json.dumps' % modulename, _mock_dump):
             self.forwarder._make_request()
         dumped_data = (
-            "[('base', 'master'), ('head', 'yenkins:ipa.dummy-2017-12-29"
+            "[('base', 'master'), ('head', 'billie-jean:ipa.dummy-2017-12-29"
             "T23-59-59'), ('title', 'Awesome pull request')]")
         mock_requests.post.assert_called_with(
             'https://api.github.com/repos/gooddata/config-repo/pulls',
@@ -131,7 +132,7 @@ class TestGitHubForwarder(object):
         data = json.loads(self._load_resp('create_pr_already_exists'))
         assert self.forwarder._parse_github_error(data) == (
             'Validation Failed (A pull request '
-            'already exists for yenkins:same-branch.)')
+            'already exists for billie-jean:same-branch.)')
 
     def test_parse_github_error_errorlist_several(self):
         data = {
@@ -177,7 +178,7 @@ class TestGitHubForwarder(object):
                 self.forwarder._create_pull_request()
         assert exc.value[0] == (
             'Creating PR failed: Validation Failed '
-            '(A pull request already exists for yenkins:same-branch.)')
+            '(A pull request already exists for billie-jean:same-branch.)')
 
     def test_pull_request_bad_credentials(self):
         with self.gh_mock:
@@ -205,4 +206,4 @@ class TestGitHubForwarder(object):
                 self.forwarder._create_pull_request()
         assert exc.value[0] == (
             'Creating PR failed: Validation Failed '
-            '(No commits between gooddata:master and yenkins:some-branch)')
+            '(No commits between gooddata:master and billie-jean:some-branch)')
