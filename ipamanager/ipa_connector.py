@@ -250,31 +250,33 @@ class IpaDownloader(IpaConnector):
         self.dry_run = dry_run
         self.add_only = add_only
 
-    def pull(self):
+    def _prepare_pull(self):
         """
-        Pull configuration from FreeIPA server
-        and update local configuration files to match it.
+        Prepare pull of all entities before actually running it so that
+        we can ensure that all entities can be written and the pull
+        will not fail after writing only a part of entities.
         """
-        self.load_ipa_entities()
+        self.to_write = []
+        self.to_delete = []
         for cls in ENTITY_CLASSES:
             self.lg.debug('Processing %s entities', cls.entity_name)
             for ipa_entity in self.ipa_entities[cls.entity_name].itervalues():
                 self._update_entity_membership(ipa_entity)
                 repo_entity = self.repo_entities[cls.entity_name].get(
                     ipa_entity.name)
-                if repo_entity:
+                if repo_entity:  # update of entity
                     if repo_entity.data_repo != ipa_entity.data_repo:
                         ipa_entity.path = repo_entity.path
                         if self.dry_run:
                             self.lg.info('Would update %s', repr(ipa_entity))
                         else:
-                            ipa_entity.write_to_file()
-                else:
+                            self.to_write.append(ipa_entity)
+                else:  # new entity creation
                     self._generate_filename(ipa_entity)
                     if self.dry_run:
                         self.lg.info('Would create %s', repr(ipa_entity))
                     else:
-                        ipa_entity.write_to_file()
+                        self.to_write.append(ipa_entity)
             if not self.add_only:
                 for name in self.repo_entities[cls.entity_name]:
                     repo_entity = self.repo_entities[cls.entity_name][name]
@@ -282,7 +284,25 @@ class IpaDownloader(IpaConnector):
                         if self.dry_run:
                             self.lg.info('Would delete %s', repr(repo_entity))
                         else:
-                            repo_entity.delete_file()
+                            self.to_delete.append(repo_entity)
+
+    def pull(self):
+        """
+        Pull configuration from FreeIPA server
+        and update local configuration files to match it.
+        """
+        self.load_ipa_entities()
+        self._prepare_pull()
+        if self.dry_run:
+            return
+        self.lg.info('Starting entity pulling')
+        for entity in self.to_write:
+            entity.write_to_file()
+        if self.add_only:
+            self.lg.info('Entity pulling finished.')
+            return
+        for entity in self.to_delete:
+            entity.delete_file()
         self.lg.info('Entity pulling finished.')
 
     def _update_entity_membership(self, entity):

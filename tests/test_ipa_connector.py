@@ -837,8 +837,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
             ('IpaDownloader', 'INFO', 'Would delete hbacrule rule-one'),
             ('IpaDownloader', 'INFO', 'Would create hostgroup group-one'),
             ('IpaDownloader', 'INFO', 'Would update user test.user'),
-            ('IpaDownloader', 'INFO', 'Would update group group-two'),
-            ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
+            ('IpaDownloader', 'INFO', 'Would update group group-two'))
 
     def test_pull_dry_run_enable_deletion(self):
         self._create_downloader(dry_run=True, add_only=False)
@@ -851,8 +850,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
             ('IpaDownloader', 'INFO', 'Would delete hbacrule rule-one'),
             ('IpaDownloader', 'INFO', 'Would create hostgroup group-one'),
             ('IpaDownloader', 'INFO', 'Would update user test.user'),
-            ('IpaDownloader', 'INFO', 'Would update group group-two'),
-            ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
+            ('IpaDownloader', 'INFO', 'Would update group group-two'))
 
     def test_pull_add_only(self):
         self._create_downloader(dry_run=False, add_only=True)
@@ -880,11 +878,12 @@ class TestIpaDownloader(TestIpaConnectorBase):
             ('IpaDownloader',
              'DEBUG',
              'Setting group-one file path to hostgroups/group_one.yaml'),
-            ('FreeIPAHostGroup', 'DEBUG', 'group-one written to file'),
             ('IpaDownloader', 'DEBUG', 'Processing sudorule entities'),
             ('IpaDownloader', 'DEBUG', 'Processing user entities'),
-            ('FreeIPAUser', 'DEBUG', 'test.user written to file'),
             ('IpaDownloader', 'DEBUG', 'Processing group entities'),
+            ('IpaDownloader', 'INFO', 'Starting entity pulling'),
+            ('FreeIPAHostGroup', 'DEBUG', 'group-one written to file'),
+            ('FreeIPAUser', 'DEBUG', 'test.user written to file'),
             ('FreeIPAUserGroup', 'DEBUG', 'group-two written to file'),
             ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
 
@@ -909,17 +908,18 @@ class TestIpaDownloader(TestIpaConnectorBase):
                           '      - group-one\n')}
         log.check(
             ('IpaDownloader', 'DEBUG', 'Processing hbacrule entities'),
-            ('FreeIPAHBACRule', 'DEBUG', 'rule-one config file deleted'),
             ('IpaDownloader', 'DEBUG', 'Processing hostgroup entities'),
             ('IpaDownloader',
              'DEBUG',
              'Setting group-one file path to hostgroups/group_one.yaml'),
-            ('FreeIPAHostGroup', 'DEBUG', 'group-one written to file'),
             ('IpaDownloader', 'DEBUG', 'Processing sudorule entities'),
             ('IpaDownloader', 'DEBUG', 'Processing user entities'),
-            ('FreeIPAUser', 'DEBUG', 'test.user written to file'),
             ('IpaDownloader', 'DEBUG', 'Processing group entities'),
+            ('IpaDownloader', 'INFO', 'Starting entity pulling'),
+            ('FreeIPAHostGroup', 'DEBUG', 'group-one written to file'),
+            ('FreeIPAUser', 'DEBUG', 'test.user written to file'),
             ('FreeIPAUserGroup', 'DEBUG', 'group-two written to file'),
+            ('FreeIPAHBACRule', 'DEBUG', 'rule-one config file deleted'),
             ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
         mock_delete.assert_called_with('rule-one')
 
