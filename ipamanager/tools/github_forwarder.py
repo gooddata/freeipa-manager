@@ -64,7 +64,7 @@ class GitHubForwarder(object):
         self.lg.debug('Using commit message: %s', self.msg)
         try:
             self.git.checkout(['-B', self.args.branch])
-            self.git.add(['.'])
+            self.git.add(['-A', '.'])
             self.git.commit(['-m', self.msg])
         except sh.ErrorReturnCode_1 as e:
             if re.search('nothing to commit', e.stdout):

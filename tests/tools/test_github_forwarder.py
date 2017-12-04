@@ -48,7 +48,7 @@ class TestGitHubForwarder(object):
             self.forwarder._commit()
             self.forwarder.git.checkout.assert_called_with(
                 ['-B', 'freeipa-dev'])
-            self.forwarder.git.add.assert_called_with(['.'])
+            self.forwarder.git.add.assert_called_with(['-A', '.'])
             self.forwarder.git.commit.assert_called_with(
                 ['-m', 'Entity dump from ipa.dummy'])
 
