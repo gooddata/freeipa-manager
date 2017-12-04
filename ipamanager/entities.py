@@ -41,6 +41,7 @@ class FreeIPAEntity(FreeIPAManagerCore):
             data = dict()
         self.name = name
         self.path = path
+        self.metaparams = data.pop('metaparams', dict())
         if self.path:  # created from local config
             try:
                 self.validation_schema(data)
@@ -143,6 +144,8 @@ class FreeIPAEntity(FreeIPAManagerCore):
         if not self.path:
             raise ManagerError(
                 '%s has no file path, nowhere to write.' % repr(self))
+        if self.metaparams:
+            self.data_repo.update({'metaparams': self.metaparams})
         try:
             with open(self.path, 'w') as target:
                 data = {self.name: self.data_repo or None}

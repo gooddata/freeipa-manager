@@ -871,7 +871,9 @@ class TestIpaDownloader(TestIpaConnectorBase):
                           '  lastName: User\n'
                           '  memberOf:\n'
                           '    group:\n'
-                          '      - group-one\n')}
+                          '      - group-one\n'
+                          '  metaparams:\n'
+                          '    newstyle: true\n')}
         log.check(
             ('IpaDownloader', 'DEBUG', 'Processing hbacrule entities'),
             ('IpaDownloader', 'DEBUG', 'Processing hostgroup entities'),
@@ -905,7 +907,9 @@ class TestIpaDownloader(TestIpaConnectorBase):
                           '  lastName: User\n'
                           '  memberOf:\n'
                           '    group:\n'
-                          '      - group-one\n')}
+                          '      - group-one\n'
+                          '  metaparams:\n'
+                          '    newstyle: true\n')}
         log.check(
             ('IpaDownloader', 'DEBUG', 'Processing hbacrule entities'),
             ('IpaDownloader', 'DEBUG', 'Processing hostgroup entities'),
@@ -943,7 +947,8 @@ class TestIpaDownloader(TestIpaConnectorBase):
             'user': {
                 'test.user': entities.FreeIPAUser(
                     'test.user',
-                    {'firstName': 'Test', 'lastName': 'user'}, 'path')},
+                    {'firstName': 'Test', 'lastName': 'user',
+                     'metaparams': {'newstyle': True}}, 'path')},
             'group': {
                 'group-one': entities.FreeIPAUserGroup(
                     'group-one', {'description': 'test'}, 'path'),

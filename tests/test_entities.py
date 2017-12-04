@@ -184,12 +184,22 @@ class TestFreeIPAUserGroup(object):
             'group-one-users', data, 'path')
         assert group.name == 'group-one-users'
         assert group.data_repo == data
+        assert group.metaparams == {}
         assert group.data_ipa == {
             'description': ('Sample user group',),
             'memberof': {'group': ['group-one'],
                          'hbacrule': ['rule-one'],
                          'sudorule': ['rule-one']}}
         assert isinstance(group.data_ipa['description'][0], unicode)
+
+    def test_create_usergroup_correct_metaparams(self):
+        data = {
+            'description': 'Sample user group',
+            'metaparams': {'someparam': 'testvalue'}}
+        group = tool.FreeIPAUserGroup(
+            'group-one-users', data, 'path')
+        assert group.data_repo == {'description': 'Sample user group'}
+        assert group.metaparams == {'someparam': 'testvalue'}
 
     def test_create_usergroup_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:

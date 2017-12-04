@@ -32,19 +32,22 @@ schema_users = {
     'manager': str,
     'githubLogin': _item_or_list,
     'title': str,
-    'memberOf': _schema_memberof
+    'memberOf': _schema_memberof,
+    'metaparams': {str: str}
 }
 
 
 schema_usergroups = {
     'description': str,
-    'memberOf': _schema_memberof
+    'memberOf': _schema_memberof,
+    'metaparams': {str: str}
 }
 
 
 schema_hostgroups = {
     'description': str,
-    'memberOf': _schema_memberof
+    'memberOf': _schema_memberof,
+    'metaparams': {str: str}
 }
 
 
@@ -52,7 +55,8 @@ schema_hbac = {
     'description': str,
     'memberHost': [str],
     'memberUser': [str],
-    'serviceCategory': 'all'
+    'serviceCategory': 'all',
+    'metaparams': {str: str}
 }
 
 
@@ -63,5 +67,6 @@ schema_sudo = {
     'memberUser': [str],
     'options': ['!authenticate', '!requiretty'],
     'runAsGroupCategory': 'all',
-    'runAsUserCategory': 'all'
+    'runAsUserCategory': 'all',
+    'metaparams': {str: str}
 }

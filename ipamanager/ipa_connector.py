@@ -267,6 +267,7 @@ class IpaDownloader(IpaConnector):
                 if repo_entity:  # update of entity
                     if repo_entity.data_repo != ipa_entity.data_repo:
                         ipa_entity.path = repo_entity.path
+                        ipa_entity.metaparams = repo_entity.metaparams
                         if self.dry_run:
                             self.lg.info('Would update %s', repr(ipa_entity))
                         else:
