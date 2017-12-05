@@ -33,8 +33,9 @@ class IpaConnector(FreeIPAManagerCore):
     def load_ipa_entities(self):
         """
         Load entities defined on the FreeIPA via API.
-        Entity data is saved in `self.ipa_entities` dictionary with keys
-        being a tuple (entity type, name) (e.g., ('hostgroup', 'group-one')).
+        Entity data is saved in `self.ipa_entities` nested dictionary
+        with top-level keys being entity types (e.g., 'hostgroup')
+        and bottom-level keys being entity names (e.g., 'group-one').
         :raises ManagerError: if there is an error communicating with the API
         :returns: None (entities saved in the `self.ipa_entities` dict)
         """

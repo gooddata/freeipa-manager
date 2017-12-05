@@ -884,9 +884,10 @@ class TestIpaDownloader(TestIpaConnectorBase):
             ('IpaDownloader', 'DEBUG', 'Processing user entities'),
             ('IpaDownloader', 'DEBUG', 'Processing group entities'),
             ('IpaDownloader', 'INFO', 'Starting entity pulling'),
-            ('FreeIPAHostGroup', 'DEBUG', 'group-one written to file'),
-            ('FreeIPAUser', 'DEBUG', 'test.user written to file'),
-            ('FreeIPAUserGroup', 'DEBUG', 'group-two written to file'),
+            ('FreeIPAHostGroup', 'DEBUG',
+             'hostgroup group-one written to file'),
+            ('FreeIPAUser', 'DEBUG', 'user test.user written to file'),
+            ('FreeIPAUserGroup', 'DEBUG', 'group group-two written to file'),
             ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
 
     def test_pull(self):
@@ -920,10 +921,12 @@ class TestIpaDownloader(TestIpaConnectorBase):
             ('IpaDownloader', 'DEBUG', 'Processing user entities'),
             ('IpaDownloader', 'DEBUG', 'Processing group entities'),
             ('IpaDownloader', 'INFO', 'Starting entity pulling'),
-            ('FreeIPAHostGroup', 'DEBUG', 'group-one written to file'),
-            ('FreeIPAUser', 'DEBUG', 'test.user written to file'),
-            ('FreeIPAUserGroup', 'DEBUG', 'group-two written to file'),
-            ('FreeIPAHBACRule', 'DEBUG', 'rule-one config file deleted'),
+            ('FreeIPAHostGroup', 'DEBUG',
+             'hostgroup group-one written to file'),
+            ('FreeIPAUser', 'DEBUG', 'user test.user written to file'),
+            ('FreeIPAUserGroup', 'DEBUG', 'group group-two written to file'),
+            ('FreeIPAHBACRule', 'DEBUG',
+             'hbacrule rule-one config file deleted'),
             ('IpaDownloader', 'INFO', 'Entity pulling finished.'))
         mock_delete.assert_called_with('rule-one')
 

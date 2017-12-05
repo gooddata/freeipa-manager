@@ -311,7 +311,7 @@ class TestFreeIPAUserGroup(object):
                 group.delete_file()
                 mock_unlink.assert_called_with('some/path')
         log.check(('FreeIPAUserGroup', 'DEBUG',
-                   'group-three-users config file deleted'))
+                   'group group-three-users config file deleted'))
 
     def test_delete_file_no_path(self):
         group = tool.FreeIPAUserGroup(
@@ -415,6 +415,32 @@ class TestFreeIPAHBACRule(object):
         assert [i.payload for i in commands] == [
             {'cn': u'rule-one', 'hostgroup': u'group-one'},
             {'cn': u'rule-one', 'group': u'group-one'}]
+
+    def test_write_to_file_no_default_attributes(self):
+        rule = tool.FreeIPAHBACRule(
+            'rule-one', {'description': 'Sample HBAC rule'}, 'path')
+        rule.default_attributes = []
+        assert rule.data_repo == {
+            'description': 'Sample HBAC rule', 'serviceCategory': 'all'}
+        output = dict()
+        with mock.patch('yaml.dump', _mock_dump(output, yaml.dump)):
+            with mock.patch('__builtin__.open'):
+                rule.write_to_file()
+        assert output == {'rule-one': '---\nrule-one:\n'
+                                      '  description: Sample HBAC rule\n'
+                                      '  serviceCategory: all\n'}
+
+    def test_write_to_file_default_attributes(self):
+        rule = tool.FreeIPAHBACRule(
+            'rule-one', {'description': 'Sample HBAC rule'}, 'path')
+        assert rule.data_repo == {
+            'description': 'Sample HBAC rule', 'serviceCategory': 'all'}
+        output = dict()
+        with mock.patch('yaml.dump', _mock_dump(output, yaml.dump)):
+            with mock.patch('__builtin__.open'):
+                rule.write_to_file()
+        assert output == {'rule-one': '---\nrule-one:\n'
+                                      '  description: Sample HBAC rule\n'}
 
 
 class TestFreeIPASudoRule(object):

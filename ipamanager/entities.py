@@ -146,12 +146,15 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 '%s has no file path, nowhere to write.' % repr(self))
         if self.metaparams:
             self.data_repo.update({'metaparams': self.metaparams})
+        # don't write default attributes into file
+        for key in self.default_attributes:
+            self.data_repo.pop(key, None)
         try:
             with open(self.path, 'w') as target:
                 data = {self.name: self.data_repo or None}
                 yaml.dump(data, stream=target, Dumper=EntityDumper,
                           default_flow_style=False, explicit_start=True)
-                self.lg.debug('%s written to file', self)
+                self.lg.debug('%s written to file', repr(self))
         except (IOError, OSError, yaml.YAMLError) as e:
             raise ConfigError(
                 'Cannot write %s to %s: %s' % (repr(self), self.path, e))
@@ -162,7 +165,7 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 '%s has no file path, cannot delete.' % repr(self))
         try:
             os.unlink(self.path)
-            self.lg.debug('%s config file deleted', self)
+            self.lg.debug('%s config file deleted', repr(self))
         except OSError as e:
             raise ConfigError(
                 'Cannot delete %s at %s: %s' % (repr(self), self.path, e))
@@ -203,6 +206,16 @@ class FreeIPAEntity(FreeIPAManagerCore):
         :rtype: list(str)
         """
         return self.managed_attributes_push
+
+    @property
+    def default_attributes(self):
+        """
+        Return a list of default attributes for each entity of the given type.
+        These attributes will not be written into the YAML file when pulling.
+        :returns: list of entity's attributes that have single default value
+        :rtype: list(str)
+        """
+        return []
 
     def __repr__(self):
         return '%s %s' % (self.entity_name, self.name)
@@ -324,6 +337,7 @@ class FreeIPARule(FreeIPAEntity):
 
 class FreeIPAHBACRule(FreeIPARule):
     """Representation of a FreeIPA HBAC (host-based access control) rule."""
+    default_attributes = ['serviceCategory']
     entity_name = 'hbacrule'
     managed_attributes_push = ['description', 'serviceCategory']
     validation_schema = voluptuous.Schema(schemas.schema_hbac)
@@ -342,6 +356,8 @@ class FreeIPAHBACRule(FreeIPARule):
 
 class FreeIPASudoRule(FreeIPARule):
     """Representation of a FreeIPA sudo rule."""
+    default_attributes = [
+        'cmdCategory', 'options', 'runAsGroupCategory', 'runAsUserCategory']
     entity_name = 'sudorule'
     managed_attributes_push = [
         'cmdCategory', 'description',
