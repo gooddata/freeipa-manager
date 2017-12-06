@@ -43,14 +43,17 @@ class TestGitHubForwarder(object):
             return f.read()
 
     def test_commit(self):
+        def _mock_time(*args):
+            return '01 Jan 2017 12:34:56'
         self.forwarder.git = mock.Mock()
         with mock.patch('%s.socket.getfqdn' % modulename, lambda: 'ipa.dummy'):
-            self.forwarder._commit()
-            self.forwarder.git.checkout.assert_called_with(
-                ['-B', 'freeipa-dev'])
-            self.forwarder.git.add.assert_called_with(['-A', '.'])
-            self.forwarder.git.commit.assert_called_with(
-                ['-m', 'Entity dump from ipa.dummy'])
+            with mock.patch('%s.time.strftime' % modulename, _mock_time):
+                self.forwarder._commit()
+                self.forwarder.git.checkout.assert_called_with(
+                    ['-B', 'freeipa-dev'])
+                self.forwarder.git.add.assert_called_with(['-A', '.'])
+                msg = 'Entity dump from ipa.dummy at 01 Jan 2017 12:34:56'
+                self.forwarder.git.commit.assert_called_with(['-m', msg])
 
     @log_capture('GitHubForwarder', level=logging.INFO)
     def test_commit_no_changes(self, captured_log):

@@ -18,6 +18,7 @@ import re
 import requests
 import sh
 import socket
+import time
 
 from ipamanager.errors import ManagerError
 from ipamanager.utils import init_logging
@@ -61,11 +62,12 @@ class GitHubForwarder(object):
         :rtype: None
         :raises ManagerError: when checkout/add/commit fails
         """
-        self.lg.debug('Using commit message: %s', self.msg)
+        commit_msg = '%s at %s' % (self.msg, time.strftime('%d %h %Y %H:%M:%S'))
+        self.lg.debug('Using commit message: %s', commit_msg)
         try:
             self.git.checkout(['-B', self.args.branch])
             self.git.add(['-A', '.'])
-            self.git.commit(['-m', self.msg])
+            self.git.commit(['-m', commit_msg])
         except sh.ErrorReturnCode_1 as e:
             if re.search('nothing to commit', e.stdout):
                 self.lg.info('No changes, nothing to commit')
