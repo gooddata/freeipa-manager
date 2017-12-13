@@ -50,7 +50,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
         manager.run()
         mock_config.assert_called_with('config_path', manager.settings)
         mock_check.assert_called_with(
-            manager.config_loader.entities, manager.settings)
+            manager.config_loader.load.return_value, manager.settings)
 
     @log_capture('FreeIPAManager', level=logging.ERROR)
     def test_run_check_error(self, captured_errors):
@@ -63,84 +63,66 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             ('FreeIPAManager', 'ERROR', 'Error loading config'))
 
     def test_run_push(self):
-        with mock.patch('%s.FreeIPAManager.check' % modulename):
-            manager = self._init_tool(['push', 'config_repo', '-ft', '10'])
-            manager.integrity_checker = mock.Mock()
-            manager.integrity_checker.entity_dict = dict()
-            with mock.patch(
-                    'ipamanager.ipa_connector.IpaUploader') as mock_conn:
+        with mock.patch('ipamanager.ipa_connector.IpaUploader') as mock_conn:
+            with mock.patch('%s.FreeIPAManager.check' % modulename):
+                manager = self._init_tool(['push', 'config_repo', '-ft', '10'])
+                manager.entities = dict()
                 manager.run()
-                mock_conn.assert_called_with(
-                    manager.settings, {}, 10, True, False)
+        mock_conn.assert_called_with(manager.settings, {}, 10, True, False)
 
     def test_run_push_enable_deletion(self):
-        with mock.patch('%s.FreeIPAManager.check' % modulename):
-            manager = self._init_tool(['push', 'config_repo', '-fdt', '10'])
-            manager.integrity_checker = mock.Mock()
-            manager.integrity_checker.entity_dict = dict()
-            with mock.patch(
-                    'ipamanager.ipa_connector.IpaUploader') as mock_conn:
+        with mock.patch('ipamanager.ipa_connector.IpaUploader') as mock_conn:
+            with mock.patch('%s.FreeIPAManager.check' % modulename):
+                manager = self._init_tool(['push', 'repo_path', '-fdt', '10'])
+                manager.entities = dict()
                 manager.run()
-                mock_conn.assert_called_with(
-                    manager.settings, {}, 10, True, True)
+        mock_conn.assert_called_with(manager.settings, {}, 10, True, True)
 
     def test_run_push_dry_run(self):
-        with mock.patch('%s.FreeIPAManager.check' % modulename):
-            manager = self._init_tool(['push', 'config_repo'])
-            manager.integrity_checker = mock.Mock()
-            manager.integrity_checker.entity_dict = dict()
-            with mock.patch(
-                    'ipamanager.ipa_connector.IpaUploader') as mock_conn:
+        with mock.patch('ipamanager.ipa_connector.IpaUploader') as mock_conn:
+            with mock.patch('%s.FreeIPAManager.check' % modulename):
+                manager = self._init_tool(['push', 'config_repo'])
+                manager.entities = dict()
                 manager.run()
-                mock_conn.assert_called_with(
-                    manager.settings, {}, 10, False, False)
+        mock_conn.assert_called_with(manager.settings, {}, 10, False, False)
 
     def test_run_push_dry_run_enable_deletion(self):
-        with mock.patch('%s.FreeIPAManager.check' % modulename):
-            manager = self._init_tool(['push', 'config_repo', '--deletion'])
-            manager.integrity_checker = mock.Mock()
-            manager.integrity_checker.entity_dict = dict()
-            with mock.patch(
-                    'ipamanager.ipa_connector.IpaUploader') as mock_conn:
+        with mock.patch('ipamanager.ipa_connector.IpaUploader') as mock_conn:
+            with mock.patch('%s.FreeIPAManager.check' % modulename):
+                manager = self._init_tool(['push', 'config_repo', '-d'])
+                manager.entities = dict()
                 manager.run()
-                mock_conn.assert_called_with(
-                    manager.settings, {}, 10, False, True)
+        mock_conn.assert_called_with(manager.settings, {}, 10, False, True)
 
     def test_run_pull(self):
-        with mock.patch('%s.FreeIPAManager.check' % modulename):
-            manager = self._init_tool(['pull', 'dump_repo'])
-            manager.integrity_checker = mock.Mock()
-            manager.integrity_checker.entity_dict = dict()
-            with mock.patch(
-                    'ipamanager.ipa_connector.IpaDownloader') as mock_conn:
+        with mock.patch('ipamanager.ipa_connector.IpaDownloader') as mock_conn:
+            with mock.patch('%s.FreeIPAManager.check' % modulename):
+                manager = self._init_tool(['pull', 'dump_repo'])
+                manager.entities = dict()
                 manager.run()
-            mock_conn.assert_called_with(
-                manager.settings, {}, 'dump_repo', False, False)
-            manager.downloader.pull.assert_called_with()
+        mock_conn.assert_called_with(
+            manager.settings, {}, 'dump_repo', False, False)
+        manager.downloader.pull.assert_called_with()
 
     def test_run_pull_dry_run(self):
-        with mock.patch('%s.FreeIPAManager.check' % modulename):
-            manager = self._init_tool(['pull', 'dump_repo', '--dry-run'])
-            manager.integrity_checker = mock.Mock()
-            manager.integrity_checker.entity_dict = dict()
-            with mock.patch(
-                    'ipamanager.ipa_connector.IpaDownloader') as mock_conn:
+        with mock.patch('ipamanager.ipa_connector.IpaDownloader') as mock_conn:
+            with mock.patch('%s.FreeIPAManager.check' % modulename):
+                manager = self._init_tool(['pull', 'dump_repo', '--dry-run'])
+                manager.entities = dict()
                 manager.run()
-            mock_conn.assert_called_with(
-                manager.settings, {}, 'dump_repo', True, False)
-            manager.downloader.pull.assert_called()
+        mock_conn.assert_called_with(
+            manager.settings, {}, 'dump_repo', True, False)
+        manager.downloader.pull.assert_called()
 
     def test_run_pull_add_only(self):
-        with mock.patch('%s.FreeIPAManager.check' % modulename):
-            manager = self._init_tool(['pull', 'dump_repo', '--add-only'])
-            manager.integrity_checker = mock.Mock()
-            manager.integrity_checker.entity_dict = dict()
-            with mock.patch(
-                    'ipamanager.ipa_connector.IpaDownloader') as mock_conn:
+        with mock.patch('ipamanager.ipa_connector.IpaDownloader') as mock_conn:
+            with mock.patch('%s.FreeIPAManager.check' % modulename):
+                manager = self._init_tool(['pull', 'dump_repo', '--add-only'])
+                manager.entities = dict()
                 manager.run()
-            mock_conn.assert_called_with(
-                manager.settings, {}, 'dump_repo', False, True)
-            manager.downloader.pull.assert_called()
+        mock_conn.assert_called_with(
+            manager.settings, {}, 'dump_repo', False, True)
+        manager.downloader.pull.assert_called()
 
     def test_settings_default_check(self):
         with mock.patch.object(sys, 'argv', ['manager', 'check', 'repo']):

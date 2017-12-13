@@ -173,6 +173,20 @@ class TestFreeIPAUser(object):
 
 
 class TestFreeIPAUserGroup(object):
+    def setup_method(self, method):
+        self.data = {
+            u'dn': u'cn=group-three-users,cn=groups,cn=accounts,dc=test',
+            u'cn': (u'group-three-users',),
+            u'objectclass': (u'ipaobject', u'top', u'ipausergroup',
+                             u'posixgroup', u'groupofnames', u'nestedgroup'),
+            u'memberindirect_group': (u'group-one-users',),
+            u'gidnumber': (u'1916000050',),
+            u'ipauniqueid': (u'b0f9a352-7c13-11e7-99a4-fa163e2e4384',),
+            u'member_group': (u'group-two',),
+            u'member_user': (u'firstname.lastname2',),
+            u'memberindirect_user': (u'kristian.lesko', u'firstname.lastname'),
+            u'description': (u'Sample group three.',)}
+
     def test_create_usergroup_correct(self):
         data = {
             'description': 'Sample user group',
@@ -191,6 +205,7 @@ class TestFreeIPAUserGroup(object):
                          'hbacrule': ['rule-one'],
                          'sudorule': ['rule-one']}}
         assert isinstance(group.data_ipa['description'][0], unicode)
+        assert group.posix
 
     def test_create_usergroup_correct_metaparams(self):
         data = {
@@ -201,6 +216,15 @@ class TestFreeIPAUserGroup(object):
         assert group.data_repo == {'description': 'Sample user group'}
         assert group.metaparams == {'someparam': 'testvalue'}
 
+    def test_create_usergroup_correct_nonposix(self):
+        data = {'description': 'Sample user group', 'posix': False}
+        group = tool.FreeIPAUserGroup(
+            'group-one-users', data, 'path')
+        assert group.data_repo == {
+            'description': 'Sample user group', 'posix': False}
+        assert group.metaparams == {}
+        assert not group.posix
+
     def test_create_usergroup_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAUserGroup(
@@ -209,21 +233,26 @@ class TestFreeIPAUserGroup(object):
             "Error validating group-one-users: "
             "extra keys not allowed @ data['extrakey']")
 
+    def test_create_usergroup_ipa_posix(self):
+        group = tool.FreeIPAUserGroup('group-three-users', self.data)
+        assert group.name == 'group-three-users'
+        assert group.data_ipa == self.data
+        assert group.data_repo == {
+            'description': 'Sample group three.', 'posix': True}
+        assert group.posix
+
+    def test_create_usergroup_ipa_nonposix(self):
+        self.data[u'objectclass'] = (u'ipaobject', u'top', u'ipausergroup',
+                                     u'groupofnames', u'nestedgroup'),
+        group = tool.FreeIPAUserGroup('group-three-users', self.data)
+        assert group.name == 'group-three-users'
+        assert group.data_ipa == self.data
+        assert group.data_repo == {
+            'description': 'Sample group three.', 'posix': False}
+        assert not group.posix
+
     def test_convert_to_repo(self):
-        data = {
-            u'dn': u'cn=group-three-users,cn=groups,cn=accounts,dc=test',
-            u'cn': (u'group-three-users',),
-            u'objectclass': (u'ipaobject', u'top', u'ipausergroup',
-                             u'posixgroup', u'groupofnames', u'nestedgroup'),
-            u'memberindirect_group': (u'group-one-users',),
-            u'gidnumber': (u'1916000050',),
-            u'ipauniqueid': (u'b0f9a352-7c13-11e7-99a4-fa163e2e4384',),
-            u'member_group': (u'group-two',),
-            u'member_user': (u'firstname.lastname2',),
-            u'memberindirect_user': (u'kristian.lesko', u'firstname.lastname'),
-            u'description': (u'Sample group three.',)}
-        group = tool.FreeIPAUserGroup('group-three-users', {})
-        result = group._convert_to_repo(data)
+        result = tool.FreeIPAUserGroup('group', {})._convert_to_repo(self.data)
         assert result == {'description': 'Sample group three.'}
         assert isinstance(result['description'], unicode)
 
@@ -277,6 +306,20 @@ class TestFreeIPAUserGroup(object):
                 '    group:\n'
                 '      - group-two\n')}
 
+    def test_write_to_file_nonposix(self):
+        output = dict()
+        group = tool.FreeIPAUserGroup(
+            'group-one', {'description': 'Sample group',
+                          'metaparams': {'nonposix': True}}, 'path')
+        with mock.patch('yaml.dump', _mock_dump(output, yaml.dump)):
+            with mock.patch('__builtin__.open'):
+                group.write_to_file()
+        assert output == {'group-one': '---\n'
+                                       'group-one:\n'
+                                       '  description: Sample group\n'
+                                       '  metaparams:\n'
+                                       '    nonposix: true\n'}
+
     def test_write_to_file_no_path(self):
         group = tool.FreeIPAUserGroup(
             'group-three-users', {
@@ -328,8 +371,7 @@ class TestFreeIPAUserGroup(object):
         group = tool.FreeIPAUserGroup(
             'group-three-users', {
                 'description': 'Sample group three.',
-                'memberOf': {'group': ['group-two']}})
-        group.path = 'some/path'
+                'memberOf': {'group': ['group-two']}}, 'some/path')
         with mock.patch('%s.os.unlink' % modulename) as mock_unlink:
             mock_unlink.side_effect = OSError('[Errno 13] Permission denied')
             with pytest.raises(tool.ConfigError) as exc:
@@ -338,6 +380,52 @@ class TestFreeIPAUserGroup(object):
         assert exc.value[0] == (
             'Cannot delete group group-three-users '
             'at some/path: [Errno 13] Permission denied')
+
+    def test_create_commands_same(self):
+        group = tool.FreeIPAUserGroup(
+            'group-one', {'description': 'Sample group'}, 'path')
+        remote_group = tool.FreeIPAUserGroup('rule-one', {
+            'cn': ('group-one',), 'description': (u'Sample group',),
+            'objectclass': (u'posixgroup',)})
+        assert not group.create_commands(remote_group)
+
+    def test_create_commands_repo_posix(self):
+        group = tool.FreeIPAUserGroup(
+            'group-one', {'description': 'Sample group'}, 'path')
+        remote_group = tool.FreeIPAUserGroup('rule-one', {
+            'cn': ('group-one',), 'description': (u'Sample group',)})
+        cmds = group.create_commands(remote_group)
+        assert len(cmds) == 1
+        assert cmds[0].command == 'group_mod'
+        assert cmds[0].payload == {'cn': 'group-one', 'posix': True}
+        assert cmds[0].description == 'group_mod group-one (make POSIX)'
+
+    def test_create_commands_ipa_posix(self):
+        group = tool.FreeIPAUserGroup('group-one', {'posix': False}, 'path')
+        remote_group = tool.FreeIPAUserGroup('rule-one', {
+            'cn': ('group-one',), 'objectclass': (u'posixgroup',)})
+        cmds = group.create_commands(remote_group)
+        assert len(cmds) == 1
+        assert cmds[0].command == 'group_mod'
+        assert cmds[0].payload == {'cn': u'group-one',
+                                   'delattr': u'objectclass=posixgroup',
+                                   'setattr': u'gidnumber='}
+        assert cmds[0].description == 'group_mod group-one (make non-POSIX)'
+
+    def test_create_commands_new_posix(self):
+        group = tool.FreeIPAUserGroup(
+            'group-one', {'description': 'Sample group'}, 'path')
+        cmds = group.create_commands(None)
+        assert len(cmds) == 1
+        assert cmds[0].command == 'group_add'
+
+    def test_create_commands_new_nonposix(self):
+        group = tool.FreeIPAUserGroup('group-one', {'posix': False}, 'path')
+        cmds = group.create_commands(None)
+        assert len(cmds) == 1
+        assert cmds[0].command == 'group_add'
+        assert cmds[0].payload == {'cn': 'group-one', 'nonposix': True}
+        assert cmds[0].description == 'group_add group-one (nonposix=True)'
 
 
 class TestFreeIPAHBACRule(object):

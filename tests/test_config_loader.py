@@ -83,7 +83,7 @@ class TestConfigLoader(object):
             'at the end of file (new-line-at-end-of-file)]')
 
     def test_parse(self):
-        self.loader.entities = {'user': []}
+        self.loader.entities = {'user': {}}
         data = {
             'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
         self.loader._parse(
@@ -91,8 +91,8 @@ class TestConfigLoader(object):
             '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
         assert self.loader.entities.keys() == ['user']
         assert len(self.loader.entities['user']) == 1
-        assert isinstance(
-            self.loader.entities['user'][0], entities.FreeIPAUser)
+        assert isinstance(self.loader.entities['user']['archibald.jenkins'],
+                          entities.FreeIPAUser)
 
     def test_parse_empty(self):
         with pytest.raises(tool.ConfigError) as exc:
@@ -112,21 +112,20 @@ class TestConfigLoader(object):
         data = {
             'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
         self.loader.entities = {
-            'user': [
-                entities.FreeIPAUser(
-                    'archibald.jenkins',
-                    {'firstName': 'first', 'lastName': 'last'})]}
+            'user': {'archibald.jenkins': entities.FreeIPAUser(
+                'archibald.jenkins',
+                {'firstName': 'first', 'lastName': 'last'})}}
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
                 data, entities.FreeIPAUser,
                 '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
-        assert exc.value[0] == 'Duplicit definition of archibald.jenkins'
+        assert exc.value[0] == 'Duplicit definition of user archibald.jenkins'
 
     def test_parse_two_entities_in_file(self):
         data = {
             'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'},
             'archibald.jenkins2': {'firstName': 'first', 'lastName': 'last'}}
-        self.loader.entities = {'user': []}
+        self.loader.entities = {'user': dict()}
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
                 data, entities.FreeIPAUser,
@@ -155,15 +154,15 @@ class TestConfigLoader(object):
         self.loader.load()
         hostgroups = self.loader.entities['hostgroup']
         assert len(hostgroups) == 3
-        assert set(g.name for g in hostgroups) == set([
+        assert set(hostgroups.keys()) == set([
             'group-one-hosts', 'group-two', 'group-three-hosts'])
         users = self.loader.entities['user']
         assert len(users) == 3
-        assert sorted(u.name for u in users) == [
-            'archibald.jenkins', 'firstname.lastname', 'firstname.lastname2']
+        assert set(users.keys()) == set([
+            'archibald.jenkins', 'firstname.lastname', 'firstname.lastname2'])
         groups = self.loader.entities['group']
         assert len(groups) == 3
-        assert set(g.name for g in groups) == set([
+        assert set(groups.keys()) == set([
             'group-one-users', 'group-two', 'group-three-users'])
         captured_log.check(
             ('ConfigLoader', 'INFO',
@@ -179,8 +178,8 @@ class TestConfigLoader(object):
         self.loader.basepath = '/dev/null'
         self.loader.load()
         assert self.loader.entities == {
-            'group': [], 'hbacrule': [],
-            'hostgroup': [], 'sudorule': [], 'user': []}
+            'group': {}, 'hbacrule': {},
+            'hostgroup': {}, 'sudorule': {}, 'user': {}}
         assert set(i.msg % i.args for i in captured_log.records) == set([
             'Checking local configuration at /dev/null',
             'No hbacrule files found',
