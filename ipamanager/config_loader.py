@@ -21,7 +21,7 @@ class ConfigLoader(FreeIPAManagerCore):
     """
     Responsible for loading configuration YAML files from the repository.
     :attr dict entities: storage of loaded entities, which are organized
-                         in lists under entity class name keys.
+                         in nested dicts under entity type & entity name keys
     """
     def __init__(self, basepath, settings):
         """
@@ -40,7 +40,7 @@ class ConfigLoader(FreeIPAManagerCore):
         self.lg.info('Checking local configuration at %s', self.basepath)
         paths = self._retrieve_paths()
         for entity_class in ENTITY_CLASSES:
-            self.entities[entity_class.entity_name] = list()
+            self.entities[entity_class.entity_name] = dict()
             entity_paths = paths.get(entity_class.entity_name, [])
             if not entity_paths:
                 continue
@@ -68,6 +68,7 @@ class ConfigLoader(FreeIPAManagerCore):
             raise ConfigError(
                 'There have been errors in %d configuration files: [%s]' %
                 (len(self.errs), ', '.join(sorted(self.errs))))
+        return self.entities
 
     def _parse(self, data, entity_class, path):
         """
@@ -87,14 +88,15 @@ class ConfigLoader(FreeIPAManagerCore):
                              entity_class.entity_name, name, fname)
                 continue
             entity = entity_class(name, attrs, path)
-            if entity in self.entities[entity_class.entity_name]:
-                raise ConfigError('Duplicit definition of %s' % entity)
+            if name in self.entities[entity_class.entity_name]:
+                raise ConfigError('Duplicit definition of %s' % repr(entity))
             parsed.append(entity)
         if len(parsed) > 1:
             raise ConfigError(
                 'More than one entity parsed from %s (%d)'
                 % (fname, len(parsed)))
-        self.entities[entity_class.entity_name].extend(parsed)
+        for entity in parsed:
+            self.entities[entity_class.entity_name][entity.name] = entity
 
     def _retrieve_paths(self):
         """

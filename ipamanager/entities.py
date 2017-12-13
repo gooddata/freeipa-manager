@@ -66,6 +66,8 @@ class FreeIPAEntity(FreeIPAManagerCore):
             if new_key == 'memberof':
                 self._check_memberof(value)
                 result[new_key] = value
+            elif isinstance(value, bool):
+                result[new_key] = value
             elif isinstance(value, list):
                 result[new_key] = tuple(unicode(i) for i in value)
             else:
@@ -83,9 +85,11 @@ class FreeIPAEntity(FreeIPAManagerCore):
         for attr in self.managed_attributes_pull:
             if attr.lower() in data:
                 key = attr
-                if attr in self.key_mapping.itervalues():
-                    key = [
-                        k for k, v in self.key_mapping.items() if v == attr][0]
+                # find reverse (IPA -> repo) attribute name mapping
+                for k, v in self.key_mapping.iteritems():
+                    if v == attr:
+                        key = k
+                        break
                 value = data[attr.lower()]
                 if isinstance(value, tuple):
                     if len(value) > 1:
@@ -227,7 +231,7 @@ class FreeIPAEntity(FreeIPAManagerCore):
         return type(self) is type(other) and self.name == other.name
 
     def __ne__(self, other):
-        return not self == other
+        return not (self == other)
 
 
 class FreeIPAGroup(FreeIPAEntity):
@@ -254,6 +258,19 @@ class FreeIPAUserGroup(FreeIPAGroup):
     entity_name = 'group'
     validation_schema = voluptuous.Schema(schemas.schema_usergroups)
     allowed_members = ['user', 'group']
+    managed_attributes_pull = ['description', 'posix']
+
+    def __init__(self, name, data, path=None):
+        """
+        :param str name: entity name (user login, group name etc.)
+        :param dict data: dictionary of entity configuration values
+        :param str path: path to file the entity was parsed from;
+                         if None, indicates creation of entity from FreeIPA
+        """
+        if not path:  # entity created from FreeIPA, not from config
+            data['posix'] = u'posixgroup' in data.get(u'objectclass', [])
+        super(FreeIPAUserGroup, self).__init__(name, data, path)
+        self.posix = self.data_repo.get('posix', True)
 
     def can_contain_users(self, pattern):
         """
@@ -271,6 +288,41 @@ class FreeIPAUserGroup(FreeIPAGroup):
         :param str pattern: regex to check name by (not enforced if empty)
         """
         return not pattern or not re.match(pattern, self.name)
+
+    def _process_posix_setting(self, remote_entity):
+        posix_diff = dict()
+        description = None
+        if remote_entity:
+            if self.posix and not remote_entity.posix:
+                posix_diff = {u'posix': True}
+                description = 'group_mod %s (make POSIX)' % self.name
+            elif not self.posix and remote_entity.posix:
+                posix_diff = {'setattr': (u'gidnumber=',),
+                              'delattr': (u'objectclass=posixgroup',)}
+                description = 'group_mod %s (make non-POSIX)' % self.name
+        elif not self.posix:  # creation of new non-POSIX group
+            posix_diff = {u'nonposix': True}
+        return (posix_diff, description)
+
+    def create_commands(self, remote_entity=None):
+        """
+        Create commands to execute in order to update the rule.
+        Extends the basic command creation with POSIX/non-POSIX setting.
+        :param dict remote_entity: remote rule data
+        :returns: list of commands to execute
+        :rtype: list(Command)
+        """
+        commands = super(FreeIPAUserGroup, self).create_commands(remote_entity)
+        posix_diff, description = self._process_posix_setting(remote_entity)
+        if posix_diff:
+            if not commands:  # no diff but POSIX setting, new command needed
+                cmd = Command('group_mod', posix_diff,
+                              self.name, self.entity_id_type)
+                cmd.description = description
+                return [cmd]
+            else:  # update POSIX setting as part of existing command
+                commands[0].update(posix_diff)
+        return commands
 
 
 class FreeIPAUser(FreeIPAEntity):

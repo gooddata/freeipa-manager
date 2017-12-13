@@ -39,7 +39,7 @@ class IpaConnector(FreeIPAManagerCore):
         :raises ManagerError: if there is an error communicating with the API
         :returns: None (entities saved in the `self.ipa_entities` dict)
         """
-        self.lg.debug('Loading entities from FreeIPA API')
+        self.lg.info('Loading entities from FreeIPA API')
         for entity_class in ENTITY_CLASSES:
             entity_type = entity_class.entity_name
             self.ipa_entities[entity_type] = dict()
@@ -59,11 +59,10 @@ class IpaConnector(FreeIPAManagerCore):
                                   entity_type, name)
                     continue
                 self.ipa_entities[entity_type][name] = entity_class(name, data)
-            self.lg.debug(
-                'Found %d %s entities: %s',
-                len(self.ipa_entities[entity_type]),
-                entity_type,
-                sorted(self.ipa_entities[entity_type].keys()))
+            self.lg.info('Parsed %d %ss', len(self.ipa_entities[entity_type]),
+                         entity_type)
+            self.lg.debug('%ss parsed: %s', entity_type,
+                          sorted(self.ipa_entities[entity_type].keys()))
         self.ipa_entity_count = sum(
             len(i) for i in self.ipa_entities.itervalues())
         self.lg.info(
@@ -297,14 +296,12 @@ class IpaDownloader(IpaConnector):
         self._prepare_pull()
         if self.dry_run:
             return
-        self.lg.info('Starting entity pulling')
+        self.lg.info('Starting entity writing')
         for entity in self.to_write:
             entity.write_to_file()
-        if self.add_only:
-            self.lg.info('Entity pulling finished.')
-            return
-        for entity in self.to_delete:
-            entity.delete_file()
+        if not self.add_only:
+            for entity in self.to_delete:
+                entity.delete_file()
         self.lg.info('Entity pulling finished.')
 
     def _update_entity_membership(self, entity):

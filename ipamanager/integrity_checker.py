@@ -20,7 +20,7 @@ class IntegrityChecker(FreeIPAManagerCore):
         :param dict settings: parsed settings file
         """
         super(IntegrityChecker, self).__init__()
-        self._build_dict(parsed)
+        self.entity_dict = parsed
         self.user_group_regex = settings.get('user-group-pattern')
 
     def check(self):
@@ -163,19 +163,6 @@ class IntegrityChecker(FreeIPAManagerCore):
                     return path
                 if target not in visited:
                     stack.append((target, path))
-
-    def _build_dict(self, parsed):
-        """
-        Build a dictionary of all entities so that entities
-        can be easily looked up by their DN.
-        :param dict parsed: entities parsed by `ConfigLoader` to process
-        :returns: None (the `entity_dict` attribute is set)
-        """
-        self.entity_dict = dict()
-        for entity_type in parsed:
-            self.entity_dict[entity_type] = dict()
-            for entity in parsed[entity_type]:
-                self.entity_dict[entity_type][entity.name] = entity
 
     def _find_entity(self, entity_type, name):
         entity_subdict = self.entity_dict.get(entity_type)

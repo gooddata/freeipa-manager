@@ -36,7 +36,9 @@ class Command(FreeIPAManagerCore):
     def _encode_payload(self):
         encoded = dict()
         for key, value in self.payload.iteritems():
-            if isinstance(value, unicode) or isinstance(value, str):
+            if isinstance(value, bool):
+                new_value = value
+            elif isinstance(value, unicode) or isinstance(value, str):
                 new_value = unicode(value)
             elif len(value) == 1:
                 new_value = unicode(value[0])
@@ -47,10 +49,19 @@ class Command(FreeIPAManagerCore):
 
     def _create_description(self):
         desc_data = [
-            '%s=%s' % (k, v[0] if len(v) == 1 else v) for k, v
+            '%s=%s' % (k, v) for k, v
             in sorted(self.payload.items()) if k != self.entity_id_type]
         self.description = '%s %s (%s)' % (
             self.command, self.entity_name, '; '.join(desc_data))
+
+    def update(self, data):
+        """
+        Update the command's payload and refresh its description.
+        :param dict data: data to update payload with
+        :rtype: None
+        """
+        self.payload.update(data)
+        self._create_description()
 
     def execute(self, api):
         self.lg.info('Executing %s', self.description)

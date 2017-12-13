@@ -50,9 +50,8 @@ class FreeIPAManager(FreeIPAManagerCore):
         :raises IntegrityError: in case of config entity integrity violations
         """
         self.config_loader = ConfigLoader(self.args.config, self.settings)
-        self.config_loader.load()
-        self.integrity_checker = IntegrityChecker(
-            self.config_loader.entities, self.settings)
+        self.entities = self.config_loader.load()
+        self.integrity_checker = IntegrityChecker(self.entities, self.settings)
         self.integrity_checker.check()
 
     def push(self):
@@ -69,8 +68,8 @@ class FreeIPAManager(FreeIPAManagerCore):
         from ipa_connector import IpaUploader
         utils.init_api_connection(self.args.loglevel)
         self.uploader = IpaUploader(
-            self.settings, self.integrity_checker.entity_dict,
-            self.args.threshold, self.args.force, self.args.deletion)
+            self.settings, self.entities, self.args.threshold,
+            self.args.force, self.args.deletion)
         self.uploader.push()
 
     def pull(self):
@@ -87,8 +86,8 @@ class FreeIPAManager(FreeIPAManagerCore):
         from ipa_connector import IpaDownloader
         utils.init_api_connection(self.args.loglevel)
         self.downloader = IpaDownloader(
-            self.settings, self.integrity_checker.entity_dict,
-            self.args.config, self.args.dry_run, self.args.add_only)
+            self.settings, self.entities, self.args.config,
+            self.args.dry_run, self.args.add_only)
         self.downloader.pull()
 
     def _load_settings(self):
