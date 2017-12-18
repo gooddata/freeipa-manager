@@ -40,6 +40,7 @@ schema_users = {
 schema_usergroups = {
     'description': str,
     'memberOf': _schema_memberof,
+    'posix': bool,
     'metaparams': {str: str}
 }
 
