@@ -114,6 +114,13 @@ class TestIntegrityChecker(object):
             ('user', 'firstname.lastname2'): [
                 "group-one can only have members of type ['hostgroup']"]}
 
+    def test_check_user_invalid_manager(self):
+        self._create_checker(self._sample_entities_user_invalid_manager())
+        with pytest.raises(tool.IntegrityError):
+            self.checker.check()
+        assert self.checker.errs == {('user', 'firstname.lastname2'): [
+                                     'manager karel.gott does not exist']}
+
     def test_check_memberof_itself(self):
         self._create_checker(self._sample_entities_member_itself())
         with pytest.raises(tool.IntegrityError):
@@ -180,8 +187,8 @@ class TestIntegrityChecker(object):
             'user': {
                 'firstname.lastname': tool.entities.FreeIPAUser(
                     'firstname.lastname',
-                    {'firstName': 'Firstname', 'lastName': 'Lastname'},
-                    'path'),
+                    {'firstName': 'Firstname', 'lastName': 'Lastname',
+                     'manager': 'firstname.lastname2'}, 'path'),
                 'firstname.lastname2': tool.entities.FreeIPAUser(
                     'firstname.lastname2',
                     {'firstName': 'Firstname', 'lastName': 'Lastname',
@@ -246,6 +253,14 @@ class TestIntegrityChecker(object):
                      'memberOf': {'hostgroup': ['group-one']}}, 'path')},
             'hostgroup': {'group-one': tool.entities.FreeIPAHostGroup(
                           'group-one', {}, 'path')}}
+
+    def _sample_entities_user_invalid_manager(self):
+        return {
+            'user': {
+                'firstname.lastname2': tool.entities.FreeIPAUser(
+                    'firstname.lastname2',
+                    {'firstName': 'Firstname', 'lastName': 'Lastname',
+                     'manager': 'karel.gott'}, 'path')}}
 
     def _sample_entities_member_itself(self):
         return {

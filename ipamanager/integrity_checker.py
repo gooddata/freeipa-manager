@@ -99,6 +99,11 @@ class IntegrityChecker(FreeIPAManagerCore):
         """
         errs = []
         member_of = entity.data_repo.get('memberOf', dict())
+        if isinstance(entity, entities.FreeIPAUser):
+            # check if person's manager exists
+            manager = entity.data_repo.get('manager')
+            if manager and not self._find_entity('user', manager):
+                errs.append('manager %s does not exist' % manager)
         for target_type, targets in member_of.iteritems():
             for target_name in targets:
                 target = self._find_entity(target_type, target_name)
