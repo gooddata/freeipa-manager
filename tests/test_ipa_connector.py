@@ -44,11 +44,15 @@ class TestIpaConnectorBase(object):
 
     def _api_call(self, command):
         return {
-            'group_find': self._api_group_find,
-            'hbacrule_find': self._api_rule_find,
-            'hostgroup_find': self._api_group_find,
-            'sudorule_find': self._api_rule_find,
+            'group_find': self._api_find('group'),
+            'hbacrule_find': self._api_find('rule'),
+            'hostgroup_find': self._api_find('group'),
+            'sudorule_find': self._api_find('rule'),
             'user_find': self._api_user_find,
+            'permission_find': self._api_find('permission'),
+            'privilege_find': self._api_find('privilege'),
+            'role_find': self._api_find('role'),
+            'service_find': self._api_service_find,
             'user_add': self._api_user_add,
             'group_add': self._api_add('group'),
             'hostgroup_add': self._api_add('hostgroup'),
@@ -81,14 +85,16 @@ class TestIpaConnectorBase(object):
             return self._api_exc
         return self._api_call(command)
 
-    def _api_group_find(self, **kwargs):
-        return {'result': [{'cn': ('group-one',)}]}
-
-    def _api_rule_find(self, **kwargs):
-        return {'result': [{'cn': ('rule-one',)}]}
-
     def _api_user_find(self, **kwargs):
         return {'result': [{'uid': ('user.one',)}]}
+
+    def _api_service_find(self, **kwargs):
+        return {'result': [{'krbcanonicalname': ('service-one',)}]}
+
+    def _api_find(self, name):
+        def _func(**kwargs):
+            return {'result': [{'cn': ('%s-one' % name)}]}
+        return _func
 
     def _api_user_add(self, **kwargs):
         return {'summary': u'Added user "%s"' % kwargs.get('uid')}
@@ -115,28 +121,36 @@ class TestIpaConnector(TestIpaConnectorBase):
         tool.api.Command.__getitem__.side_effect = self._api_call
         self.uploader.load_ipa_entities()
         assert self.uploader.ipa_entities == {
-            'group': {'group-one': entities.FreeIPAUserGroup(
-                'group-one', {'cn': ('group-one',)})},
-            'hbacrule': {'rule-one': entities.FreeIPAHBACRule(
-                'rule-one', {'cn': ('rule-one',)})},
-            'hostgroup': {'group-one': entities.FreeIPAHostGroup(
-                'group-one', {'cn': ('group-one',)})},
-            'sudorule': {'rule-one': entities.FreeIPASudoRule(
-                'rule-one', {'cn': ('rule-one',)})},
+            'group': {'g': entities.FreeIPAUserGroup(
+                'g', {'cn': ('g',)})},
+            'hbacrule': {'r': entities.FreeIPAHBACRule(
+                'r', {'cn': ('r',)})},
+            'hostgroup': {'g': entities.FreeIPAHostGroup(
+                'g', {'cn': ('g',)})},
+            'sudorule': {'r': entities.FreeIPASudoRule(
+                'r', {'cn': ('r',)})},
             'user': {'user.one': entities.FreeIPAUser(
-                'user.one', {'uid': ('user.one',)})}}
+                'user.one', {'uid': ('user.one',)})},
+            'service': {'service-one': entities.FreeIPAService(
+                'service-one', {'krbcanonicalname': ('service-name',)})},
+            'role': {'r': entities.FreeIPARole(
+                'r', {'cn': ('r',)})},
+            'permission': {'p': entities.FreeIPAPermission(
+                'p', {'cn': ('p',)})},
+            'privilege': {'p': entities.FreeIPAPrivilege(
+                'p', {'cn': ('p',)})}}
 
     @log_capture('IpaUploader', level=logging.DEBUG)
     def test_load_ipa_entities_ignore(self, captured_log):
         tool.api.Command.__getitem__.side_effect = self._api_call
         self.uploader.ignored['user'] = ['user.one']
         self.uploader.load_ipa_entities()
-        for cmd in ('group', 'hbacrule', 'hostgroup', 'sudorule', 'user'):
+        for cmd in ('group', 'hbacrule', 'hostgroup', 'sudorule', 'user', 'service', 'role', 'permission', 'privilege'):
             tool.api.Command.__getitem__.assert_any_call(
                 '%s_find' % cmd)
         msgs = [(r.levelname, r.msg % r.args) for r in captured_log.records]
         assert ('DEBUG', 'Not parsing ignored user user.one') in msgs
-        assert ('INFO', 'Parsed 4 entities from FreeIPA API') in msgs
+        assert ('INFO', 'Parsed 8 entities from FreeIPA API') in msgs
 
     def test_load_ipa_entities_errors(self):
         tool.api.Command.__getitem__.side_effect = (
@@ -158,7 +172,13 @@ class TestIpaUploader(TestIpaConnectorBase):
     def test_parse_entity_diff_add(self):
         entity = entities.FreeIPAUser(
             'test.user', {'firstName': 'Test', 'lastName': 'User'}, 'path')
-        self.uploader.ipa_entities = {'user': dict(), 'group': dict()}
+        self.uploader.ipa_entities = {
+            'user': dict(),
+            'group': dict(),
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(entity)
         assert len(self.uploader.commands) == 1
@@ -173,7 +193,13 @@ class TestIpaUploader(TestIpaConnectorBase):
         name = yaml.load(u'Tešt')
         entity = entities.FreeIPAUser(
             'test.user', {'firstName': name, 'lastName': 'User'}, 'path')
-        self.uploader.ipa_entities = {'user': dict(), 'group': dict()}
+        self.uploader.ipa_entities = {
+            'user': dict(),
+            'group': dict(),
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(entity)
         assert len(self.uploader.commands) == 1
@@ -194,7 +220,11 @@ class TestIpaUploader(TestIpaConnectorBase):
                 'test.user': entities.FreeIPAUser('test.user', {
                     'mail': (u'test.user@gooddata.com',),
                     'carlicense': (u'gh1',)})},
-            'group': dict()}
+            'group': dict(),
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(entity)
         assert len(self.uploader.commands) == 1
@@ -219,7 +249,11 @@ class TestIpaUploader(TestIpaConnectorBase):
                     'givenname': (u'Te\u0161t',),
                     'sn': (u'User',),
                     'carlicense': (u'gh1',)})},
-            'group': dict()}
+            'group': dict(),
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(entity)
         assert len(self.uploader.commands) == 0
@@ -236,7 +270,11 @@ class TestIpaUploader(TestIpaConnectorBase):
                     'givenname': (u'Test',),
                     'sn': (u'User',),
                     'carlicense': (u'gh1',)})},
-            'group': dict()}
+            'group': dict(),
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(entity)
         assert len(self.uploader.commands) == 1
@@ -253,13 +291,21 @@ class TestIpaUploader(TestIpaConnectorBase):
                     {'firstName': 'Test', 'lastName': 'User',
                      'memberOf': {'group': ['group-one']}}, 'path')},
             'group': {'group-one': entities.FreeIPAUserGroup(
-                'group-one', {}, 'path')}}
+                'group-one', {}, 'path')},
+            'role': {},
+            'privilege': {},
+            'permission': {},
+            'service': {}}
         self.uploader.ipa_entities = {
             'user': {'test.user': entities.FreeIPAUser('test.user', {
                 'uid': ('test.user',),
                 'givenname': (u'Test',), 'sn': (u'User',)})},
             'group': {'group-one': entities.FreeIPAUserGroup(
-                'group-one', {'cn': ('group-one',)})}}
+                'group-one', {'cn': ('group-one',)})},
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(
             self.uploader.repo_entities['user']['test.user'])
@@ -276,14 +322,22 @@ class TestIpaUploader(TestIpaConnectorBase):
                 'test.user', {'firstName': 'Test', 'lastName': 'User'},
                 'path')},
             'group': {'group-one': entities.FreeIPAUserGroup(
-                'group-one', {}, 'path')}}
+                'group-one', {}, 'path')},
+            'role': {},
+            'privilege': {},
+            'permission': {},
+            'service': {}}
         self.uploader.ipa_entities = {
             'user': {'test.user': entities.FreeIPAUser('test.user', {
                 'uid': ('test.user',),
                 'givenname': (u'Test',), 'sn': (u'User',)})},
             'group': {
                 'group-one': entities.FreeIPAUserGroup('group-one', {
-                    'cn': ('group-one',), 'member_user': ('test.user',)})}}
+                    'cn': ('group-one',), 'member_user': ('test.user',)})},
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(
             self.uploader.repo_entities['user']['test.user'])
@@ -302,7 +356,11 @@ class TestIpaUploader(TestIpaConnectorBase):
                                   'memberOf': {'group': ['group-one']}},
                     'path')},
             'group': {'group-one': entities.FreeIPAUserGroup(
-                'group-one', {}, 'path')}}
+                'group-one', {}, 'path')},
+            'role': {},
+            'privilege': {},
+            'permission': {},
+            'service': {}}
         self.uploader.ipa_entities = {
             'user': {
                 'test.user': entities.FreeIPAUser('test.user', {
@@ -310,7 +368,11 @@ class TestIpaUploader(TestIpaConnectorBase):
                     'givenname': (u'Test',), 'sn': (u'User',)})},
             'group': {'group-one': entities.FreeIPAUserGroup('group-one', {
                 'cn': ('group-one',), 'member_user': ('test.user',),
-                'objectclass': (u'posixgroup',)})}}
+                'objectclass': (u'posixgroup',)})},
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader._prepare_push()
         assert len(self.uploader.commands) == 0
 
@@ -333,7 +395,11 @@ class TestIpaUploader(TestIpaConnectorBase):
                 'group-one', {'cn': ('group-one',), u'objectclass': (
                     u'posixgroup',)})}, 'user': dict(),
             'sudorule': {'rule-two': entities.FreeIPASudoRule(
-                'rule-two', {'memberuser_group': (u'group_one',)})}}
+                'rule-two', {'memberuser_group': (u'group_one',)})},
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader._prepare_push()
         assert len(self.uploader.commands) == 6
         assert [i.command for i in sorted(self.uploader.commands)] == [
@@ -353,7 +419,11 @@ class TestIpaUploader(TestIpaConnectorBase):
                 'group-one', {}, 'path')},
             'sudorule': {'rule-one': entities.FreeIPASudoRule(
                 'rule-one', {'options': ['!authenticate', '!requiretty'],
-                             'memberUser': ['group-one']}, 'path')}
+                             'memberUser': ['group-one']}, 'path')},
+            'role': {},
+            'privilege': {},
+            'permission': {},
+            'service': {}
         }
         self.uploader.ipa_entities = {
             'group': {
@@ -363,7 +433,11 @@ class TestIpaUploader(TestIpaConnectorBase):
                 'group-two': entities.FreeIPAUserGroup(
                     'group-two', {'cn': (u'group-two',)})},
             'user': dict(),
-            'sudorule': dict()}
+            'sudorule': dict(),
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader._prepare_push()
         assert len(self.uploader.commands) == 7
         assert [i.command for i in sorted(self.uploader.commands)] == [
@@ -387,7 +461,11 @@ class TestIpaUploader(TestIpaConnectorBase):
                 'test.user': entities.FreeIPAUser('test.user', {
                     'uid': ('test.user',),
                     'givenname': (u'Test',), 'sn': (u'User',)})},
-            'group': dict()}
+            'group': dict(),
+            'role': dict(),
+            'permission': dict(),
+            'privilege': dict(),
+            'service': dict()}
         self.uploader._prepare_push()
         assert len(self.uploader.commands) == 2
         assert [i.command for i in sorted(self.uploader.commands)] == [
@@ -594,16 +672,16 @@ class TestIpaUploader(TestIpaConnectorBase):
                     self.uploader.push()
         assert exc.value[0] == 'There were 5 errors executing update'
         assert self.uploader.errs == [
-            (u'group_add_member group1 (user=user1)',
-             "Error executing group_add_member: [u'- test: no such attr2']"),
-            (u'group_add_member group1-users (user=user2)',
-             "Error executing group_add_member: [u'- test: no such attr2']"),
-            (u'group_add_member group2 (group=group1)',
-             "Error executing group_add_member: [u'- test: no such attr2']"),
-            (u'hbacrule_add_user rule1 (group=group2)',
-             "Error executing hbacrule_add_user: [u'- test: no such attr2']"),
-            (u'sudorule_add_user rule1 (group=group2)',
-             "Error executing sudorule_add_user: [u'- test: no such attr2']")]
+            u"Error executing group_add_member group1 (user=user1):"
+            " Error executing group_add_member: [u'- test: no such attr2']",
+            u"Error executing group_add_member group1-users (user=user2):"
+            " Error executing group_add_member: [u'- test: no such attr2']",
+            u"Error executing group_add_member group2 (group=group1):"
+            " Error executing group_add_member: [u'- test: no such attr2']",
+            u"Error executing hbacrule_add_user rule1 (group=group2):"
+            " Error executing hbacrule_add_user: [u'- test: no such attr2']",
+            u"Error executing sudorule_add_user rule1 (group=group2):"
+            " Error executing sudorule_add_user: [u'- test: no such attr2']"]
         captured_log.check(
             ('Command', 'ERROR',
              u'group_add_member group1 (user=user1) failed:'),
@@ -632,12 +710,12 @@ class TestIpaUploader(TestIpaConnectorBase):
                     self.uploader.push()
         assert exc.value[0] == 'There were 3 errors executing update'
         assert self.uploader.errs == [
-            (u'group_add_member group1 (user=user1)',
-             'Error executing group_add_member: Some error happened'),
-            (u'group_add_member group1-users (user=user2)',
-             'Error executing group_add_member: Some error happened'),
-            (u'group_add_member group2 (group=group1)',
-             'Error executing group_add_member: Some error happened')]
+            u'Error executing group_add_member group1 (user=user1):'
+            ' Error executing group_add_member: Some error happened',
+            u'Error executing group_add_member group1-users (user=user2):'
+            ' Error executing group_add_member: Some error happened',
+            u'Error executing group_add_member group2 (group=group1):'
+            ' Error executing group_add_member: Some error happened']
 
     def test_push_invalid_command(self):
         self._create_uploader(force=True, threshold=15)
@@ -649,26 +727,7 @@ class TestIpaUploader(TestIpaConnectorBase):
                     self.uploader.push()
         assert exc.value[0] == 'There were 1 errors executing update'
         assert self.uploader.errs == [
-            ('non_existent x ()', 'Non-existent command non_existent')]
-
-    def _api_call(self, command):
-        return {
-            'group_find': self._api_group_find,
-            'hbacrule_find': self._api_rule_find,
-            'hostgroup_find': self._api_group_find,
-            'sudorule_find': self._api_rule_find,
-            'user_find': self._api_user_find,
-            'user_add': self._api_user_add,
-            'group_add': self._api_add('group'),
-            'hostgroup_add': self._api_add('hostgroup'),
-            'hbacrule_add': self._api_add('hbacrule'),
-            'sudorule_add': self._api_add('sudorule'),
-            'group_add_member': self._api_nosummary,
-            'hbacrule_add_user': self._api_nosummary,
-            'hbacrule_add_host': self._api_nosummary,
-            'sudorule_add_user': self._api_nosummary,
-            'sudorule_add_host': self._api_nosummary
-        }[command]
+            'Error executing non_existent x (): Non-existent command non_existent']
 
     def _api_call_unreliable(self, command):
         try:
@@ -754,15 +813,25 @@ class TestIpaDownloader(TestIpaConnectorBase):
                 'user': {
                     'test.user': entities.FreeIPAUser('test.user', {
                         'uid': ('test.user',),
-                        'givenname': (u'Test',), 'sn': (u'User',)}),
+                        'givenname': (u'Test',), 'sn': (u'User',),
+                        'memberof_group': ('group-one')}),
                     'user.two': entities.FreeIPAUser('user.two', {
                         'uid': ('user.two',),
                         'givenname': (u'User',), 'sn': (u'Two',)}),
                 }, 'group': {
                     'group-one': entities.FreeIPAUserGroup('group-one', {
-                        'cn': ('group-one',), 'member_user': ('test.user',)}),
+                        'cn': ('group-one',), 'memberof_group': ('group-two',)}),
                     'group-two': entities.FreeIPAUserGroup('group-two', {
-                        'cn': ('group-two',), 'member_group': ('group-one')})}}
+                        'cn': ('group-two',), 'member_group': ('group-one')})
+                }, 'role': {
+                    'role-one': entities.FreeIPARole('role-one', {
+                        'cn': ('role-one',), 'member_user': ('test.user',)})
+                }, 'permission': {
+                    'permission-one': entities.FreeIPAPermission('permission-one', {
+                        'cn': ('permission-one',), 'member_privilege': ('privilege-one',)})
+                }, 'privilege': {
+                    'privilege-one': entities.FreeIPAPrivilege('privilege-one', {
+                        'cn': ('privilege-one',), 'member_role': ('role-one',)})}}
         if 'pull' in method.func_name:
             self.downloader.ipa_entities, self.downloader.repo_entities = (
                 self._pull_entities())
@@ -778,14 +847,14 @@ class TestIpaDownloader(TestIpaConnectorBase):
     def test_dump_membership_user(self):
         user = self.downloader.ipa_entities['user']['test.user']
         assert self.downloader._dump_membership(user) == {
-            'memberOf': {'group': ['group-one']}}
+            'memberOf': {'group': 'group-one'}}
         user2 = self.downloader.ipa_entities['user']['user.two']
         assert self.downloader._dump_membership(user2) is None
 
     def test_dump_membership_group(self):
         group1 = self.downloader.ipa_entities['group']['group-one']
         assert self.downloader._dump_membership(group1) == {
-            'memberOf': {'group': ['group-two']}}
+            'memberOf': {'group': ('group-two',)}}
         group2 = self.downloader.ipa_entities['group']['group-two']
         assert self.downloader._dump_membership(group2) is None
 
@@ -876,8 +945,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
                           '  firstName: Test\n'
                           '  lastName: User\n'
                           '  memberOf:\n'
-                          '    group:\n'
-                          '      - group-one\n')}
+                          '    group: group-one\n')}
         mock_delete.assert_not_called()
 
     def test_pull(self):
@@ -897,15 +965,15 @@ class TestIpaDownloader(TestIpaConnectorBase):
                           '  firstName: Test\n'
                           '  lastName: User\n'
                           '  memberOf:\n'
-                          '    group:\n'
-                          '      - group-one\n')}
+                          '    group: group-one\n')}
         mock_delete.assert_called_with('rule-one')
 
     def _pull_entities(self):
         remote = {
             'user': {'test.user': entities.FreeIPAUser('test.user', {
                 'uid': ('test.user',),
-                'givenname': (u'Test',), 'sn': (u'User',)})},
+                'givenname': (u'Test',), 'sn': (u'User',),
+                'memberof_group': (u'group-one')})},
             'group': {
                 'group-one': entities.FreeIPAUserGroup('group-one', {
                     'cn': ('group-one',), 'description': ('test'),
@@ -917,7 +985,11 @@ class TestIpaDownloader(TestIpaConnectorBase):
             'hostgroup': {
                 'group-one': entities.FreeIPAHostGroup('group-one', {
                     'cn': ('group-one',), 'description': ('test'),
-                    'member_user': ('test.user',)})}}
+                    'member_user': ('test.user',)})},
+            'permission': {},
+            'privilege': {},
+            'role': {},
+            'service': {}}
         local = {
             'user': {
                 'test.user': entities.FreeIPAUser(
@@ -933,7 +1005,11 @@ class TestIpaDownloader(TestIpaConnectorBase):
             'hbacrule': {
                 'rule-one': entities.FreeIPAHBACRule(
                     'rule-one', {'description': 'test'}, 'rule-one')},
-                'sudorule': {}, 'hostgroup': {}}
+                'sudorule': {}, 'hostgroup': {},
+            'permission': {},
+            'privilege': {},
+            'role': {},
+            'service': {}}
         return (remote, local)
 
     def _filename_sample_user(self):

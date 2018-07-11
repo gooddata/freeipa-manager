@@ -52,6 +52,50 @@ class TestFreeIPAGroup(object):
             "with abstract methods allowed_members, validation_schema")
 
 
+class TestFreeIPAPrivilege(object):
+    def test_create_privilege(self):
+        data = {
+            'description': 'Sample privilege',
+            'memberOf': {
+                'permission': ['permission-one']}
+        }
+        privilege = tool.FreeIPAPrivilege('privilege-one', data, 'path')
+        assert privilege.name == 'privilege-one'
+        assert privilege.data_repo == data
+        assert privilege.data_ipa == {
+            'description': ('Sample privilege',),
+            'memberof': {'permission': ['permission-one']}
+        }
+
+    def test_create_privilege_extrakey(self):
+        with pytest.raises(tool.ConfigError) as exc:
+            tool.FreeIPAPrivilege(
+                'privilege-one', {'extrakey': 'bad'}, 'path')
+        assert exc.value[0] == (
+            "Error validating privilege-one: "
+            "extra keys not allowed @ data['extrakey']")
+
+    def test_convert_to_ipa(self):
+        data = {
+            'description': 'Good description',
+        }
+        privilege = tool.FreeIPAPrivilege('privilege-one', data, 'path')
+        assert privilege._convert_to_ipa(data) == {'description': (u'Good description',)}
+
+    def test_convert_to_repo(self):
+        data = {
+            u'objectclass': (u'top', u'groupofnames', u'nestedgroup'),
+            u'dn': u'cn=Write IPA Configuration,cn=privileges,cn=pbac,dc=devgdc,dc=com',
+            u'memberof_permission': (u'Write IPA Configuration',),
+            u'cn': (u'Write IPA Configuration',),
+            u'description': (u'Write IPA Configuration',)
+        }
+        privilege = tool.FreeIPAPrivilege('role-one', {})
+        result = privilege._convert_to_repo(data)
+        assert result == {'description': u'Write IPA Configuration'}
+        assert all(isinstance(i, unicode) for i in result.itervalues())
+
+
 class TestFreeIPAHostGroup(object):
     def test_create_hostgroup_correct(self):
         data = {
@@ -59,7 +103,8 @@ class TestFreeIPAHostGroup(object):
             'memberOf': {
                 'hostgroup': ['group-one'],
                 'hbacrule': ['rule-one'],
-                'sudorule': ['rule-one']}}
+                'sudorule': ['rule-one'],
+                'role': ['role-one']}}
         group = tool.FreeIPAHostGroup('group-one-hosts', data, 'path')
         assert group.name == 'group-one-hosts'
         assert group.data_repo == data
@@ -67,7 +112,8 @@ class TestFreeIPAHostGroup(object):
             'description': ('Sample host group',),
             'memberof': {'hbacrule': ['rule-one'],
                          'hostgroup': ['group-one'],
-                         'sudorule': ['rule-one']}}
+                         'sudorule': ['rule-one'],
+                         'role': ['role-one']}}
 
     def test_create_hostgroup_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
@@ -78,13 +124,178 @@ class TestFreeIPAHostGroup(object):
             "extra keys not allowed @ data['extrakey']")
 
 
+class TestFreeIPAPermission(object):
+    data = {
+        'description': 'Simple description',
+        'subtree': 'Here is subtree',
+        'attributes': ['nice attributes', 'some more attrs'],
+        'location': 'This is my location',
+        'grantedRights': 'some rigths',
+        'defaultAttr': 'default attributes'}
+
+    def test_create_permission_correct(self):
+        permission = tool.FreeIPAPermission('sample-permission', self.data, 'path')
+        assert permission.name == 'sample-permission'
+        assert permission.data_repo == self.data
+        assert permission.data_ipa == {
+            'description': ('Simple description',),
+            'attrs': ('nice attributes', 'some more attrs'),
+            'ipapermdefaultattr': ('default attributes',),
+            'ipapermlocation': ('This is my location',),
+            'ipapermright': ('some rigths',),
+            'subtree': ('Here is subtree',)
+        }
+
+    def test_permission_extrakey(self):
+        with pytest.raises(tool.ConfigError) as exc:
+            tool.FreeIPARole(
+                'sample_permission', {'extrakey': 'bad'}, 'path')
+        assert exc.value[0] == (
+            "Error validating sample_permission: "
+            "extra keys not allowed @ data['extrakey']")
+
+    def test_convert_to_ipa(self):
+        permission = tool.FreeIPAPermission('permission-one', self.data, 'path')
+        assert permission._convert_to_ipa(self.data) == {
+            'attrs': (u'nice attributes', u'some more attrs'),
+            'description': (u'Simple description',),
+            'ipapermdefaultattr': (u'default attributes',),
+            'ipapermlocation': (u'This is my location',),
+            'ipapermright': (u'some rigths',),
+            'subtree': (u'Here is subtree',)}
+
+    def test_convert_to_repo(self):
+        data = {
+            u'ipapermright': (u'write',),
+            u'dn': u'cn=Request Certificate,cn=permissions,cn=pbac,dc=devgdc,dc=com',
+            u'ipapermbindruletype': (u'permission',), u'cn': (u'Request Certificate',),
+            u'objectclass': (u'top', u'groupofnames', u'ipapermission'),
+            u'member_privilege': (u'Certificate Administrators',),
+            u'ipapermtarget': (u'cn=request certificate,cn=virtual operations,cn=etc,dc=devgdc,dc=com',),
+            u'attrs': (u'objectclass',),
+            u'ipapermlocation': (u'dc=devgdc,dc=com',),
+            u'ipapermincludedattr': (u'objectclass',)}
+        permission = tool.FreeIPAPermission('permission-one', {})
+        result = permission._convert_to_repo(data)
+        assert result == {
+            'attributes': u'objectclass',
+            'grantedRights': u'write',
+            'location': u'dc=devgdc,dc=com'}
+        assert all(isinstance(i, unicode) for i in result.itervalues())
+
+
+class TestFreeIPARole(object):
+    def test_create_role_correct(self):
+        data = {
+            'description': 'Some description',
+            'memberOf': {'privilege': ['privilege_simple', 'another_privilege']}
+        }
+        role = tool.FreeIPARole('sample_role', data, 'path')
+        assert role.name == 'sample_role'
+        assert role.data_repo == data
+        assert role.data_ipa == {
+            'description': ('Some description', ),
+            'memberof': {'privilege': ['privilege_simple', 'another_privilege']}}
+
+    def test_create_role_extrakey(self):
+        with pytest.raises(tool.ConfigError) as exc:
+            tool.FreeIPARole(
+                'sample_role', {'extrakey': 'bad'}, 'path')
+        assert exc.value[0] == (
+            "Error validating sample_role: "
+            "extra keys not allowed @ data['extrakey']")
+
+    def test_convert_to_ipa(self):
+        data = {
+            'description': 'Good description',
+        }
+        role = tool.FreeIPARole('some.name', data, 'path')
+        assert role._convert_to_ipa(data) == {'description': (u'Good description',)}
+
+    def test_convert_to_repo(self):
+        data = {
+            u'objectclass': (u'groupofnames', u'nestedgroup', u'top'),
+            u'dn': u'cn=Test IPA Role,cn=roles,cn=accounts,dc=devgdc,dc=com',
+            u'cn': (u'Test IPA Role',),
+            u'description': (u'Here is some beautiful description',)}
+        role = tool.FreeIPARole('role-one', {})
+        result = role._convert_to_repo(data)
+        assert result == {'description': u'Here is some beautiful description'}
+        assert all(isinstance(i, unicode) for i in result.itervalues())
+
+
+class TestFreeIPAService(object):
+    def test_create_service_correct(self):
+        data = {
+            'description': 'Some description',
+            'memberOf': {'role': ['role_simple', 'another_role']},
+            'managedBy': 'Host'
+        }
+        service = tool.FreeIPAService('sample_service', data, 'path')
+        assert service.name == 'sample_service'
+        assert service.data_repo == data
+        assert service.data_ipa == {
+            'description': ('Some description', ),
+            'memberof': {'role': ['role_simple', 'another_role']},
+            'managedby_host': ('Host',)}
+
+    def test_create_service_extrakey(self):
+        with pytest.raises(tool.ConfigError) as exc:
+            tool.FreeIPAService(
+                'sample_service', {'extrakey': 'bad'}, 'path')
+        assert exc.value[0] == (
+            "Error validating sample_service: "
+            "extra keys not allowed @ data['extrakey']")
+
+    def test_change_path(self):
+        output = dict()
+        data = {
+            'description': 'Some description',
+            'memberOf': {'role': ['role_simple', 'another_role']},
+            'managedBy': 'Host'
+        }
+        service = tool.FreeIPAService('sample_service', data, 'some/path/to/ldap/ipa01.devgdc.com@DEVGDC.COM')
+        with mock.patch('yaml.dump', _mock_dump(output, yaml.dump)):
+            with mock.patch('__builtin__.open'):
+                service.write_to_file()
+        assert service.path == 'some/path/to/ldap-ipa01_devgdc_com.yaml'
+
+    def test_convert_to_ipa(self):
+        data = {
+            'description': 'Good description',
+            'managedBy': 'some@host.name.com',
+        }
+        service = tool.FreeIPAService('service-one', data, 'path')
+        assert service._convert_to_ipa(data) == {
+            'description': (u'Good description',),
+            'managedby_host': (u'some@host.name.com',)}
+
+    def test_convert_to_repo(self):
+        data = {
+            u'ipakrbprincipalalias': (u'DNS/ipa01.devgdc.com@DEVGDC.COM',),
+            u'krbextradata': ('\x00\x024\xa2j[host/admin@DEVGDC.COM\x00',),
+            u'krbcanonicalname': (u'DNS/ipa01.devgdc.com@DEVGDC.COM',),
+            u'ipakrbokasdelegate': False,
+            u'ipauniqueid': (u'932370a0-9ae0-11e8-ad25-fa163ef99b4f',),
+            u'krbpwdpolicyreference': (u'cn=Default Service Password Policy,cn=services,cn=accounts,dc=devgdc,dc=com',),
+            u'ipakrboktoauthasdelegate': False, u'krbprincipalname': (u'DNS/ipa01.devgdc.com@DEVGDC.COM',),
+            u'managedby_host': (u'ipa01.devgdc.com',),
+            u'description': (u'Some description',)}
+        service = tool.FreeIPAService('service-one', {})
+        result = service._convert_to_repo(data)
+        assert result == {'description': u'Some description', 'managedBy': u'ipa01.devgdc.com'}
+        assert all(isinstance(i, unicode) for i in result.itervalues())
+
+
 class TestFreeIPAUser(object):
     def test_create_user_correct(self):
         data = {
             'firstName': 'Some',
             'lastName': 'Name',
             'manager': 'sample.manager',
-            'memberOf': {'group': ['group-one-users', 'group-two']}
+            'memberOf': {
+                        'group': ['group-one-users', 'group-two'],
+                        'role': ['role-one-users', 'role-two']}
         }
         user = tool.FreeIPAUser('archibald.jenkins', data, 'path')
         assert user.name == 'archibald.jenkins'
@@ -92,7 +303,9 @@ class TestFreeIPAUser(object):
         assert user.data_ipa == {
             'givenname': ('Some',),
             'manager': ('sample.manager',),
-            'memberof': {'group': ['group-one-users', 'group-two']},
+            'memberof': {
+                'group': ['group-one-users', 'group-two'],
+                'role': ['role-one-users', 'role-two']},
             'sn': ('Name',)}
 
     def test_create_user_extrakey(self):
@@ -193,7 +406,8 @@ class TestFreeIPAUserGroup(object):
             'memberOf': {
                 'group': ['group-one'],
                 'hbacrule': ['rule-one'],
-                'sudorule': ['rule-one']}}
+                'sudorule': ['rule-one'],
+                'role': ['role-one']}}
         group = tool.FreeIPAUserGroup(
             'group-one-users', data, 'path')
         assert group.name == 'group-one-users'
@@ -203,7 +417,8 @@ class TestFreeIPAUserGroup(object):
             'description': ('Sample user group',),
             'memberof': {'group': ['group-one'],
                          'hbacrule': ['rule-one'],
-                         'sudorule': ['rule-one']}}
+                         'sudorule': ['rule-one'],
+                         'role': ['role-one']}}
         assert isinstance(group.data_ipa['description'][0], unicode)
         assert group.posix
 

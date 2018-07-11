@@ -55,8 +55,8 @@ class IpaConnector(FreeIPAManagerCore):
             for data in parsed['result']:
                 name = data[entity_class.entity_id_type][0]
                 if check_ignored(entity_class, name, self.ignored):
-                    self.lg.debug('Not parsing ignored %s %s',
-                                  entity_type, name)
+                    self.lg.debug(
+                        'Not parsing ignored %s %s', entity_type, name)
                     continue
                 self.ipa_entities[entity_type][name] = entity_class(name, data)
             self.lg.info('Parsed %d %ss', len(self.ipa_entities[entity_type]),
@@ -100,6 +100,10 @@ class IpaUploader(IpaConnector):
         self.commands = []
         for entity_type in self.repo_entities:
             self.lg.debug('Processing %s entities', entity_type)
+            if entity_type == 'service':
+                if self.repo_entities[entity_type]:
+                    self.lg.warning('Service push not supported yet, skipping')
+                    continue
             for entity in self.repo_entities[entity_type].itervalues():
                 self.lg.debug('Processing entity %s', entity)
                 self._parse_entity_diff(entity)
@@ -140,8 +144,8 @@ class IpaUploader(IpaConnector):
     def _process_membership(self, entity):
         """
         Prepare membership update commands for an entity. This has 2 phases:
-        1. ensure addition to groups listed in entity's memberOf attribute
-        2. iterate over all remote groups, ensure deletion from groups that
+        1. ensure addition to entities listed in entity's memberOf attribute
+        2. iterate over all remote entities, ensure deletion from entities that
            have been deleted from the memberOf attribute
         :param FreeIPAEntity entity: entity to process
         """
@@ -161,18 +165,19 @@ class IpaUploader(IpaConnector):
                 self.commands.append(
                     Command(command, {entity.entity_name: (entity.name,)},
                             repo_group.name, repo_group.entity_id_type))
-        if isinstance(entity, entities.FreeIPAUser):
-            target_type = 'group'
-        else:
-            target_type = entity.entity_name
-        for group in self.ipa_entities[target_type].itervalues():
-            members = group.data_ipa.get('member_%s' % entity.entity_name, [])
-            if entity.name in members:
-                if group.name not in member_of.get(target_type, []):
-                    command = '%s_remove_member' % target_type
-                    diff = {entity.entity_name: (entity.name,)}
-                    self.commands.append(
-                        Command(command, diff, group.name, 'cn'))
+        #  here happens the deletion
+        for cls in ENTITY_CLASSES:
+            if entity.entity_name in cls.allowed_members:
+                target_type = cls.entity_name
+                for target in self.ipa_entities[target_type].itervalues():
+                    members = target.data_ipa.get(
+                        'member_%s' % entity.entity_name, [])
+                    if entity.name in members:
+                        if target.name not in member_of.get(target_type, []):
+                            command = '%s_remove_member' % target_type
+                            diff = {entity.entity_name: (entity.name,)}
+                            self.commands.append(
+                                Command(command, diff, target.name, 'cn'))
 
     def _prepare_del_commands(self):
         """
@@ -209,13 +214,18 @@ class IpaUploader(IpaConnector):
             for command in sorted(self.commands):
                 self.lg.info('- %s', command)
         self._check_threshold()
+
         if self.force:
             # command sorting really important here for correct update!
             for command in sorted(self.commands):
                 try:
                     command.execute(api)
                 except CommandError as e:
-                    self.errs.append((command.description, str(e)))
+                    err = 'Error executing %s: %s' % (command.description, e)
+                    self.lg.error(err)
+                    # only added here to count the number of errors
+                    self.errs.append(err)
+
             if self.errs:
                 raise ManagerError(
                     'There were %d errors executing update' % len(self.errs))
@@ -308,8 +318,8 @@ class IpaDownloader(IpaConnector):
         entity.update_repo_data(self._dump_membership(entity))
 
     def _dump_membership(self, entity):
+        result = dict()
         if isinstance(entity, entities.FreeIPARule):
-            result = dict()
             for i in (('memberHost', 'hostgroup'), ('memberUser', 'group')):
                 config_key, member_type = i
                 key = '%s_%s' % (config_key.lower(), member_type)
@@ -317,16 +327,14 @@ class IpaDownloader(IpaConnector):
             if any(result.itervalues()):
                 return result
             return None
-        if isinstance(entity, entities.FreeIPAUser):
-            target_type = 'group'
-        elif isinstance(entity, entities.FreeIPAGroup):
-            target_type = entity.entity_name
-        member_of = [str(group.name)
-                     for group in self.ipa_entities[target_type].itervalues()
-                     if entity.name in
-                     group.data_ipa.get('member_%s' % entity.entity_name, [])]
-        if member_of:
-            return {'memberOf': {target_type: sorted(member_of)}}
+
+        for cls in ENTITY_CLASSES:
+            if entity.entity_name in cls.allowed_members:
+                key = 'memberof_%s' % cls.entity_name
+                if key in entity.data_ipa:
+                    result[cls.entity_name] = entity.data_ipa[key]
+        if any(result.itervalues()):
+            return {'memberOf': result}
         return None
 
     def _generate_filename(self, entity):

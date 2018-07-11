@@ -69,5 +69,40 @@ schema_sudo = {
     'options': ['!authenticate', '!requiretty'],
     'runAsGroupCategory': 'all',
     'runAsUserCategory': 'all',
+    'metaparams`': {str: str}
+}
+
+
+schema_roles = {
+    'description': str,
+    'memberOf': _schema_memberof,
+    'metaparams': {str: str}
+}
+
+
+schema_privileges = {
+    'description': str,
+    'memberof_permission': _item_or_list,
+    'memberOf': _schema_memberof,
+    'metaparams': {str: str}
+}
+
+
+schema_permissions = {
+    'description': str,
+    'subtree': _item_or_list,
+    'attributes': _item_or_list,
+    'grantedRights': _item_or_list,
+    'defaultAttr': _item_or_list,
+    'location': _item_or_list,
+    'memberOf': _schema_memberof,
+    'metaparams': {str: str}
+}
+
+
+schema_services = {
+    'managedBy': _item_or_list,
+    'memberOf': _schema_memberof,
+    'description': str,
     'metaparams': {str: str}
 }

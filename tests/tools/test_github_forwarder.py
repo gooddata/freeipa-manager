@@ -4,13 +4,11 @@ import mock
 import os
 import pytest
 import requests_mock
-import sys
 import sh
 from testfixtures import log_capture
 
-testdir = os.path.dirname(__file__)
-sys.path.insert(0, testdir.replace('/tests/tools', ''))
 import ipamanager.tools.github_forwarder as tool
+testdir = os.path.dirname(__file__)
 
 modulename = 'ipamanager.tools.github_forwarder'
 responses = os.path.join(testdir, 'api-responses')

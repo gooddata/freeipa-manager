@@ -34,6 +34,7 @@ class IntegrityChecker(FreeIPAManagerCore):
             return
         self.lg.info('Running integrity check')
         self.errs = dict()  # key: (entity type, name), value: error list
+
         for entity_type in sorted(self.entity_dict):
             self.lg.debug('Checking %s entities', entity_type)
             for entity in self.entity_dict[entity_type].itervalues():
@@ -138,8 +139,12 @@ class IntegrityChecker(FreeIPAManagerCore):
         :param FreeIPAEntity member: member entity
         :param FreeIPAEntity target: membership target entity
         """
-        if not isinstance(target, entities.FreeIPAGroup):
-            raise IntegrityError('%s not group, cannot have members' % target)
+        can_contain_members = (
+            entities.FreeIPAGroup, entities.FreeIPARole,
+            entities.FreeIPAPrivilege, entities.FreeIPAPermission)
+        if not isinstance(target, can_contain_members):
+            raise IntegrityError('%s not one of %s, cannot have members'
+                                 % (target, can_contain_members))
         if member.entity_name not in target.allowed_members:
             raise IntegrityError('%s can only have members of type %s'
                                  % (target, target.allowed_members))

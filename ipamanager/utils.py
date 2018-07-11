@@ -21,7 +21,11 @@ from errors import ConfigError
 # supported FreeIPA entity types
 ENTITY_CLASSES = [
     entities.FreeIPAHBACRule, entities.FreeIPAHostGroup,
-    entities.FreeIPASudoRule, entities.FreeIPAUser, entities.FreeIPAUserGroup]
+    entities.FreeIPAPermission, entities.FreeIPAPrivilege,
+    entities.FreeIPARole, entities.FreeIPAService,
+    entities.FreeIPASudoRule, entities.FreeIPAUser,
+    entities.FreeIPAUserGroup
+]
 
 
 def init_logging(loglevel):

@@ -28,6 +28,7 @@ class FreeIPAEntity(FreeIPAManagerCore):
     entity_id_type = 'cn'  # entity name identificator in FreeIPA
     key_mapping = {}  # attribute name mapping between local config and FreeIPA
     ignored = []  # list of ignored entities for each entity type
+    allowed_members = []
 
     def __init__(self, name, data, path=None):
         """
@@ -177,8 +178,9 @@ class FreeIPAEntity(FreeIPAManagerCore):
     @staticmethod
     def get_entity_class(name):
         for entity_class in [
-                FreeIPAHBACRule, FreeIPAHostGroup, FreeIPASudoRule,
-                FreeIPAUserGroup, FreeIPAUser]:
+                FreeIPAHBACRule, FreeIPAHostGroup, FreeIPAPermission,
+                FreeIPAPrivilege, FreeIPARole, FreeIPAService,
+                FreeIPASudoRule, FreeIPAUser, FreeIPAUserGroup]:
             if entity_class.entity_name == name:
                 return entity_class
         raise KeyError(name)
@@ -249,16 +251,16 @@ class FreeIPAGroup(FreeIPAEntity):
 class FreeIPAHostGroup(FreeIPAGroup):
     """Representation of a FreeIPA host group entity."""
     entity_name = 'hostgroup'
-    validation_schema = voluptuous.Schema(schemas.schema_hostgroups)
     allowed_members = ['hostgroup']
+    validation_schema = voluptuous.Schema(schemas.schema_hostgroups)
 
 
 class FreeIPAUserGroup(FreeIPAGroup):
     """Representation of a FreeIPA user group entity."""
     entity_name = 'group'
-    validation_schema = voluptuous.Schema(schemas.schema_usergroups)
-    allowed_members = ['user', 'group']
     managed_attributes_pull = ['description', 'posix']
+    allowed_members = ['user', 'group']
+    validation_schema = voluptuous.Schema(schemas.schema_usergroups)
 
     def __init__(self, name, data, path=None):
         """
@@ -328,6 +330,7 @@ class FreeIPAUserGroup(FreeIPAGroup):
 class FreeIPAUser(FreeIPAEntity):
     """Representation of a FreeIPA user entity."""
     entity_name = 'user'
+    entity_id_type = 'uid'
     managed_attributes_push = ['givenName', 'sn', 'initials', 'mail',
                                'ou', 'manager', 'carLicense', 'title']
     key_mapping = {
@@ -337,7 +340,6 @@ class FreeIPAUser(FreeIPAEntity):
         'organizationUnit': 'ou',
         'githubLogin': 'carLicense'
     }
-    entity_id_type = 'uid'
     validation_schema = voluptuous.Schema(schemas.schema_users)
 
 
@@ -389,8 +391,8 @@ class FreeIPARule(FreeIPAEntity):
 
 class FreeIPAHBACRule(FreeIPARule):
     """Representation of a FreeIPA HBAC (host-based access control) rule."""
-    default_attributes = ['serviceCategory']
     entity_name = 'hbacrule'
+    default_attributes = ['serviceCategory']
     managed_attributes_push = ['description', 'serviceCategory']
     validation_schema = voluptuous.Schema(schemas.schema_hbac)
 
@@ -408,9 +410,9 @@ class FreeIPAHBACRule(FreeIPARule):
 
 class FreeIPASudoRule(FreeIPARule):
     """Representation of a FreeIPA sudo rule."""
+    entity_name = 'sudorule'
     default_attributes = [
         'cmdCategory', 'options', 'runAsGroupCategory', 'runAsUserCategory']
-    entity_name = 'sudorule'
     managed_attributes_push = [
         'cmdCategory', 'description',
         'ipaSudoRunAsGroupCategory', 'ipaSudoRunAsUserCategory']
@@ -480,6 +482,66 @@ class FreeIPASudoRule(FreeIPARule):
             commands.append(
                 Command(command, diff, self.name, self.entity_id_type))
         return commands
+
+
+class FreeIPARole(FreeIPAEntity):
+    """Entity to hold the info about FreeIPA Roles"""
+    entity_name = 'role'
+    managed_attributes_pull = ['description']
+    managed_attributes_push = managed_attributes_pull
+    allowed_members = ['user', 'group', 'service', 'hostgroup']
+    validation_schema = voluptuous.Schema(schemas.schema_roles)
+
+
+class FreeIPAPrivilege(FreeIPAEntity):
+    """Entity to hold the info about FreeIPA Privilege"""
+    entity_name = 'privilege'
+    managed_attributes_pull = ['description']
+    managed_attributes_push = managed_attributes_pull
+    allowed_members = ['role']
+    validation_schema = voluptuous.Schema(schemas.schema_privileges)
+
+
+class FreeIPAPermission(FreeIPAEntity):
+    """Entity to hold the info about FreeIPA Permission"""
+    entity_name = 'permission'
+    managed_attributes_pull = ['description', 'subtree', 'attrs',
+                               'ipapermlocation', 'ipapermright',
+                               'ipapermdefaultattr']
+    managed_attributes_push = managed_attributes_pull
+    key_mapping = {
+        'grantedRights': 'ipapermright',
+        'attributes': 'attrs',
+        'location': 'ipapermlocation',
+        'defaultAttr': 'ipapermdefaultattr'
+    }
+    allowed_members = ['privilege']
+    validation_schema = voluptuous.Schema(schemas.schema_permissions)
+
+
+class FreeIPAService(FreeIPAEntity):
+    """
+    Entity to hold the info about FreeIPA Services
+    PUSH NOT SUPPORTED yet
+    """
+    entity_name = 'service'
+    entity_id_type = 'krbcanonicalname'
+    managed_attributes_push = []  # Empty because we don't support push
+    managed_attributes_pull = ['managedby_host', 'description']
+    key_mapping = {
+        'managedBy': 'managedby_host',
+    }
+    validation_schema = voluptuous.Schema(schemas.schema_services)
+
+    def write_to_file(self):
+        """
+        Converts the file name format from xyz/hostname.int.na.intgdc.com
+        to xyz-hostname_int_na_intgdc_com.yaml
+        """
+        path, file_name = os.path.split(self.path)
+        service_name, _ = file_name.split('@')
+        self.path = ('%s-%s.yaml' % (path, service_name.replace('.', '_')))
+        super(FreeIPAService, self).write_to_file()
 
 
 class EntityDumper(yaml.SafeDumper):

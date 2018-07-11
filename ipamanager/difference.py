@@ -27,6 +27,7 @@ class FreeIPADifference(FreeIPAManagerCore):
         sub_set = self._load_dir(self.sub_path)
         diff = min_set.difference(sub_set)
         if diff:
-            raise IntegrityError('The ADDITIONAL entities are : %s' % ' '.join(sorted(diff)))
+            raise IntegrityError(
+                'The ADDITIONAL entities are : %s' % ' '.join(sorted(diff)))
         else:
             self.lg.info('There are no ADDITIONAL entites')
