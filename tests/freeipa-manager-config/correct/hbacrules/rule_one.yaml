@@ -1,5 +1,7 @@
 ---
-rule-one:
+rule_one:
   description: Sample HBAC rule one
-  memberHost: [group-two]
-  memberUser: [group-two]
+  memberHost:
+    - group-two
+  memberUser:
+    - group-two

@@ -20,7 +20,8 @@ from errors import ConfigError
 
 # supported FreeIPA entity types
 ENTITY_CLASSES = [
-    entities.FreeIPAHBACRule, entities.FreeIPAHostGroup,
+    entities.FreeIPAHBACRule, entities.FreeIPAHBACService,
+    entities.FreeIPAHBACServiceGroup, entities.FreeIPAHostGroup,
     entities.FreeIPAPermission, entities.FreeIPAPrivilege,
     entities.FreeIPARole, entities.FreeIPAService,
     entities.FreeIPASudoRule, entities.FreeIPAUser,

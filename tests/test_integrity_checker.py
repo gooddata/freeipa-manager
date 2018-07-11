@@ -192,7 +192,8 @@ class TestIntegrityChecker(object):
                                 "'ipamanager.entities.FreeIPAGroup'>, <class "
                                 "'ipamanager.entities.FreeIPARole'>, <class "
                                 "'ipamanager.entities.FreeIPAPrivilege'>, <class "
-                                "'ipamanager.entities.FreeIPAPermission'>), cannot have members")
+                                "'ipamanager.entities.FreeIPAPermission'>, <class"
+                                " 'ipamanager.entities.FreeIPAHBACServiceGroup'>), cannot have members")
 
     def test_check_member_type_wrong_target_type_service(self):
         self._create_checker(dict())
@@ -207,7 +208,8 @@ class TestIntegrityChecker(object):
                                 "'ipamanager.entities.FreeIPAGroup'>, <class "
                                 "'ipamanager.entities.FreeIPARole'>, <class "
                                 "'ipamanager.entities.FreeIPAPrivilege'>, <class "
-                                "'ipamanager.entities.FreeIPAPermission'>), cannot have members")
+                                "'ipamanager.entities.FreeIPAPermission'>, <class "
+                                "'ipamanager.entities.FreeIPAHBACServiceGroup'>), cannot have members")
 
     def test_check_member_type_wrong_member_type(self):
         self._create_checker(dict())

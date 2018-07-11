@@ -52,6 +52,8 @@ class TestIpaConnectorBase(object):
             'permission_find': self._api_find('permission'),
             'privilege_find': self._api_find('privilege'),
             'role_find': self._api_find('role'),
+            'hbacsvc_find': self._api_find('hbacsvc'),
+            'hbacsvcgroup_find': self._api_find('hbacsvcgroup'),
             'service_find': self._api_service_find,
             'user_add': self._api_user_add,
             'group_add': self._api_add('group'),
@@ -125,6 +127,10 @@ class TestIpaConnector(TestIpaConnectorBase):
                 'g', {'cn': ('g',)})},
             'hbacrule': {'r': entities.FreeIPAHBACRule(
                 'r', {'cn': ('r',)})},
+            'hbacsvc': {'h': entities.FreeIPAHBACService(
+                'h', {'cn': ('h',)})},
+            'hbacsvcgroup': {'h': entities.FreeIPAHBACServiceGroup(
+                'h', {'cn': ('h',)})},
             'hostgroup': {'g': entities.FreeIPAHostGroup(
                 'g', {'cn': ('g',)})},
             'sudorule': {'r': entities.FreeIPASudoRule(
@@ -150,7 +156,7 @@ class TestIpaConnector(TestIpaConnectorBase):
                 '%s_find' % cmd)
         msgs = [(r.levelname, r.msg % r.args) for r in captured_log.records]
         assert ('DEBUG', 'Not parsing ignored user user.one') in msgs
-        assert ('INFO', 'Parsed 8 entities from FreeIPA API') in msgs
+        assert ('INFO', 'Parsed 10 entities from FreeIPA API') in msgs
 
     def test_load_ipa_entities_errors(self):
         tool.api.Command.__getitem__.side_effect = (
@@ -178,7 +184,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': dict(),
             'permission': dict(),
             'privilege': dict(),
-            'service': dict()}
+            'service': dict(),
+            'hbacsvc': dict(),
+            'hbacsvcgroup': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(entity)
         assert len(self.uploader.commands) == 1
@@ -199,7 +207,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': dict(),
             'permission': dict(),
             'privilege': dict(),
-            'service': dict()}
+            'service': dict(),
+            'hbacsvc': dict(),
+            'hbacsvcgroup': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(entity)
         assert len(self.uploader.commands) == 1
@@ -224,7 +234,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': dict(),
             'permission': dict(),
             'privilege': dict(),
-            'service': dict()}
+            'service': dict(),
+            'hbacsvc': dict(),
+            'hbacsvcgroup': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(entity)
         assert len(self.uploader.commands) == 1
@@ -253,7 +265,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': dict(),
             'permission': dict(),
             'privilege': dict(),
-            'service': dict()}
+            'service': dict(),
+            'hbacsvc': dict(),
+            'hbacsvcgroup': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(entity)
         assert len(self.uploader.commands) == 0
@@ -274,7 +288,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': dict(),
             'permission': dict(),
             'privilege': dict(),
-            'service': dict()}
+            'service': dict(),
+            'hbacsvc': dict(),
+            'hbacsvcgroup': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(entity)
         assert len(self.uploader.commands) == 1
@@ -337,7 +353,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': dict(),
             'permission': dict(),
             'privilege': dict(),
-            'service': dict()}
+            'service': dict(),
+            'hbacsvc': dict(),
+            'hbacsvcgroup': dict()}
         self.uploader.commands = []
         self.uploader._parse_entity_diff(
             self.uploader.repo_entities['user']['test.user'])
@@ -372,7 +390,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': dict(),
             'permission': dict(),
             'privilege': dict(),
-            'service': dict()}
+            'service': dict(),
+            'hbacsvc': dict(),
+            'hbacsvcgroup': dict()}
         self.uploader._prepare_push()
         assert len(self.uploader.commands) == 0
 
@@ -399,7 +419,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': dict(),
             'permission': dict(),
             'privilege': dict(),
-            'service': dict()}
+            'service': dict(),
+            'hbacsvc': dict(),
+            'hbacsvcgroup': dict()}
         self.uploader._prepare_push()
         assert len(self.uploader.commands) == 6
         assert [i.command for i in sorted(self.uploader.commands)] == [
@@ -423,7 +445,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': {},
             'privilege': {},
             'permission': {},
-            'service': {}
+            'service': {},
+            'hbacsvc': {},
+            'hbacsvcgroup': {}
         }
         self.uploader.ipa_entities = {
             'group': {
@@ -437,7 +461,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': dict(),
             'permission': dict(),
             'privilege': dict(),
-            'service': dict()}
+            'service': dict(),
+            'hbacsvc': dict(),
+            'hbacsvcgroup': dict()}
         self.uploader._prepare_push()
         assert len(self.uploader.commands) == 7
         assert [i.command for i in sorted(self.uploader.commands)] == [
@@ -465,7 +491,9 @@ class TestIpaUploader(TestIpaConnectorBase):
             'role': dict(),
             'permission': dict(),
             'privilege': dict(),
-            'service': dict()}
+            'service': dict(),
+            'hbacsvc': dict(),
+            'hbacsvcgroup': dict()}
         self.uploader._prepare_push()
         assert len(self.uploader.commands) == 2
         assert [i.command for i in sorted(self.uploader.commands)] == [
@@ -820,13 +848,12 @@ class TestIpaDownloader(TestIpaConnectorBase):
                         'givenname': (u'User',), 'sn': (u'Two',)}),
                 }, 'group': {
                     'group-one': entities.FreeIPAUserGroup('group-one', {
-                        'cn': ('group-one',), 'memberof_group': ('group-two',),
-                        'member_user': ('test.user', )}),
+                        'cn': ('group-one',), 'memberof_group': ('group-two',)}),
                     'group-two': entities.FreeIPAUserGroup('group-two', {
-                        'cn': ('group-two',), 'member_group': ('group-one',)})
+                        'cn': ('group-two',), 'member_group': ('group-one',), 'member_user': ('test.user',)})
                 }, 'role': {
                     'role-one': entities.FreeIPARole('role-one', {
-                        'cn': ('role-one',), 'member_user': ('test.user',)})
+                        'cn': ('role-one',)})
                 }, 'permission': {
                     'permission-one': entities.FreeIPAPermission('permission-one', {
                         'cn': ('permission-one',), 'member_privilege': ('privilege-one',)})
@@ -848,7 +875,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
     def test_dump_membership_user(self):
         user = self.downloader.ipa_entities['user']['test.user']
         assert self.downloader._dump_membership(user) == {
-            'memberOf': {'group': ['group-one'], 'role': ['role-one']}}
+            'memberOf': {'group': ['group-two']}}
         user2 = self.downloader.ipa_entities['user']['user.two']
         assert self.downloader._dump_membership(user2) is None
 
@@ -992,7 +1019,9 @@ class TestIpaDownloader(TestIpaConnectorBase):
             'permission': {},
             'privilege': {},
             'role': {},
-            'service': {}}
+            'service': {},
+            'hbacsvc': {},
+            'hbacsvcgroup': {}}
         local = {
             'user': {
                 'test.user': entities.FreeIPAUser(
@@ -1012,7 +1041,9 @@ class TestIpaDownloader(TestIpaConnectorBase):
             'permission': {},
             'privilege': {},
             'role': {},
-            'service': {}}
+            'service': {},
+            'hbacsvc': {},
+            'hbacsvcgroup': {}}
         return (remote, local)
 
     def _filename_sample_user(self):

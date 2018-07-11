@@ -16,7 +16,7 @@ from abc import ABCMeta, abstractproperty
 import schemas
 from command import Command
 from core import FreeIPAManagerCore
-from errors import ConfigError, ManagerError
+from errors import ConfigError, ManagerError, IntegrityError
 
 
 class FreeIPAEntity(FreeIPAManagerCore):
@@ -178,7 +178,8 @@ class FreeIPAEntity(FreeIPAManagerCore):
     @staticmethod
     def get_entity_class(name):
         for entity_class in [
-                FreeIPAHBACRule, FreeIPAHostGroup, FreeIPAPermission,
+                FreeIPAHBACRule, FreeIPAHBACService,
+                FreeIPAHBACServiceGroup, FreeIPAHostGroup, FreeIPAPermission,
                 FreeIPAPrivilege, FreeIPARole, FreeIPAService,
                 FreeIPASudoRule, FreeIPAUser, FreeIPAUserGroup]:
             if entity_class.entity_name == name:
@@ -368,7 +369,8 @@ class FreeIPARule(FreeIPAEntity):
         """
         commands = []
         for key, member_type, cmd_key in (('memberhost', 'hostgroup', 'host'),
-                                          ('memberuser', 'group', 'user')):
+                                          ('memberuser', 'group', 'user'),
+                                          ('memberservice', 'hbacsvc', 'service')):
             local_members = set(self.data_ipa.get(key, []))
             if remote_entity:
                 search_key = '%s_%s' % (key, member_type)
@@ -404,7 +406,12 @@ class FreeIPAHBACRule(FreeIPARule):
         if path:  # only edit local entities
             if not data:  # may be None; we want to ensure dictionary
                 data = dict()
-            data.update({'serviceCategory': 'all'})
+            if 'memberService' not in data:
+                data.update({'serviceCategory': 'all'})
+            elif 'serviceCategory' in data:
+                raise IntegrityError(
+                    '%s cannot contain both memberService and serviceCategory'
+                    % name)
         super(FreeIPAHBACRule, self).__init__(name, data, path)
 
 
@@ -482,6 +489,23 @@ class FreeIPASudoRule(FreeIPARule):
             commands.append(
                 Command(command, diff, self.name, self.entity_id_type))
         return commands
+
+
+class FreeIPAHBACService(FreeIPAEntity):
+    """Entity to hold the info about FreeIPA HBACServices"""
+    entity_name = 'hbacsvc'
+    managed_attributes_push = ['description']
+    managed_attributes_pull = managed_attributes_push
+    validation_schema = voluptuous.Schema(schemas.schema_hbacservices)
+
+
+class FreeIPAHBACServiceGroup(FreeIPAEntity):
+    """Entity to hold the info about FreeIPA HBACServiceGroups"""
+    entity_name = 'hbacsvcgroup'
+    managed_attributes_push = ['description']
+    managed_attributes_pull = managed_attributes_push
+    allowed_members = ['hbacsvc']
+    validation_schema = voluptuous.Schema(schemas.schema_hbacsvcgroups)
 
 
 class FreeIPARole(FreeIPAEntity):

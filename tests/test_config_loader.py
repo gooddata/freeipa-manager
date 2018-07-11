@@ -33,6 +33,12 @@ class TestConfigLoader(object):
         self.expected_hbac_rules = [
             CONFIG_CORRECT + '/hbacrules/rule_%s.yaml' % rule
             for rule in NUMBERS]
+        self.expected_hbac_svc = [
+            CONFIG_CORRECT + '/hbacsvcs/hbacsvc-%s.yaml' % rule
+            for rule in NUMBERS]
+        self.expected_hbac_svcgroup = [
+            CONFIG_CORRECT + '/hbacsvcgroups/hbacsvcgroup-%s.yaml' % rule
+            for rule in NUMBERS]
         self.expected_sudo_rules = [
             CONFIG_CORRECT + '/sudorules/rule_%s.yaml' % rule
             for rule in NUMBERS]
@@ -54,9 +60,12 @@ class TestConfigLoader(object):
     def test_retrieve_paths(self):
         paths = self.loader._retrieve_paths()
         assert sorted(paths.keys()) == [
-            'group', 'hbacrule', 'hostgroup', 'permission', 'privilege', 'role', 'service', 'sudorule', 'user']
+            'group', 'hbacrule', 'hbacsvc', 'hbacsvcgroup', 'hostgroup',
+            'permission', 'privilege', 'role', 'service', 'sudorule', 'user']
         assert sorted(paths['hostgroup']) == self.expected_hostgroups
         assert sorted(paths['user']) == self.expected_users
+        assert sorted(paths['hbacsvc']) == self.expected_hbac_svc
+        assert sorted(paths['hbacsvcgroup']) == self.expected_hbac_svcgroup
         assert sorted(paths['group']) == self.expected_groups
         assert sorted(paths['hbacrule']) == self.expected_hbac_rules
         assert sorted(paths['sudorule']) == self.expected_sudo_rules
@@ -72,6 +81,8 @@ class TestConfigLoader(object):
         assert paths.keys() == []
         assert set(i.msg % i.args for i in captured_log.records) == set([
             'No hbacrule files found',
+            'No hbacsvc files found',
+            'No hbacsvcgroup files found',
             'No hostgroup files found',
             'No sudorule files found',
             'No group files found',
@@ -181,6 +192,14 @@ class TestConfigLoader(object):
         assert len(users) == 3
         assert set(users.keys()) == set([
             'archibald.jenkins', 'firstname.lastname', 'firstname.lastname2'])
+        hbacsvc = self.loader.entities['hbacsvc']
+        assert len(hbacsvc) == 3
+        assert set(hbacsvc.keys()) == set([
+            'hbacsvc-one', 'hbacsvc-two', 'hbacsvc-three'])
+        hbacsvcgroup = self.loader.entities['hbacsvcgroup']
+        assert len(hbacsvcgroup) == 3
+        assert set(hbacsvcgroup.keys()) == set([
+            'hbacsvcgroup-one', 'hbacsvcgroup-two', 'hbacsvcgroup-three'])
         groups = self.loader.entities['group']
         assert len(groups) == 3
         assert set(groups.keys()) == set([
@@ -205,6 +224,8 @@ class TestConfigLoader(object):
             ('ConfigLoader', 'INFO',
              'Checking local configuration at %s' % CONFIG_CORRECT),
             ('ConfigLoader', 'INFO', 'Parsed 3 hbacrules'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 hbacsvcs'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 hbacsvcgroups'),
             ('ConfigLoader', 'INFO', 'Parsed 3 hostgroups'),
             ('ConfigLoader', 'INFO', 'Parsed 3 permissions'),
             ('ConfigLoader', 'INFO', 'Parsed 3 privileges'),
@@ -219,12 +240,14 @@ class TestConfigLoader(object):
         self.loader.basepath = '/dev/null'
         self.loader.load()
         assert self.loader.entities == {
-            'group': {}, 'hbacrule': {},
+            'group': {}, 'hbacrule': {}, 'hbacsvc': {}, 'hbacsvcgroup': {},
             'hostgroup': {}, 'sudorule': {}, 'user': {},
             'permission': {}, 'privilege': {}, 'role': {}, 'service': {}}
         assert set(i.msg % i.args for i in captured_log.records) == set([
             'Checking local configuration at /dev/null',
             'No hbacrule files found',
+            'No hbacsvc files found',
+            'No hbacsvcgroup files found',
             'No hostgroup files found',
             'No sudorule files found',
             'No group files found',
@@ -239,11 +262,13 @@ class TestConfigLoader(object):
         with pytest.raises(tool.ConfigError) as exc:
             self.loader.load()
         assert exc.value[0] == (
-            'There have been errors in 15 configuration files: '
-            '[hbacrules/extrakey.yaml, hostgroups/extrakey.yaml,'
-            ' hostgroups/invalidmember.yaml, permissions/extrakey.yaml,'
-            ' privileges/extrakey.yaml, privileges/invalidmember.yaml,'
-            ' roles/extrakey.yaml, roles/invalidmember.yaml, '
-            'services/extrakey.yaml, services/invalidmember.yaml,'
-            ' sudorules/extrakey.yaml, users/duplicit.yaml,'
-            ' users/duplicit2.yaml, users/extrakey.yaml, users/invalidmember.yaml]')
+            'There have been errors in 18 configuration files: '
+            '[hbacrules/extrakey.yaml, hbacsvcgroups/extrakey.yaml,'
+            ' hbacsvcs/extrakey.yaml, hbacsvcs/invalidmember.yaml,'
+            ' hostgroups/extrakey.yaml, hostgroups/invalidmember.yaml,'
+            ' permissions/extrakey.yaml, privileges/extrakey.yaml,'
+            ' privileges/invalidmember.yaml, roles/extrakey.yaml,'
+            ' roles/invalidmember.yaml, services/extrakey.yaml,'
+            ' services/invalidmember.yaml, sudorules/extrakey.yaml,'
+            ' users/duplicit.yaml, users/duplicit2.yaml, users/extrakey.yaml,'
+            ' users/invalidmember.yaml]')

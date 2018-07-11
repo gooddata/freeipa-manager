@@ -74,13 +74,14 @@ class IntegrityChecker(FreeIPAManagerCore):
         :param FreeIPARule entity: rule entity to check
         """
         errs = []
-        for key, member_type in [
-                ('memberHost', 'hostgroup'),
-                ('memberUser', 'group')]:
+        for key, member_type, must_exist in [
+                ('memberHost', 'hostgroup', True),
+                ('memberService', 'hbacsvc', False),
+                ('memberUser', 'group', True)]:
             member_names = entity.data_repo.get(key, [])
-            if not member_names:
-                errs.append('no %s' % key)
-                continue
+            if must_exist and not member_names:
+                    errs.append('no %s' % key)
+                    continue
             for name in member_names:
                 member = self._find_entity(member_type, name)
                 if not member:
@@ -141,7 +142,8 @@ class IntegrityChecker(FreeIPAManagerCore):
         """
         can_contain_members = (
             entities.FreeIPAGroup, entities.FreeIPARole,
-            entities.FreeIPAPrivilege, entities.FreeIPAPermission)
+            entities.FreeIPAPrivilege, entities.FreeIPAPermission,
+            entities.FreeIPAHBACServiceGroup)
         if not isinstance(target, can_contain_members):
             raise IntegrityError('%s not one of %s, cannot have members'
                                  % (target, can_contain_members))

@@ -320,11 +320,16 @@ class IpaDownloader(IpaConnector):
     def _dump_membership(self, entity):
         result = dict()
         if isinstance(entity, entities.FreeIPARule):
-            for i in (('memberHost', 'hostgroup'), ('memberUser', 'group')):
-                config_key, member_type = i
+            for config_key, member_type in (
+                    ('memberHost', 'hostgroup'),
+                    ('memberService', 'hbacsvc'),
+                    ('memberUser', 'group')):
                 key = '%s_%s' % (config_key.lower(), member_type)
-                result[config_key] = sorted(list(entity.data_ipa.get(key, [])))
-            if any(result.itervalues()):
+                # filter ignored members
+                members = sorted(set(entity.data_ipa.get(key, [])) - set(self.ignored.get(member_type, key)))
+                if members:
+                    result[config_key] = members
+            if result:
                 return result
             return None
 

@@ -1,0 +1,7 @@
+---
+invalidmember:
+  description: some Good Description
+  memberOf:
+    aishbacsvcgroup:
+      - extrakey
+      - invalid

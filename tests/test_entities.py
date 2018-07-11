@@ -224,6 +224,85 @@ class TestFreeIPARole(object):
         assert all(isinstance(i, unicode) for i in result.itervalues())
 
 
+class TestFreeIPAHBACService(object):
+    def test_create_hbacsvc_correct(self):
+        data = {
+            'description': 'Some description',
+            'memberOf': {'hbacsvcgroup': ['simple_hbacsvcgroup''another_hbacsvcgroup']}
+        }
+        hbacsvc = tool.FreeIPAHBACService('sample_hbacsvc', data, 'path')
+        assert hbacsvc.name == 'sample_hbacsvc'
+        assert hbacsvc.data_repo == data
+        assert hbacsvc.data_ipa == {
+            'description': ('Some description', ),
+            'memberof': {'hbacsvcgroup': ['simple_hbacsvcgroup''another_hbacsvcgroup']}}
+
+    def test_create_hbacsvc_extrakey(self):
+        with pytest.raises(tool.ConfigError) as exc:
+            tool.FreeIPAHBACService(
+                'sample_hbacsvc', {'extrakey': 'bad'}, 'path')
+        assert exc.value[0] == (
+            "Error validating sample_hbacsvc: "
+            "extra keys not allowed @ data['extrakey']")
+
+    def test_convert_to_ipa(self):
+        data = {
+            'description': 'Good description',
+        }
+        hbacsvc = tool.FreeIPAHBACService('some.name', data, 'path')
+        assert hbacsvc._convert_to_ipa(data) == {'description': (u'Good description',)}
+
+    def test_convert_to_repo(self):
+        data = {
+            u'dn': u'cn=proftpd,cn=hbacservices,cn=hbac,dc=devgdc,dc=com',
+            u'memberof_hbacsvcgroup': (u'ftp',), u'description': (u'proftpd',),
+            u'objectclass': (u'ipahbacservice', u'ipaobject'), u'ipauniqueid':
+            (u'a3bebe26-84ea-11e8-b8dc-fa163e198b8c',), u'cn': (u'proftpd',)}
+        hbacsvc = tool.FreeIPAHBACService('role-one', {})
+        result = hbacsvc._convert_to_repo(data)
+        assert result == {'description': u'proftpd'}
+        assert all(isinstance(i, unicode) for i in result.itervalues())
+
+
+class TestFreeIPAHBACServiceGroup(object):
+    def test_create_hbacsvcgroup_correct(self):
+        data = {
+            'description': 'Some description',
+        }
+        hbacsvcgroup = tool.FreeIPAHBACServiceGroup('sample_hbacsvcgroup', data, 'path')
+        assert hbacsvcgroup.name == 'sample_hbacsvcgroup'
+        assert hbacsvcgroup.data_repo == data
+        assert hbacsvcgroup.data_ipa == {
+            'description': ('Some description', )}
+
+    def test_create_hbacsvcgroup_extrakey(self):
+        with pytest.raises(tool.ConfigError) as exc:
+            tool.FreeIPAHBACServiceGroup(
+                'sample_hbacsvcgroup', {'extrakey': 'bad'}, 'path')
+        assert exc.value[0] == (
+            "Error validating sample_hbacsvcgroup: "
+            "extra keys not allowed @ data['extrakey']")
+
+    def test_convert_to_ipa(self):
+        data = {
+            'description': 'Good description',
+        }
+        hbacsvcgroup = tool.FreeIPAHBACServiceGroup('some.name', data, 'path')
+        assert hbacsvcgroup._convert_to_ipa(data) == {'description': (u'Good description',)}
+
+    def test_convert_to_repo(self):
+        data = {
+            u'dn': u'cn=Sudo,cn=hbacservicegroups,cn=hbac,dc=devgdc,dc=com', u'cn': (u'Sudo',),
+            u'objectclass': (u'ipaobject', u'ipahbacservicegroup', u'nestedGroup', u'groupOfNames', u'top'),
+            u'member_hbacsvc': (u'sudo', u'sudo-i', u'vsftpd'),
+            u'ipauniqueid': (u'06257a7e-84ea-11e8-9f84-fa163e198b8c',), u'description':
+            (u'Default group of Sudo related services',)}
+        hbacsvcgroup = tool.FreeIPAHBACService('role-one', {})
+        result = hbacsvcgroup._convert_to_repo(data)
+        assert result == {'description': u'Default group of Sudo related services'}
+        assert all(isinstance(i, unicode) for i in result.itervalues())
+
+
 class TestFreeIPAService(object):
     def test_create_service_correct(self):
         data = {

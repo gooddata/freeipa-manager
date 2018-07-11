@@ -18,7 +18,8 @@ schema_settings = {
     'user-group-pattern': str,
     'ignore': {
         Any('user', 'group', 'hostgroup', 'hbacrule', 'sudorule',
-            'role', 'permission', 'privilege', 'service'): [str]
+            'role', 'permission', 'privilege', 'service',
+            'hbacsvc', 'hbacsvcgroup'): [str]
     },
     'deletion-patterns': [str]
 }
@@ -52,11 +53,22 @@ schema_hostgroups = {
     'metaparams': {str: str}
 }
 
+schema_hbacservices = {
+    'description': str,
+    'memberOf': _schema_memberof,
+    'metaparams': {str: str}
+}
+
+schema_hbacsvcgroups = {
+    'description': str,
+    'metaparams': {str: str}
+}
 
 schema_hbac = {
     'description': str,
     'memberHost': [str],
     'memberUser': [str],
+    'memberService': [str],
     'serviceCategory': 'all',
     'metaparams': {str: str}
 }
