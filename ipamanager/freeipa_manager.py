@@ -13,6 +13,7 @@ import yaml
 import utils
 from core import FreeIPAManagerCore
 from config_loader import ConfigLoader
+from difference import FreeIPADifference
 from errors import ManagerError
 from integrity_checker import IntegrityChecker
 from schemas import schema_settings
@@ -36,7 +37,8 @@ class FreeIPAManager(FreeIPAManagerCore):
             {
                 'check': self.check,
                 'push': self.push,
-                'pull': self.pull
+                'pull': self.pull,
+                'diff': self.diff
             }[self.args.action]()
         except ManagerError as e:
             self.lg.error(e)
@@ -89,6 +91,15 @@ class FreeIPAManager(FreeIPAManagerCore):
             self.settings, self.entities, self.args.config,
             self.args.dry_run, self.args.add_only)
         self.downloader.pull()
+
+    def diff(self):
+        """
+        Makes set-like difference between 2 dirs. Arguments to the diff are
+        passed from `self.args` in the `_api_connect` method.
+        :raises IntegrityError: in case the difference is not empty
+        """
+        diff = FreeIPADifference(self.args.config, self.args.sub_path)
+        diff.run()
 
     def _load_settings(self):
         """

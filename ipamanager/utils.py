@@ -71,6 +71,10 @@ def parse_args():
     check = actions.add_parser('check', parents=[common])
     check.set_defaults(action='check')
 
+    diff = actions.add_parser('diff', parents=[common])
+    diff.add_argument('sub_path', help='Path to the subtrahend directory')
+    diff.set_defaults(action='diff')
+
     push = actions.add_parser('push', parents=[common])
     push.set_defaults(action='push')
     push.add_argument('-d', '--deletion', action='store_true',
