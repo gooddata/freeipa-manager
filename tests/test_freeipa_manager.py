@@ -129,6 +129,11 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             assert utils.parse_args().settings == (
                 '/opt/freeipa-manager/settings_push.yaml')
 
+    def test_settings_default_diff(self):
+        with mock.patch.object(sys, 'argv', ['manager', 'diff', 'repo', 'repo2']):
+            assert utils.parse_args().settings == (
+                '/opt/freeipa-manager/settings_pull.yaml')
+
     def test_settings_default_push(self):
         with mock.patch.object(sys, 'argv', ['manager', 'push', 'repo']):
             assert utils.parse_args().settings == (

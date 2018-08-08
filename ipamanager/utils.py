@@ -97,7 +97,7 @@ def parse_args():
 
     # set default settings file based on action
     if not args.settings:
-        if args.action == 'pull':
+        if args.action in ('diff', 'pull'):
             args.settings = '/opt/freeipa-manager/settings_pull.yaml'
         else:
             args.settings = '/opt/freeipa-manager/settings_push.yaml'
