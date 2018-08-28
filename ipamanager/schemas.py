@@ -17,7 +17,8 @@ _schema_memberof = {str: [str]}
 schema_settings = {
     'user-group-pattern': str,
     'ignore': {
-        Any('user', 'group', 'hostgroup', 'hbacrule', 'sudorule'): [str]
+        Any('user', 'group', 'hostgroup', 'hbacrule', 'sudorule',
+            'role', 'permission', 'privilege', 'service'): [str]
     },
     'deletion-patterns': [str]
 }
