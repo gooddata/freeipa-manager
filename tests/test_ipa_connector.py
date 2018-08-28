@@ -814,7 +814,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
                     'test.user': entities.FreeIPAUser('test.user', {
                         'uid': ('test.user',),
                         'givenname': (u'Test',), 'sn': (u'User',),
-                        'memberof_group': ('group-one')}),
+                        'memberof_group': ('group-two', 'group-one')}),
                     'user.two': entities.FreeIPAUser('user.two', {
                         'uid': ('user.two',),
                         'givenname': (u'User',), 'sn': (u'Two',)}),
@@ -822,7 +822,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
                     'group-one': entities.FreeIPAUserGroup('group-one', {
                         'cn': ('group-one',), 'memberof_group': ('group-two',)}),
                     'group-two': entities.FreeIPAUserGroup('group-two', {
-                        'cn': ('group-two',), 'member_group': ('group-one')})
+                        'cn': ('group-two',), 'member_group': ('group-one',)})
                 }, 'role': {
                     'role-one': entities.FreeIPARole('role-one', {
                         'cn': ('role-one',), 'member_user': ('test.user',)})
@@ -847,14 +847,14 @@ class TestIpaDownloader(TestIpaConnectorBase):
     def test_dump_membership_user(self):
         user = self.downloader.ipa_entities['user']['test.user']
         assert self.downloader._dump_membership(user) == {
-            'memberOf': {'group': 'group-one'}}
+            'memberOf': {'group': ['group-one', 'group-two']}}
         user2 = self.downloader.ipa_entities['user']['user.two']
         assert self.downloader._dump_membership(user2) is None
 
     def test_dump_membership_group(self):
         group1 = self.downloader.ipa_entities['group']['group-one']
         assert self.downloader._dump_membership(group1) == {
-            'memberOf': {'group': ('group-two',)}}
+            'memberOf': {'group': ['group-two']}}
         group2 = self.downloader.ipa_entities['group']['group-two']
         assert self.downloader._dump_membership(group2) is None
 
@@ -945,7 +945,8 @@ class TestIpaDownloader(TestIpaConnectorBase):
                           '  firstName: Test\n'
                           '  lastName: User\n'
                           '  memberOf:\n'
-                          '    group: group-one\n')}
+                          '    group:\n'
+                          '      - group-one\n')}
         mock_delete.assert_not_called()
 
     def test_pull(self):
@@ -965,7 +966,8 @@ class TestIpaDownloader(TestIpaConnectorBase):
                           '  firstName: Test\n'
                           '  lastName: User\n'
                           '  memberOf:\n'
-                          '    group: group-one\n')}
+                          '    group:\n'
+                          '      - group-one\n')}
         mock_delete.assert_called_with('rule-one')
 
     def _pull_entities(self):
@@ -973,10 +975,10 @@ class TestIpaDownloader(TestIpaConnectorBase):
             'user': {'test.user': entities.FreeIPAUser('test.user', {
                 'uid': ('test.user',),
                 'givenname': (u'Test',), 'sn': (u'User',),
-                'memberof_group': (u'group-one')})},
+                'memberof_group': (u'group-one',)})},
             'group': {
                 'group-one': entities.FreeIPAUserGroup('group-one', {
-                    'cn': ('group-one',), 'description': ('test'),
+                    'cn': ('group-one',), 'description': ('test',),
                     'member_user': ('test.user',),
                     u'objectclass': (u'posixgroup',)}),
                 'group-two': entities.FreeIPAUserGroup('group-two', {
@@ -984,7 +986,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
             'hbacrule': {}, 'sudorule': {},
             'hostgroup': {
                 'group-one': entities.FreeIPAHostGroup('group-one', {
-                    'cn': ('group-one',), 'description': ('test'),
+                    'cn': ('group-one',), 'description': ('test',),
                     'member_user': ('test.user',)})},
             'permission': {},
             'privilege': {},

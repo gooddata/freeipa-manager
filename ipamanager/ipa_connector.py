@@ -332,7 +332,7 @@ class IpaDownloader(IpaConnector):
             if entity.entity_name in cls.allowed_members:
                 key = 'memberof_%s' % cls.entity_name
                 if key in entity.data_ipa:
-                    result[cls.entity_name] = entity.data_ipa[key]
+                    result[cls.entity_name] = sorted(entity.data_ipa[key])
         if any(result.itervalues()):
             return {'memberOf': result}
         return None
