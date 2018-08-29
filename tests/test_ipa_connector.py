@@ -820,7 +820,8 @@ class TestIpaDownloader(TestIpaConnectorBase):
                         'givenname': (u'User',), 'sn': (u'Two',)}),
                 }, 'group': {
                     'group-one': entities.FreeIPAUserGroup('group-one', {
-                        'cn': ('group-one',), 'memberof_group': ('group-two',)}),
+                        'cn': ('group-one',), 'memberof_group': ('group-two',),
+                        'member_user': ('test.user', )}),
                     'group-two': entities.FreeIPAUserGroup('group-two', {
                         'cn': ('group-two',), 'member_group': ('group-one',)})
                 }, 'role': {
@@ -847,7 +848,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
     def test_dump_membership_user(self):
         user = self.downloader.ipa_entities['user']['test.user']
         assert self.downloader._dump_membership(user) == {
-            'memberOf': {'group': ['group-one', 'group-two']}}
+            'memberOf': {'group': ['group-one'], 'role': ['role-one']}}
         user2 = self.downloader.ipa_entities['user']['user.two']
         assert self.downloader._dump_membership(user2) is None
 
