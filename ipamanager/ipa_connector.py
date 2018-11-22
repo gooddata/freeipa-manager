@@ -246,7 +246,7 @@ class IpaUploader(IpaConnector):
 
 class IpaDownloader(IpaConnector):
     def __init__(self, settings, parsed, repo_path,
-                 dry_run=False, add_only=False):
+                 dry_run=False, add_only=False, pull_types=['user']):
         """
         Initialize an IPA connector object.
         :param dict settings: parsed contents of the settings file
@@ -259,20 +259,21 @@ class IpaDownloader(IpaConnector):
         self.basepath = repo_path
         self.dry_run = dry_run
         self.add_only = add_only
+        self.pull_types = pull_types
 
     def _prepare_pull(self):
         """
         Prepare pull of all entities before actually running it so that
-        we can ensure that all entities can be written and the pull
+        we can ensure that selected entities can be written and the pull
         will not fail after writing only a part of entities.
         """
         self.to_write = []
         self.to_delete = []
-        for cls in ENTITY_CLASSES:
-            self.lg.debug('Processing %s entities', cls.entity_name)
-            for ipa_entity in self.ipa_entities[cls.entity_name].itervalues():
+        for type_to_pull in self.pull_types:
+            self.lg.debug('Processing %s entities', type_to_pull)
+            for ipa_entity in self.ipa_entities[type_to_pull].itervalues():
                 self._update_entity_membership(ipa_entity)
-                repo_entity = self.repo_entities[cls.entity_name].get(
+                repo_entity = self.repo_entities[type_to_pull].get(
                     ipa_entity.name)
                 if repo_entity:  # update of entity
                     if repo_entity.data_repo != ipa_entity.data_repo:
@@ -289,9 +290,9 @@ class IpaDownloader(IpaConnector):
                     else:
                         self.to_write.append(ipa_entity)
             if not self.add_only:
-                for name in self.repo_entities[cls.entity_name]:
-                    repo_entity = self.repo_entities[cls.entity_name][name]
-                    if name not in self.ipa_entities[cls.entity_name]:
+                for name in self.repo_entities[type_to_pull]:
+                    repo_entity = self.repo_entities[type_to_pull][name]
+                    if name not in self.ipa_entities[type_to_pull]:
                         if self.dry_run:
                             self.lg.info('Would delete %s', repr(repo_entity))
                         else:
@@ -332,7 +333,6 @@ class IpaDownloader(IpaConnector):
             if result:
                 return result
             return None
-
         for cls in ENTITY_CLASSES:
             if entity.entity_name in cls.allowed_members:
                 members = []

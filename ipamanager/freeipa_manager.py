@@ -44,15 +44,20 @@ class FreeIPAManager(FreeIPAManagerCore):
             self.lg.error(e)
             sys.exit(1)
 
-    def check(self):
+    def load(self):
         """
         Load configurations from configuration repository at the given path.
+        """
+        self.config_loader = ConfigLoader(self.args.config, self.settings)
+        self.entities = self.config_loader.load()
+
+    def check(self):
+        """
         Run integrity check on the loaded configuration.
         :raises ConfigError: in case of configuration syntax errors
         :raises IntegrityError: in case of config entity integrity violations
         """
-        self.config_loader = ConfigLoader(self.args.config, self.settings)
-        self.entities = self.config_loader.load()
+        self.load()
         self.integrity_checker = IntegrityChecker(self.entities, self.settings)
         self.integrity_checker.check()
 
@@ -84,12 +89,12 @@ class FreeIPAManager(FreeIPAManagerCore):
         :raises IntegrityError: in case of config entity integrity violations
         :raises ManagerError: in case of API connection error or update error
         """
-        self.check()
+        self.load()
         from ipa_connector import IpaDownloader
         utils.init_api_connection(self.args.loglevel)
         self.downloader = IpaDownloader(
             self.settings, self.entities, self.args.config,
-            self.args.dry_run, self.args.add_only)
+            self.args.dry_run, self.args.add_only, self.args.pull_types)
         self.downloader.pull()
 
     def diff(self):

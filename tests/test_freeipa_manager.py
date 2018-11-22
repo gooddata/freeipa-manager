@@ -100,8 +100,8 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager = self._init_tool(['pull', 'dump_repo'])
                 manager.entities = dict()
                 manager.run()
-        mock_conn.assert_called_with(
-            manager.settings, {}, 'dump_repo', False, False)
+        mock_conn.assert_called_with(manager.settings, manager.entities,
+                                     'dump_repo', False, False, ['user'])
         manager.downloader.pull.assert_called_with()
 
     def test_run_pull_dry_run(self):
@@ -111,7 +111,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager.entities = dict()
                 manager.run()
         mock_conn.assert_called_with(
-            manager.settings, {}, 'dump_repo', True, False)
+            manager.settings, manager.entities, 'dump_repo', True, False, ['user'])
         manager.downloader.pull.assert_called()
 
     def test_run_pull_add_only(self):
@@ -121,7 +121,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager.entities = dict()
                 manager.run()
         mock_conn.assert_called_with(
-            manager.settings, {}, 'dump_repo', False, True)
+            manager.settings, manager.entities, 'dump_repo', False, True, ['user'])
         manager.downloader.pull.assert_called()
 
     def test_settings_default_check(self):

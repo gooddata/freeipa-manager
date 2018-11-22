@@ -61,6 +61,8 @@ def _type_verbosity(value):
 def _args_common():
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument('config', help='Config repository path')
+    common.add_argument('-p', '--pull-types', nargs='+', default=['user'],
+                        help='Types of entities to pull')
     common.add_argument('-s', '--settings', help='Settings file')
     common.add_argument('-v', '--verbose', action='count', default=0,
                         dest='loglevel', help='Verbose mode (-vv for debug)')

@@ -846,6 +846,9 @@ class TestIpaDownloader(TestIpaConnectorBase):
                     'user.two': entities.FreeIPAUser('user.two', {
                         'uid': ('user.two',),
                         'givenname': (u'User',), 'sn': (u'Two',)}),
+                    'user.three': entities.FreeIPAUser('user.three', {
+                        'uid': ('user.three',),
+                        'givenname': (u'User',), 'sn': (u'Three',)}),
                 }, 'group': {
                     'group-one': entities.FreeIPAUserGroup('group-one', {
                         'cn': ('group-one',), 'memberof_group': ('group-two',)}),
@@ -870,7 +873,8 @@ class TestIpaDownloader(TestIpaConnectorBase):
             parsed=args.get('parsed', {}),
             repo_path=args.get('repo_path', 'some_path'),
             dry_run=args.get('dry_run', False),
-            add_only=args.get('add_only', False))
+            add_only=args.get('add_only', False),
+            pull_types=args.get('pull_types', ['user']))
 
     def test_dump_membership_user(self):
         user = self.downloader.ipa_entities['user']['test.user']
@@ -927,6 +931,16 @@ class TestIpaDownloader(TestIpaConnectorBase):
         assert exc.value[0] == 'users/test_user.yaml filename already used'
 
     def test_pull_dry_run(self):
+        self._create_downloader(dry_run=True, add_only=True)
+        self.downloader.ipa_entities, self.downloader.repo_entities = (
+            self._pull_entities())
+        with mock.patch('%s.IpaDownloader.load_ipa_entities' % modulename):
+            with LogCapture('IpaDownloader', level=logging.INFO) as log:
+                self.downloader.pull()
+        assert sorted([(r.levelno, r.msg % r.args) for r in log.records]) == [
+            (20, 'Would update user test.user')]
+
+    def test_pull_dry_run_enable_deletion(self):
         self._create_downloader(dry_run=True)
         self.downloader.ipa_entities, self.downloader.repo_entities = (
             self._pull_entities())
@@ -934,24 +948,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
             with LogCapture('IpaDownloader', level=logging.INFO) as log:
                 self.downloader.pull()
         assert sorted([(r.levelno, r.msg % r.args) for r in log.records]) == [
-            (20, 'Would create hostgroup group-one'),
-            (20, 'Would delete hbacrule rule-one'),
-            (20, 'Would update group group-one'),
-            (20, 'Would update group group-two'),
-            (20, 'Would update user test.user')]
-
-    def test_pull_dry_run_enable_deletion(self):
-        self._create_downloader(dry_run=True, add_only=False)
-        self.downloader.ipa_entities, self.downloader.repo_entities = (
-            self._pull_entities())
-        with mock.patch('%s.IpaDownloader.load_ipa_entities' % modulename):
-            with LogCapture('IpaDownloader', level=logging.INFO) as log:
-                self.downloader.pull()
-        assert sorted([(r.levelno, r.msg % r.args) for r in log.records]) == [
-            (20, 'Would create hostgroup group-one'),
-            (20, 'Would delete hbacrule rule-one'),
-            (20, 'Would update group group-one'),
-            (20, 'Would update group group-two'),
+            (20, 'Would delete user user.two'),
             (20, 'Would update user test.user')]
 
     def test_pull_add_only(self):
@@ -965,9 +962,6 @@ class TestIpaDownloader(TestIpaConnectorBase):
                     with mock.patch('__builtin__.open'):
                         self.downloader.pull()
         assert output == {
-            'group-one': ('---\ngroup-one:\n  description: test\n'
-                          '  posix: true\n'),
-            'group-two': '---\ngroup-two:\n  posix: false\n',
             'test.user': ('---\n'
                           'test.user:\n'
                           '  firstName: Test\n'
@@ -986,9 +980,6 @@ class TestIpaDownloader(TestIpaConnectorBase):
                             '%s.IpaDownloader.load_ipa_entities' % modulename):
                         self.downloader.pull()
         assert output == {
-            'group-one': ('---\ngroup-one:\n  description: test\n'
-                          '  posix: true\n'),
-            'group-two': '---\ngroup-two:\n  posix: false\n',
             'test.user': ('---\n'
                           'test.user:\n'
                           '  firstName: Test\n'
@@ -996,7 +987,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
                           '  memberOf:\n'
                           '    group:\n'
                           '      - group-one\n')}
-        mock_delete.assert_called_with('rule-one')
+        mock_delete.assert_called_with('user-two')
 
     def _pull_entities(self):
         remote = {
@@ -1026,7 +1017,10 @@ class TestIpaDownloader(TestIpaConnectorBase):
             'user': {
                 'test.user': entities.FreeIPAUser(
                     'test.user',
-                    {'firstName': 'Test', 'lastName': 'user'}, 'path')},
+                    {'firstName': 'Test', 'lastName': 'user'}, 'test-user'),
+                'user.two': entities.FreeIPAUser(
+                    'user.two',
+                    {'firstName': 'User', 'lastName': 'Two'}, 'user-two')},
             'group': {
                 'group-one': entities.FreeIPAUserGroup(
                     'group-one', {'description': 'test',
