@@ -13,14 +13,14 @@ with open('requirements.txt') as deps_file:
 # Parameters for build
 params = {
     'name': 'freeipa-manager',
-    'version': '1.%s' % os.environ['CI_VERSION'],
+    'version': '%s' % os.environ.get('PACKAGE_VERSION', 'dev'),
     'packages': ['ipamanager', 'ipamanager.tools'],
     'entry_points': {
         'console_scripts': [
             'ipamanager=ipamanager.freeipa_manager:main',
             'ipamanager-pull-request=ipamanager.tools.github_forwarder:main']
     },
-    'url': 'https://github.com/gooddata/gdc-ipa-utils',
+    'url': 'https://github.com/gooddata/freeipa-manager',
     'license': 'Proprietary',
     'author': 'GoodData Corporation',
     'author_email': 'root@gooddata.com',
