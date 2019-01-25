@@ -110,8 +110,8 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager = self._init_tool(['pull', 'dump_repo', '--dry-run'])
                 manager.entities = dict()
                 manager.run()
-        mock_conn.assert_called_with(
-            manager.settings, manager.entities, 'dump_repo', True, False, ['user'])
+        mock_conn.assert_called_with(manager.settings, manager.entities,
+                                     'dump_repo', True, False, ['user'])
         manager.downloader.pull.assert_called()
 
     def test_run_pull_add_only(self):
@@ -120,8 +120,8 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager = self._init_tool(['pull', 'dump_repo', '--add-only'])
                 manager.entities = dict()
                 manager.run()
-        mock_conn.assert_called_with(
-            manager.settings, manager.entities, 'dump_repo', False, True, ['user'])
+        mock_conn.assert_called_with(manager.settings, manager.entities,
+                                     'dump_repo', False, True, ['user'])
         manager.downloader.pull.assert_called()
 
     def test_settings_default_check(self):
@@ -130,7 +130,8 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 '/opt/freeipa-manager/settings_push.yaml')
 
     def test_settings_default_diff(self):
-        with mock.patch.object(sys, 'argv', ['manager', 'diff', 'repo', 'repo2']):
+        with mock.patch.object(sys, 'argv', ['manager', 'diff',
+                                             'repo', 'repo2']):
             assert utils.parse_args().settings == (
                 '/opt/freeipa-manager/settings_pull.yaml')
 

@@ -368,9 +368,10 @@ class FreeIPARule(FreeIPAEntity):
         :param FreeIPArule remote_entity: remote entity data (may be None)
         """
         commands = []
-        for key, member_type, cmd_key in (('memberhost', 'hostgroup', 'host'),
-                                          ('memberuser', 'group', 'user'),
-                                          ('memberservice', 'hbacsvc', 'service')):
+        for key, member_type, cmd_key in (
+                ('memberhost', 'hostgroup', 'host'),
+                ('memberuser', 'group', 'user'),
+                ('memberservice', 'hbacsvc', 'service')):
             local_members = set(self.data_ipa.get(key, []))
             if remote_entity:
                 search_key = '%s_%s' % (key, member_type)

@@ -20,4 +20,5 @@ class TestDiff(object):
     @log_capture('FreeIPADifference', level=logging.INFO)
     def test_correct(self, captured_log):
         tool.FreeIPADifference(PROD_PATH, INT_PATH).run()
-        captured_log.check(('FreeIPADifference', 'INFO', 'There are no ADDITIONAL entites'),)
+        captured_log.check(('FreeIPADifference', 'INFO',
+                            'There are no ADDITIONAL entites'),)

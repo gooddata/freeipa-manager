@@ -80,12 +80,14 @@ class TestFreeIPAPrivilege(object):
             'description': 'Good description',
         }
         privilege = tool.FreeIPAPrivilege('privilege-one', data, 'path')
-        assert privilege._convert_to_ipa(data) == {'description': (u'Good description',)}
+        assert privilege._convert_to_ipa(data) == {
+            'description': (u'Good description',)}
 
     def test_convert_to_repo(self):
         data = {
             u'objectclass': (u'top', u'groupofnames', u'nestedgroup'),
-            u'dn': u'cn=Write IPA Configuration,cn=privileges,cn=pbac,dc=devgdc,dc=com',
+            u'dn': (u'cn=Write IPA Configuration,cn=privileges'
+                    u',cn=pbac,dc=devgdc,dc=com'),
             u'memberof_permission': (u'Write IPA Configuration',),
             u'cn': (u'Write IPA Configuration',),
             u'description': (u'Write IPA Configuration',)
@@ -134,7 +136,8 @@ class TestFreeIPAPermission(object):
         'defaultAttr': 'default attributes'}
 
     def test_create_permission_correct(self):
-        permission = tool.FreeIPAPermission('sample-permission', self.data, 'path')
+        permission = tool.FreeIPAPermission(
+            'sample-permission', self.data, 'path')
         assert permission.name == 'sample-permission'
         assert permission.data_repo == self.data
         assert permission.data_ipa == {
@@ -155,7 +158,8 @@ class TestFreeIPAPermission(object):
             "extra keys not allowed @ data['extrakey']")
 
     def test_convert_to_ipa(self):
-        permission = tool.FreeIPAPermission('permission-one', self.data, 'path')
+        permission = tool.FreeIPAPermission(
+            'permission-one', self.data, 'path')
         assert permission._convert_to_ipa(self.data) == {
             'attrs': (u'nice attributes', u'some more attrs'),
             'description': (u'Simple description',),
@@ -167,11 +171,14 @@ class TestFreeIPAPermission(object):
     def test_convert_to_repo(self):
         data = {
             u'ipapermright': (u'write',),
-            u'dn': u'cn=Request Certificate,cn=permissions,cn=pbac,dc=devgdc,dc=com',
-            u'ipapermbindruletype': (u'permission',), u'cn': (u'Request Certificate',),
+            u'dn': (u'cn=Request Certificate,cn=permissions'
+                    u',cn=pbac,dc=devgdc,dc=com'),
+            u'ipapermbindruletype': (u'permission',),
+            u'cn': (u'Request Certificate',),
             u'objectclass': (u'top', u'groupofnames', u'ipapermission'),
             u'member_privilege': (u'Certificate Administrators',),
-            u'ipapermtarget': (u'cn=request certificate,cn=virtual operations,cn=etc,dc=devgdc,dc=com',),
+            u'ipapermtarget': ((u'cn=request certificate,cn=virtual operations'
+                                u',cn=etc,dc=devgdc,dc=com',)),
             u'attrs': (u'objectclass',),
             u'ipapermlocation': (u'dc=devgdc,dc=com',),
             u'ipapermincludedattr': (u'objectclass',)}
@@ -188,14 +195,15 @@ class TestFreeIPARole(object):
     def test_create_role_correct(self):
         data = {
             'description': 'Some description',
-            'memberOf': {'privilege': ['privilege_simple', 'another_privilege']}
-        }
+            'memberOf': {'privilege': [
+                'privilege_simple', 'another_privilege']}}
         role = tool.FreeIPARole('sample_role', data, 'path')
         assert role.name == 'sample_role'
         assert role.data_repo == data
         assert role.data_ipa == {
             'description': ('Some description', ),
-            'memberof': {'privilege': ['privilege_simple', 'another_privilege']}}
+            'memberof': {'privilege': [
+                'privilege_simple', 'another_privilege']}}
 
     def test_create_role_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
@@ -210,7 +218,8 @@ class TestFreeIPARole(object):
             'description': 'Good description',
         }
         role = tool.FreeIPARole('some.name', data, 'path')
-        assert role._convert_to_ipa(data) == {'description': (u'Good description',)}
+        assert role._convert_to_ipa(data) == {
+            'description': (u'Good description',)}
 
     def test_convert_to_repo(self):
         data = {
@@ -228,14 +237,16 @@ class TestFreeIPAHBACService(object):
     def test_create_hbacsvc_correct(self):
         data = {
             'description': 'Some description',
-            'memberOf': {'hbacsvcgroup': ['simple_hbacsvcgroup''another_hbacsvcgroup']}
+            'memberOf': {'hbacsvcgroup': [
+                'simple_hbacsvcgroup', 'another_hbacsvcgroup']}
         }
         hbacsvc = tool.FreeIPAHBACService('sample_hbacsvc', data, 'path')
         assert hbacsvc.name == 'sample_hbacsvc'
         assert hbacsvc.data_repo == data
         assert hbacsvc.data_ipa == {
             'description': ('Some description', ),
-            'memberof': {'hbacsvcgroup': ['simple_hbacsvcgroup''another_hbacsvcgroup']}}
+            'memberof': {'hbacsvcgroup': [
+                'simple_hbacsvcgroup', 'another_hbacsvcgroup']}}
 
     def test_create_hbacsvc_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
@@ -250,7 +261,8 @@ class TestFreeIPAHBACService(object):
             'description': 'Good description',
         }
         hbacsvc = tool.FreeIPAHBACService('some.name', data, 'path')
-        assert hbacsvc._convert_to_ipa(data) == {'description': (u'Good description',)}
+        assert hbacsvc._convert_to_ipa(data) == {
+            'description': (u'Good description',)}
 
     def test_convert_to_repo(self):
         data = {
@@ -269,7 +281,8 @@ class TestFreeIPAHBACServiceGroup(object):
         data = {
             'description': 'Some description',
         }
-        hbacsvcgroup = tool.FreeIPAHBACServiceGroup('sample_hbacsvcgroup', data, 'path')
+        hbacsvcgroup = tool.FreeIPAHBACServiceGroup(
+            'sample_hbacsvcgroup', data, 'path')
         assert hbacsvcgroup.name == 'sample_hbacsvcgroup'
         assert hbacsvcgroup.data_repo == data
         assert hbacsvcgroup.data_ipa == {
@@ -288,18 +301,22 @@ class TestFreeIPAHBACServiceGroup(object):
             'description': 'Good description',
         }
         hbacsvcgroup = tool.FreeIPAHBACServiceGroup('some.name', data, 'path')
-        assert hbacsvcgroup._convert_to_ipa(data) == {'description': (u'Good description',)}
+        assert hbacsvcgroup._convert_to_ipa(data) == {
+            'description': (u'Good description',)}
 
     def test_convert_to_repo(self):
         data = {
-            u'dn': u'cn=Sudo,cn=hbacservicegroups,cn=hbac,dc=devgdc,dc=com', u'cn': (u'Sudo',),
-            u'objectclass': (u'ipaobject', u'ipahbacservicegroup', u'nestedGroup', u'groupOfNames', u'top'),
+            u'dn': u'cn=Sudo,cn=hbacservicegroups,cn=hbac,dc=devgdc,dc=com',
+            u'cn': (u'Sudo',),
+            u'objectclass': (u'ipaobject', u'ipahbacservicegroup',
+                             u'nestedGroup', u'groupOfNames', u'top'),
             u'member_hbacsvc': (u'sudo', u'sudo-i', u'vsftpd'),
-            u'ipauniqueid': (u'06257a7e-84ea-11e8-9f84-fa163e198b8c',), u'description':
-            (u'Default group of Sudo related services',)}
+            u'ipauniqueid': (u'06257a7e-84ea-11e8-9f84-fa163e198b8c',),
+            u'description': (u'Default group of Sudo related services',)}
         hbacsvcgroup = tool.FreeIPAHBACService('role-one', {})
         result = hbacsvcgroup._convert_to_repo(data)
-        assert result == {'description': u'Default group of Sudo related services'}
+        assert result == {
+            'description': u'Default group of Sudo related services'}
         assert all(isinstance(i, unicode) for i in result.itervalues())
 
 
@@ -333,7 +350,9 @@ class TestFreeIPAService(object):
             'memberOf': {'role': ['role_simple', 'another_role']},
             'managedBy': 'Host'
         }
-        service = tool.FreeIPAService('sample_service', data, 'some/path/to/ldap/ipa01.devgdc.com@DEVGDC.COM')
+        service = tool.FreeIPAService(
+            'sample_service', data,
+            'some/path/to/ldap/ipa01.devgdc.com@DEVGDC.COM')
         with mock.patch('yaml.dump', _mock_dump(output, yaml.dump)):
             with mock.patch('__builtin__.open'):
                 service.write_to_file()
@@ -356,13 +375,17 @@ class TestFreeIPAService(object):
             u'krbcanonicalname': (u'DNS/ipa01.devgdc.com@DEVGDC.COM',),
             u'ipakrbokasdelegate': False,
             u'ipauniqueid': (u'932370a0-9ae0-11e8-ad25-fa163ef99b4f',),
-            u'krbpwdpolicyreference': (u'cn=Default Service Password Policy,cn=services,cn=accounts,dc=devgdc,dc=com',),
-            u'ipakrboktoauthasdelegate': False, u'krbprincipalname': (u'DNS/ipa01.devgdc.com@DEVGDC.COM',),
+            u'krbpwdpolicyreference': (
+                (u'cn=Default Service Password Policy,cn=services'
+                 u',cn=accounts,dc=devgdc,dc=com',)),
+            u'ipakrboktoauthasdelegate': False,
+            u'krbprincipalname': (u'DNS/ipa01.devgdc.com@DEVGDC.COM',),
             u'managedby_host': (u'ipa01.devgdc.com',),
             u'description': (u'Some description',)}
         service = tool.FreeIPAService('service-one', {})
         result = service._convert_to_repo(data)
-        assert result == {'description': u'Some description', 'managedBy': u'ipa01.devgdc.com'}
+        assert result == {'description': u'Some description',
+                          'managedBy': u'ipa01.devgdc.com'}
         assert all(isinstance(i, unicode) for i in result.itervalues())
 
 

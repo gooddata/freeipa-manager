@@ -327,7 +327,9 @@ class IpaDownloader(IpaConnector):
                     ('memberUser', 'group')):
                 key = '%s_%s' % (config_key.lower(), member_type)
                 # filter ignored members
-                members = sorted(set(entity.data_ipa.get(key, [])) - set(self.ignored.get(member_type, key)))
+                members = sorted(
+                    set(entity.data_ipa.get(key, [])) - set(
+                        self.ignored.get(member_type, key)))
                 if members:
                     result[config_key] = members
             if result:
@@ -337,7 +339,8 @@ class IpaDownloader(IpaConnector):
             if entity.entity_name in cls.allowed_members:
                 members = []
                 key = 'member_%s' % entity.entity_name
-                for ipa_entity in self.ipa_entities[cls.entity_name].itervalues():
+                for ipa_entity in self.ipa_entities[
+                        cls.entity_name].itervalues():
                     if entity.name in ipa_entity.data_ipa.get(key, []):
                         members.append(ipa_entity.name)
                 if members:

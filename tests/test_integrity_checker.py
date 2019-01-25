@@ -65,7 +65,8 @@ class TestIntegrityChecker(object):
                 'memberOf non-existent hostgroup group-two'],
             ('user', 'firstname.lastname2'): [
                 'memberOf non-existent group group-one'],
-            ('service', 'service-two'): ['memberOf non-existent role role-one']}
+            ('service', 'service-two'): [
+                'memberOf non-existent role role-one']}
 
     def test_check_memberof_meta_violation(self):
         data = {
@@ -128,8 +129,10 @@ class TestIntegrityChecker(object):
             ('user', 'firstname.lastname2'): [
                 "group-one can only have members of type ['hostgroup']"],
             ('permission', 'permission-one'): [
-                "role-one can only have members of type ['user', 'group', 'service', 'hostgroup']"],
-            ('role', 'role-one'): ["permission-one can only have members of type ['privilege']"]}
+                ("role-one can only have members of type ['user', 'group', "
+                 "'service', 'hostgroup']")],
+            ('role', 'role-one'): [
+                "permission-one can only have members of type ['privilege']"]}
 
     def test_check_user_invalid_manager(self):
         self._create_checker(self._sample_entities_user_invalid_manager())
@@ -188,12 +191,12 @@ class TestIntegrityChecker(object):
         rule_one = tool.entities.FreeIPAHBACRule('rule-one', {})
         with pytest.raises(tool.IntegrityError) as exc:
             self.checker._check_member_type(user_one, rule_one)
-        assert exc.value[0] == ("rule-one not one of (<class "
-                                "'ipamanager.entities.FreeIPAGroup'>, <class "
-                                "'ipamanager.entities.FreeIPARole'>, <class "
-                                "'ipamanager.entities.FreeIPAPrivilege'>, <class "
-                                "'ipamanager.entities.FreeIPAPermission'>, <class"
-                                " 'ipamanager.entities.FreeIPAHBACServiceGroup'>), cannot have members")
+        assert exc.value[0] == (
+            "rule-one not one of (<class "
+            "'ipamanager.entities.FreeIPAGroup'>, <class 'ipamanager.entities"
+            ".FreeIPARole'>, <class 'ipamanager.entities.FreeIPAPrivilege'>, "
+            "<class 'ipamanager.entities.FreeIPAPermission'>, <class 'ipamana"
+            "ger.entities.FreeIPAHBACServiceGroup'>), cannot have members")
 
     def test_check_member_type_wrong_target_type_service(self):
         self._create_checker(dict())
@@ -204,12 +207,12 @@ class TestIntegrityChecker(object):
         service_one = tool.entities.FreeIPAHBACRule('service-one', {})
         with pytest.raises(tool.IntegrityError) as exc:
             self.checker._check_member_type(user_one, service_one)
-        assert exc.value[0] == ("service-one not one of (<class "
-                                "'ipamanager.entities.FreeIPAGroup'>, <class "
-                                "'ipamanager.entities.FreeIPARole'>, <class "
-                                "'ipamanager.entities.FreeIPAPrivilege'>, <class "
-                                "'ipamanager.entities.FreeIPAPermission'>, <class "
-                                "'ipamanager.entities.FreeIPAHBACServiceGroup'>), cannot have members")
+        assert exc.value[0] == (
+            "service-one not one of (<class 'ipamanager.entities.FreeIPAGroup'"
+            ">, <class 'ipamanager.entities.FreeIPARole'>, <class 'ipamanager."
+            "entities.FreeIPAPrivilege'>, <class 'ipamanager.entities."
+            "FreeIPAPermission'>, <class 'ipamanager.entities.FreeIPAHBAC"
+            "ServiceGroup'>), cannot have members")
 
     def test_check_member_type_wrong_member_type(self):
         self._create_checker(dict())
@@ -230,7 +233,8 @@ class TestIntegrityChecker(object):
                 'firstname.lastname2': tool.entities.FreeIPAUser(
                     'firstname.lastname2',
                     {'firstName': 'Firstname', 'lastName': 'Lastname',
-                     'memberOf': {'group': ['group-one-users'], 'role': ['role-one']}}, 'path'),
+                     'memberOf': {'group': ['group-one-users'],
+                                  'role': ['role-one']}}, 'path'),
                 'firstname.lastname3': tool.entities.FreeIPAUser(
                     'firstname.lastname3',
                     {'firstName': 'Firstname', 'lastName': 'Lastname'},
@@ -238,13 +242,15 @@ class TestIntegrityChecker(object):
             'group': {
                 'group-one-users': tool.entities.FreeIPAUserGroup(
                     'group-one-users', {
-                        'memberOf': {'group': ['group-two'], 'role': ['role-one']}}, 'path'),
+                        'memberOf': {'group': ['group-two'],
+                                     'role': ['role-one']}}, 'path'),
                 'group-two': tool.entities.FreeIPAUserGroup(
                     'group-two', {}, 'path')},
             'hostgroup': {
                 'group-one-hosts': tool.entities.FreeIPAHostGroup(
                     'group-one-hosts', {
-                        'memberOf': {'hostgroup': ['group-two'], 'role': ['role-one']}}, 'path'),
+                        'memberOf': {'hostgroup': ['group-two'],
+                                     'role': ['role-one']}}, 'path'),
                 'group-two': tool.entities.FreeIPAHostGroup(
                     'group-two', {}, 'path')},
             'hbacrule': {
@@ -270,7 +276,8 @@ class TestIntegrityChecker(object):
             'privilege': {
                 'privilege-one': tool.entities.FreeIPAPrivilege(
                     'privilege-one', {
-                        'memberOf': {'permission': ['permission-one']}}, 'path'),
+                        'memberOf': {'permission': ['permission-one']}},
+                    'path'),
                 'privilege-two': tool.entities.FreeIPAPrivilege(
                     'privilege-two', {}, 'path')},
             'permission': {
@@ -315,10 +322,12 @@ class TestIntegrityChecker(object):
             'hostgroup': {'group-one': tool.entities.FreeIPAHostGroup(
                           'group-one', {}, 'path')},
             'role': {'role-one': tool.entities.FreeIPARole(
-                'role-one', {'memberOf': {'permission': ['permission-one']}}, 'path')},
+                'role-one', {'memberOf': {'permission': ['permission-one']}},
+                'path')},
             'permission': {
                 'permission-one': tool.entities.FreeIPAPermission(
-                    'permission-one', {'memberOf': {'role': ['role-one']}}, 'path')}}
+                    'permission-one', {'memberOf': {'role': ['role-one']}},
+                    'path')}}
 
     def _sample_entities_user_invalid_manager(self):
         return {

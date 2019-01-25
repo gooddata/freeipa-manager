@@ -62,7 +62,8 @@ class GitHubForwarder(object):
         :rtype: None
         :raises ManagerError: when checkout/add/commit fails
         """
-        commit_msg = '%s at %s' % (self.msg, time.strftime('%d %h %Y %H:%M:%S'))
+        commit_msg = '%s at %s' % (
+            self.msg, time.strftime('%d %h %Y %H:%M:%S'))
         self.lg.debug('Using commit message: %s', commit_msg)
         try:
             self.git.checkout(['-B', self.args.branch])

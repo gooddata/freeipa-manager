@@ -151,7 +151,8 @@ class TestIpaConnector(TestIpaConnectorBase):
         tool.api.Command.__getitem__.side_effect = self._api_call
         self.uploader.ignored['user'] = ['user.one']
         self.uploader.load_ipa_entities()
-        for cmd in ('group', 'hbacrule', 'hostgroup', 'sudorule', 'user', 'service', 'role', 'permission', 'privilege'):
+        for cmd in ('group', 'hbacrule', 'hostgroup', 'sudorule',
+                    'user', 'service', 'role', 'permission', 'privilege'):
             tool.api.Command.__getitem__.assert_any_call(
                 '%s_find' % cmd)
         msgs = [(r.levelname, r.msg % r.args) for r in captured_log.records]
@@ -748,14 +749,14 @@ class TestIpaUploader(TestIpaConnectorBase):
     def test_push_invalid_command(self):
         self._create_uploader(force=True, threshold=15)
         tool.api.Command.__getitem__.side_effect = self._api_call
-        self.uploader.commands = [tool.Command('non_existent', {}, 'x', 'cn')]
+        self.uploader.commands = [tool.Command('invalid', {}, 'x', 'cn')]
         with mock.patch('%s._prepare_push' % up_class):
             with mock.patch('%s._check_threshold' % up_class):
                 with pytest.raises(tool.ManagerError) as exc:
                     self.uploader.push()
         assert exc.value[0] == 'There were 1 errors executing update'
         assert self.uploader.errs == [
-            'Error executing non_existent x (): Non-existent command non_existent']
+            'Error executing invalid x (): Non-existent command invalid']
 
     def _api_call_unreliable(self, command):
         try:
@@ -851,18 +852,24 @@ class TestIpaDownloader(TestIpaConnectorBase):
                         'givenname': (u'User',), 'sn': (u'Three',)}),
                 }, 'group': {
                     'group-one': entities.FreeIPAUserGroup('group-one', {
-                        'cn': ('group-one',), 'memberof_group': ('group-two',)}),
+                        'cn': ('group-one',),
+                        'memberof_group': ('group-two',)}),
                     'group-two': entities.FreeIPAUserGroup('group-two', {
-                        'cn': ('group-two',), 'member_group': ('group-one',), 'member_user': ('test.user',)})
+                        'cn': ('group-two',), 'member_group': ('group-one',),
+                        'member_user': ('test.user',)})
                 }, 'role': {
                     'role-one': entities.FreeIPARole('role-one', {
                         'cn': ('role-one',)})
                 }, 'permission': {
-                    'permission-one': entities.FreeIPAPermission('permission-one', {
-                        'cn': ('permission-one',), 'member_privilege': ('privilege-one',)})
+                    'permission-one': entities.FreeIPAPermission(
+                        'permission-one', {
+                            'cn': ('permission-one',),
+                            'member_privilege': ('privilege-one',)})
                 }, 'privilege': {
-                    'privilege-one': entities.FreeIPAPrivilege('privilege-one', {
-                        'cn': ('privilege-one',), 'member_role': ('role-one',)})}}
+                    'privilege-one': entities.FreeIPAPrivilege(
+                        'privilege-one', {
+                            'cn': ('privilege-one',),
+                            'member_role': ('role-one',)})}}
         if 'pull' in method.func_name:
             self.downloader.ipa_entities, self.downloader.repo_entities = (
                 self._pull_entities())
