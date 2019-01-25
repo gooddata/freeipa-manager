@@ -1,0 +1,6 @@
+---
+hbacsvc-two:
+  description: some description
+  memberOf:
+    hbacsvcgroup:
+      - hbacsvcgroup-one

@@ -1,0 +1,6 @@
+---
+invalidmember:
+  description: some Good Description
+  memberOf:
+    inv_privilege:
+      - doesntexist

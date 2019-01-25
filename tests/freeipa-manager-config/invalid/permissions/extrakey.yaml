@@ -1,0 +1,9 @@
+---
+extra.key:
+  description: some Good Description
+  invalid: extrakey
+  grantedRights: Goodrights
+  attributes: Good attributes
+  location: Good location
+  defaultAttr: default Attr
+  subtree: some subtree

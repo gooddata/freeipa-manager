@@ -1,0 +1,6 @@
+---
+group-two:
+  description: Sample meta group two.
+  memberOf:
+    group:
+      - group-three-users

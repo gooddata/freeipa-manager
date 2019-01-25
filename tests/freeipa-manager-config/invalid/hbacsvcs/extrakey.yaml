@@ -1,0 +1,7 @@
+---
+extra.key:
+  description: some Good Description
+  invalid: extrakey
+  memberOf:
+    hbacsvcgroups:
+      - this_permisson

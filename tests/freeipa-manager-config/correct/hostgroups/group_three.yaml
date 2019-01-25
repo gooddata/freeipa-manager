@@ -1,0 +1,6 @@
+---
+group-three-hosts:
+  description: Sample host group three.
+  memberOf:
+    hostgroup:
+      - group-two

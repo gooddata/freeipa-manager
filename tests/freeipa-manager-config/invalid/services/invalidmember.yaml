@@ -1,0 +1,8 @@
+---
+invalidmember:
+  description: some Good Description
+  managedBy: some@service.com
+  memberOf:
+    invrole:
+      - extrakey
+      - non_exsistent

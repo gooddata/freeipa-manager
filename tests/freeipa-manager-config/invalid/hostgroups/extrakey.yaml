@@ -1,0 +1,4 @@
+---
+group-one-hosts:
+  description: Sample bad host group one
+  extrakey: bad

@@ -1,0 +1,7 @@
+---
+extra.key:
+  description: some Good Description
+  invalid: extrakey
+  memberOf:
+    privilege:
+      - some_privilege

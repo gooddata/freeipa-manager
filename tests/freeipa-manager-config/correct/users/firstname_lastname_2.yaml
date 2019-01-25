@@ -1,0 +1,12 @@
+---
+firstname.lastname2:
+  firstName: Firstname
+  lastName: Lastname
+  initials: FLN
+  organizationUnit: CISTA
+  githubLogin: github-account-two
+  emailAddress: firstname.lastname2@gooddata.com
+  title: Sr. SW Enginner
+  memberOf:
+    group:
+      - group-three-users
