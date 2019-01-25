@@ -1,10 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2017-2019, GoodData Corporation. All rights reserved.
 """
-GoodData FreeIPA tooling
-Configuration parsing tool
+FreeIPA Manager - entity module
 
 Object representations of the entities configured in FreeIPA.
-
-Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
 import os

@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2017-2019, GoodData Corporation. All rights reserved.
+"""
+FreeIPA Manager - Configs difference module
+"""
+
 import os
 
 from core import FreeIPAManagerCore

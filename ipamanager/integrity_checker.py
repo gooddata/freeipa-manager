@@ -1,10 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2017-2019, GoodData Corporation. All rights reserved.
 """
-GoodData FreeIPA tooling
-Integrity checking tool
+FreeIPA Manager - integrity checking module
 
 Tools for checking integrity of entity configurations.
-
-Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
 import entities

@@ -1,11 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2017-2019, GoodData Corporation. All rights reserved.
 """
-GoodData FreeIPA tooling
-IPA updating tool
+FreeIPA Manager - IPA updating module
 
 Tool for updating a FreeIPA server via API
 from local entity configuration.
-
-Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
 import re

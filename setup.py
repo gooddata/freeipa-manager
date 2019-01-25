@@ -21,11 +21,23 @@ params = {
             'ipamanager-pull-request=ipamanager.tools.github_forwarder:main']
     },
     'url': 'https://github.com/gooddata/freeipa-manager',
-    'license': 'Proprietary',
+    'license': 'BSD',
     'author': 'GoodData Corporation',
-    'author_email': 'root@gooddata.com',
+    'author_email': 'scrum7@gooddata.com',
     'description': 'FreeIPA Manager',
-    'long_description': 'GoodData FreeIPA management tooling',
+    'long_description': 'FreeIPA entity provisioning tool.',
+    'classifiers': [
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+        'License :: OSI Approved :: BSD License',
+        'Natural Language :: English',
+        'Operating System :: POSIX',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.7'
+    ],
     'install_requires': deps
 }
 
