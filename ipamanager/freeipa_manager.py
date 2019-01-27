@@ -1,9 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2017-2019, GoodData Corporation. All rights reserved.
+
 """
-GoodData FreeIPA tooling
+FreeIPA Manager - top level script
 
 Main entry point of the tooling, responsible for delegating the tasks.
-
-Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
 import sys

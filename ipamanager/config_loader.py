@@ -1,11 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2017-2019, GoodData Corporation. All rights reserved.
 """
-GoodData FreeIPA tooling
-Configuration parsing tool
+FreeIPA Manager - Config loading module
 
-Tools for loading FreeIPA configuration
+Module for loading FreeIPA configuration
 from a locally cloned config repo.
-
-Kristian Lesko <kristian.lesko@gooddata.com>
 """
 
 import glob

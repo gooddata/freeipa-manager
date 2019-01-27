@@ -1,13 +1,13 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2017-2019, GoodData Corporation. All rights reserved.
+
 """
-GoodData FreeIPA tooling
-GitHub forwarding tool
+FreeIPA Manager - GitHub forwarding tool
 
 Tool for committing changes pulled from FreeIPA
 and forwarding them to a GitHub repository via a pull request.
-
-Kristian Lesko <kristian.lesko@gooddata.com>
-PAAS-12476
 """
 
 import argparse
