@@ -21,7 +21,7 @@ params = {
             'ipamanager-pull-request=ipamanager.tools.github_forwarder:main']
     },
     'url': 'https://github.com/gooddata/freeipa-manager',
-    'license': 'BSD',
+    'license': 'BSD License 2.0',
     'author': 'GoodData Corporation',
     'author_email': 'scrum7@gooddata.com',
     'description': 'FreeIPA Manager',
