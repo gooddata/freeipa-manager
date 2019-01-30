@@ -13,6 +13,7 @@ from voluptuous import Any, Required
 _name_type = Any(str, unicode)
 _item_or_list = Any(str, [str])
 _schema_memberof = {str: [str]}
+_meta = {str: {str: str}}
 
 
 schema_settings = {
@@ -54,16 +55,19 @@ schema_hostgroups = {
     'metaparams': {str: str}
 }
 
+
 schema_hbacservices = {
     'description': str,
     'memberOf': _schema_memberof,
     'metaparams': {str: str}
 }
 
+
 schema_hbacsvcgroups = {
     'description': str,
     'metaparams': {str: str}
 }
+
 
 schema_hbac = {
     'description': str,
@@ -119,4 +123,38 @@ schema_services = {
     'memberOf': _schema_memberof,
     'description': str,
     'metaparams': {str: str}
+}
+
+
+schema_template_params = {
+    'all': dict,
+    'groups': {str: schema_usergroups},
+    'hostgroups': {str: schema_hostgroups},
+    'rules': {
+        'all': {
+            'description': str,
+            'memberHost': [str],
+            'memberUser': [str],
+            'metaparams': {str: str}},
+        'hbacrules': schema_hbac,
+        'sudorules': schema_sudo}
+}
+
+
+schema_template_metaparams = {
+    'all': dict,
+    'hostgroups': _meta,
+    'groups': _meta,
+    'rules': _meta
+}
+
+
+schema_template = {
+    str: {
+        Required('datacenters'): {str: [int]},
+        Required('separate_sudo'): bool,
+        Required('separate_foreman_view'): bool,
+        'include_params': schema_template_params,
+        'include_metaparams': schema_template_metaparams
+    }
 }

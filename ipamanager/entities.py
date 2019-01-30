@@ -49,6 +49,9 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 self.validation_schema(data)
             except voluptuous.Error as e:
                 raise ConfigError('Error validating %s: %s' % (name, e))
+            if not path.endswith('.yaml'):  # created from template tool
+                path, name = os.path.split(self.path)
+                self.path = '%s.yaml' % os.path.join(path, name.replace('-', '_'))
             self.data_ipa = self._convert_to_ipa(data)
             self.data_repo = data
         else:  # created from FreeIPA
@@ -236,6 +239,12 @@ class FreeIPAEntity(FreeIPAManagerCore):
 
     def __ne__(self, other):
         return not (self == other)
+
+    def __gt__(self, other):
+        return self.name > other.name
+
+    def __lt__(self, other):
+        return self.name < other.name
 
 
 class FreeIPAGroup(FreeIPAEntity):

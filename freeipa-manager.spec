@@ -1,5 +1,5 @@
 Name:           freeipa-manager
-Version:        1.0
+Version:        1.1
 Release:        1%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
@@ -44,5 +44,7 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{_bindir}/ipamanager-pull-request
 
 %changelog
+* Wed Jan 30 2019 Tomas Bouma <tomas.bouma@gooddata.com> - 1.1-1
+- Add support for templates
 * Fri Jan 25 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.0-1
 - Migrate the tool from the original repository

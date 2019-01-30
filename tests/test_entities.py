@@ -661,7 +661,7 @@ class TestFreeIPAUserGroup(object):
                 group.write_to_file()
         assert exc.value[0] == (
             'Cannot write group group-three-users '
-            'to some/path: [Errno 13] Permission denied')
+            'to some/path.yaml: [Errno 13] Permission denied')
 
     def test_delete_file(self):
         group = tool.FreeIPAUserGroup(
@@ -671,7 +671,7 @@ class TestFreeIPAUserGroup(object):
         with LogCapture('FreeIPAUserGroup', level=logging.DEBUG) as log:
             with mock.patch('%s.os.unlink' % modulename) as mock_unlink:
                 group.delete_file()
-                mock_unlink.assert_called_with('some/path')
+                mock_unlink.assert_called_with('some/path.yaml')
         log.check(('FreeIPAUserGroup', 'DEBUG',
                    'group group-three-users config file deleted'))
 
@@ -695,10 +695,10 @@ class TestFreeIPAUserGroup(object):
             mock_unlink.side_effect = OSError('[Errno 13] Permission denied')
             with pytest.raises(tool.ConfigError) as exc:
                 group.delete_file()
-        mock_unlink.assert_called_with('some/path')
+        mock_unlink.assert_called_with('some/path.yaml')
         assert exc.value[0] == (
             'Cannot delete group group-three-users '
-            'at some/path: [Errno 13] Permission denied')
+            'at some/path.yaml: [Errno 13] Permission denied')
 
     def test_create_commands_same(self):
         group = tool.FreeIPAUserGroup(

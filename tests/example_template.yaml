@@ -1,0 +1,45 @@
+---
+dummy: #Name of the subcluster
+  #Dict of datacenters, key-location: value list of numbers of datacenters 
+  datacenters:
+    xx:
+      - 42
+      - 666
+    yy:
+      - 19
+    zz:
+      - 15
+  #Bool option if we want both sudo and hbac rules 
+  separate_sudo: false
+  #Bool option if we want separated foreman access: full-acecss/view 
+  separate_foreman_view: false
+  #Dict of the meteparams for individual nodes
+  include_params:
+    all: #special option for all the nodes
+      description: 'all description'
+    groups:
+      all: #all groups
+        'posix': True
+      main:
+        'posix': True
+      foreman: #all foreman groups
+        'posix': False
+      primitive: #all primitive groups
+        'posix': True
+      whole_name: #specific groups
+        'posix': True
+    rules:
+      all: #all the rules 
+        description: 'all_rules_desc'
+      hbacrules: #all hbac rules
+        memberService: ['me', 'you']
+      sudorules: #all sudo rules
+        runAsGroupCategory: 'all'
+    hostgroups:
+      whole_name:
+         'description': 'whole hostgroup description'
+  # same as metaparams
+  include_metaparams:
+    all:
+      'meta': 'param'
+
