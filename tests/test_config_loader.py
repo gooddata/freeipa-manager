@@ -30,8 +30,8 @@ class TestConfigLoader(object):
             for group in NUMBERS]
         self.expected_users = [
             CONFIG_CORRECT + '/users/%s.yaml' % user
-            for user in ['archibald_jenkins', 'firstname_lastname',
-                         'firstname_lastname_2']]
+            for user in [
+                'firstname_lastname', 'firstname_lastname_2', 'test_user']]
         self.expected_groups = [
             CONFIG_CORRECT + '/groups/group_%s.yaml' % group
             for group in NUMBERS]
@@ -121,69 +121,65 @@ class TestConfigLoader(object):
 
     def test_parse(self):
         self.loader.entities = {'user': {}}
-        data = {
-            'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
+        data = {'test.user': {'firstName': 'first', 'lastName': 'last'}}
         self.loader._parse(
             data, entities.FreeIPAUser,
-            '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
+            '%s/users/test_user.yaml' % CONFIG_CORRECT)
         assert self.loader.entities.keys() == ['user']
         assert len(self.loader.entities['user']) == 1
-        assert isinstance(self.loader.entities['user']['archibald.jenkins'],
+        assert isinstance(self.loader.entities['user']['test.user'],
                           entities.FreeIPAUser)
 
     def test_parse_empty(self):
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
                 {}, entities.FreeIPAUser,
-                '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
+                '%s/users/test_user.yaml' % CONFIG_CORRECT)
         assert exc.value[0] == 'Config must be a non-empty dictionary'
 
     def test_parse_bad_data_format(self):
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
-                [{'archibald.jenkins': {}}], entities.FreeIPAUser,
-                '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
+                [{'test.user': {}}], entities.FreeIPAUser,
+                '%s/users/test_user.yaml' % CONFIG_CORRECT)
         assert exc.value[0] == 'Config must be a non-empty dictionary'
 
     def test_parse_duplicit_entities(self):
-        data = {
-            'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
+        data = {'test.user': {'firstName': 'first', 'lastName': 'last'}}
         self.loader.entities = {
-            'user': {'archibald.jenkins': entities.FreeIPAUser(
-                'archibald.jenkins',
-                {'firstName': 'first', 'lastName': 'last'})}}
+            'user': {'test.user': entities.FreeIPAUser(
+                'test.user', {'firstName': 'first', 'lastName': 'last'})}}
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
                 data, entities.FreeIPAUser,
-                '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
-        assert exc.value[0] == 'Duplicit definition of user archibald.jenkins'
+                '%s/users/test_user.yaml' % CONFIG_CORRECT)
+        assert exc.value[0] == 'Duplicit definition of user test.user'
 
     def test_parse_two_entities_in_file(self):
         data = {
-            'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'},
-            'archibald.jenkins2': {'firstName': 'first', 'lastName': 'last'}}
+            'test.user': {'firstName': 'first', 'lastName': 'last'},
+            'test.user2': {'firstName': 'first', 'lastName': 'last'}}
         self.loader.entities = {'user': dict()}
         with pytest.raises(tool.ConfigError) as exc:
             self.loader._parse(
                 data, entities.FreeIPAUser,
-                '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
+                '%s/users/test_user.yaml' % CONFIG_CORRECT)
         assert exc.value[0] == (
-            'More than one entity parsed from users/archibald_jenkins.yaml (2)'
+            'More than one entity parsed from users/test_user.yaml (2)'
         )
 
     @log_capture('ConfigLoader', level=logging.INFO)
     def test_parse_ignored(self, captured_log):
-        data = {
-            'archibald.jenkins': {'firstName': 'first', 'lastName': 'last'}}
+        data = {'test.user': {'firstName': 'first', 'lastName': 'last'}}
         self.loader.entities['user'] = []
-        self.loader.ignored['user'] = ['archibald.jenkins']
+        self.loader.ignored['user'] = ['test.user']
         self.loader._parse(
             data, entities.FreeIPAUser,
-            '%s/users/archibald_jenkins.yaml' % CONFIG_CORRECT)
+            '%s/users/test_user.yaml' % CONFIG_CORRECT)
         assert self.loader.entities['user'] == []
         captured_log.check(('ConfigLoader', 'INFO',
-                            ('Not creating ignored user archibald.jenkins '
-                             'from users/archibald_jenkins.yaml')))
+                            ('Not creating ignored user test.user '
+                             'from users/test_user.yaml')))
 
     @log_capture('ConfigLoader', level=logging.INFO)
     def test_load(self, captured_log):
@@ -196,7 +192,7 @@ class TestConfigLoader(object):
         users = self.loader.entities['user']
         assert len(users) == 3
         assert set(users.keys()) == set([
-            'archibald.jenkins', 'firstname.lastname', 'firstname.lastname2'])
+            'test.user', 'firstname.lastname', 'firstname.lastname2'])
         hbacsvc = self.loader.entities['hbacsvc']
         assert len(hbacsvc) == 3
         assert set(hbacsvc.keys()) == set([

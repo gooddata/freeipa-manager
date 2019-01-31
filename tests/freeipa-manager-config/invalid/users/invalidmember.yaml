@@ -10,10 +10,7 @@ invalid.member:
   title: Sr. SW Enginner
   memberOf:
     usergroups:
-      - github-gooddata-hackers
-      - hipchat-users
       - ipausers
-      - jenkins
-      - jira-gooddata-users
+      - some-group
     hostgroups:
       - group-one

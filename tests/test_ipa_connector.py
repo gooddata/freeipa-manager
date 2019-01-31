@@ -232,7 +232,7 @@ class TestIpaUploader(TestIpaConnectorBase):
         self.uploader.ipa_entities = {
             'user': {
                 'test.user': entities.FreeIPAUser('test.user', {
-                    'mail': (u'test.user@gooddata.com',),
+                    'mail': (u'test.user@example.com',),
                     'carlicense': (u'gh1',)})},
             'group': dict(),
             'role': dict(),
