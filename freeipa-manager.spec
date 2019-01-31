@@ -3,7 +3,7 @@ Version:        1.0
 Release:        1%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
-License:        GoodData proprietary
+License:        BSD License 2.0
 URL:            https://github.com/gooddata/freeipa-manager
 Source0:        %{name}.tar.gz
 

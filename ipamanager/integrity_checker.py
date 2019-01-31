@@ -81,8 +81,8 @@ class IntegrityChecker(FreeIPAManagerCore):
                 ('memberUser', 'group', True)]:
             member_names = entity.data_repo.get(key, [])
             if must_exist and not member_names:
-                    errs.append('no %s' % key)
-                    continue
+                errs.append('no %s' % key)
+                continue
             for name in member_names:
                 member = self._find_entity(member_type, name)
                 if not member:

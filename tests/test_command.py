@@ -130,12 +130,11 @@ class TestCommand(object):
         return {'summary': u'Added user "%s"' % kwargs.get('uid')}
 
     def _api_nosummary(self, **kwargs):
-            return {u'failed': {u'attr1': {'param1': (), 'param2': ()}}}
+        return {u'failed': {u'attr1': {'param1': (), 'param2': ()}}}
 
     def _api_fail(self, **kwargs):
-            return {
-                u'failed': {
-                    u'attr1': {'param1': ((u'test', u'no such attr2'),)}}}
+        return {
+            u'failed': {u'attr1': {'param1': ((u'test', u'no such attr2'),)}}}
 
     def _api_exc(self, **kwargs):
         raise Exception('Some error happened')

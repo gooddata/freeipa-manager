@@ -110,12 +110,11 @@ class TestIpaConnectorBase(object):
         return _func
 
     def _api_nosummary(self, **kwargs):
-            return {u'failed': {u'attr1': {'param1': (), 'param2': ()}}}
+        return {u'failed': {u'attr1': {'param1': (), 'param2': ()}}}
 
     def _api_fail(self, **kwargs):
-            return {
-                u'failed': {
-                    u'attr1': {'param1': ((u'test', u'no such attr2'),)}}}
+        return {
+            u'failed': {u'attr1': {'param1': ((u'test', u'no such attr2'),)}}}
 
     def _api_exc(self, **kwargs):
         raise Exception('Some error happened')
@@ -232,7 +231,7 @@ class TestIpaUploader(TestIpaConnectorBase):
         self.uploader.ipa_entities = {
             'user': {
                 'test.user': entities.FreeIPAUser('test.user', {
-                    'mail': (u'test.user@gooddata.com',),
+                    'mail': (u'test.user@example.com',),
                     'carlicense': (u'gh1',)})},
             'group': dict(),
             'role': dict(),
@@ -799,12 +798,11 @@ class TestIpaUploader(TestIpaConnectorBase):
         return _func
 
     def _api_nosummary(self, **kwargs):
-            return {u'failed': {u'attr1': {'param1': (), 'param2': ()}}}
+        return {u'failed': {u'attr1': {'param1': (), 'param2': ()}}}
 
     def _api_fail(self, **kwargs):
-            return {
-                u'failed': {
-                    u'attr1': {'param1': ((u'test', u'no such attr2'),)}}}
+        return {
+            u'failed': {u'attr1': {'param1': ((u'test', u'no such attr2'),)}}}
 
     def _api_exc(self, **kwargs):
         raise Exception('Some error happened')

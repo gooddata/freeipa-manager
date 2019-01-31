@@ -1,0 +1,12 @@
+---
+test.user:
+  firstName: Test
+  lastName: User
+  initials: TU
+  organizationUnit: Test Dept.
+  githubLogin: testuser
+  emailAddress: test.user@example.com
+  title: Sr. SW Enginner
+  memberOf:
+    group:
+      - group-one-users

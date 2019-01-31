@@ -402,8 +402,8 @@ class TestFreeIPAUser(object):
                         'group': ['group-one-users', 'group-two'],
                         'role': ['role-one-users', 'role-two']}
         }
-        user = tool.FreeIPAUser('archibald.jenkins', data, 'path')
-        assert user.name == 'archibald.jenkins'
+        user = tool.FreeIPAUser('test.user', data, 'path')
+        assert user.name == 'test.user'
         assert user.data_repo == data
         assert user.data_ipa == {
             'givenname': ('Some',),
@@ -415,10 +415,9 @@ class TestFreeIPAUser(object):
 
     def test_create_user_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
-            tool.FreeIPAUser(
-                'archibald.jenkins', {'extrakey': 'bad'}, 'path')
+            tool.FreeIPAUser('test.user', {'extrakey': 'bad'}, 'path')
         assert exc.value[0] == (
-            "Error validating archibald.jenkins: "
+            "Error validating test.user: "
             "extra keys not allowed @ data['extrakey']")
 
     def test_convert_to_ipa(self):
