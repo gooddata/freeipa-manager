@@ -99,6 +99,12 @@ def parse_args():
     pull.add_argument(
         '-d', '--dry-run', action='store_true', help='Dry-run mode')
 
+    template = actions.add_parser('template', parents=[common])
+    template.add_argument('template', help='Path to template file')
+    template.add_argument(
+        '-d', '--dry-run', action='store_true', help='Dry-run mode')
+    template.set_defaults(action='template')
+
     args = parser.parse_args()
     # type & action cannot be combined in arg constructor, so parse -v here
     args.loglevel = _type_verbosity(args.loglevel)

@@ -995,7 +995,7 @@ class TestIpaDownloader(TestIpaConnectorBase):
                           '  memberOf:\n'
                           '    group:\n'
                           '      - group-one\n')}
-        mock_delete.assert_called_with('user-two')
+        mock_delete.assert_called_with('user_two.yaml')
 
     def _pull_entities(self):
         remote = {

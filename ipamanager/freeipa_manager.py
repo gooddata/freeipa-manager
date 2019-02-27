@@ -20,6 +20,7 @@ from difference import FreeIPADifference
 from errors import ManagerError
 from integrity_checker import IntegrityChecker
 from schemas import schema_settings
+from template import FreeIPATemplate, ConfigTemplateLoader
 
 
 class FreeIPAManager(FreeIPAManagerCore):
@@ -41,7 +42,8 @@ class FreeIPAManager(FreeIPAManagerCore):
                 'check': self.check,
                 'push': self.push,
                 'pull': self.pull,
-                'diff': self.diff
+                'diff': self.diff,
+                'template': self.template
             }[self.args.action]()
         except ManagerError as e:
             self.lg.error(e)
@@ -108,6 +110,17 @@ class FreeIPAManager(FreeIPAManagerCore):
         """
         diff = FreeIPADifference(self.args.config, self.args.sub_path)
         diff.run()
+
+    def template(self):
+        """
+        Creates groups, hostgroups, and rules for a given subcluster according
+        to config defined in template.
+        :raises ConfigError: in case of wrong template file
+        """
+        data = ConfigTemplateLoader(self.args.template).load_config()
+        for template in data:
+            for name, values in template.iteritems():
+                FreeIPATemplate(name, values, self.args.config, self.args.dry_run).create()
 
     def _load_settings(self):
         """

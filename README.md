@@ -63,6 +63,18 @@ compared to `folder2`, e.g.:
   below for details), or
 * listing HBAC rules with no corresponding sudo rule with the same name.
 
+### template
+```
+ipamanager template template.yaml config
+```
+The `template` command creates all the entities for a subcluster defined in the 
+`template.yaml` to the `repo` locally. Entities needs to be reviewed and then commited
+to the config repository manually.
+
+Example of the `template.yaml` file with decsription can be found in [tests/example_template.yaml](tests/example_template.yaml)
+
+The *dry run* mode can be choosen with `-d` or `--dry-run` flag.
+
 ## Configuration
 The most practical way of keeping configuration for the tool is to dedicate
 a separate repository for the purpose.
