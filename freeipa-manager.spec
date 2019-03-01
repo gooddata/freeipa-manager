@@ -1,6 +1,6 @@
 Name:           freeipa-manager
 Version:        1.1
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
 License:        BSD License 2.0
@@ -44,6 +44,8 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{_bindir}/ipamanager-pull-request
 
 %changelog
+* Fri Mar 01 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.1-3
+- Only lock dependencies in specfile, not in requirements.txt
 * Thu Feb 28 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.1-2
 - Define minimum version for dependencies
 * Wed Jan 30 2019 Tomas Bouma <tomas.bouma@gooddata.com> - 1.1-1
