@@ -1,6 +1,6 @@
 Name:           freeipa-manager
 Version:        1.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
 License:        BSD License 2.0
@@ -9,11 +9,11 @@ Source0:        %{name}.tar.gz
 
 Requires:       python
 Requires:       gdc-python-common
-Requires:       PyYAML
-Requires:       python-requests
-Requires:       python-sh
-Requires:       python-voluptuous
-Requires:       python2-yamllint
+Requires:       PyYAML >= 3.10
+Requires:       python-requests >= 2.6.0
+Requires:       python-sh >= 1.11
+Requires:       python-voluptuous >= 0.8.5
+Requires:       python2-yamllint >= 1.8.1
 BuildRequires:  python-setuptools python-psutil pytest
 Conflicts:      gdc-ipa-utils < 6
 
@@ -44,6 +44,8 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{_bindir}/ipamanager-pull-request
 
 %changelog
+* Thu Feb 28 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.1-2
+- Define minimum version for dependencies
 * Wed Jan 30 2019 Tomas Bouma <tomas.bouma@gooddata.com> - 1.1-1
 - Add support for templates
 * Fri Jan 25 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.0-1
