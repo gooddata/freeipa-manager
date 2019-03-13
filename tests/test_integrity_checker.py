@@ -4,6 +4,7 @@
 # Copyright © 2017-2019, GoodData Corporation. All rights reserved.
 
 import logging
+import mock
 import os.path
 import pytest
 from testfixtures import log_capture
@@ -55,10 +56,12 @@ class TestIntegrityChecker(object):
             'IntegrityChecker', 'WARNING',
             'No entities to check for integrity'))
 
-    def test_check_correct(self):
+    def test_check_correct_no_nesting_limit(self):
         self._create_checker(self._sample_entities_correct())
+        self.checker._check_nesting_level = mock.Mock()
         self.checker.check()
         assert not self.checker.errs
+        self.checker._check_nesting_level.assert_not_called()
 
     def test_check_memberof_nonexistent(self):
         self._create_checker(self._sample_entities_member_nonexistent())
@@ -178,6 +181,20 @@ class TestIntegrityChecker(object):
                 ('Cyclic membership: '
                  '[group group-two, group group-three, group group-one]')]}
 
+    def test_check_nesting_limit_ok(self):
+        self._create_checker(self._sample_entities_correct())
+        self.checker.nesting_limit = 3
+        self.checker.check()
+        assert not self.checker.errs
+
+    def test_check_nesting_limit_exceeded(self):
+        self._create_checker(self._sample_entities_correct())
+        self.checker.nesting_limit = 2
+        with pytest.raises(tool.IntegrityError):
+            self.checker.check()
+        assert self.checker.errs == {
+            ('group', 'group-one-users'): ['Nesting level exceeded: 3 > 2']}
+
     def test_check_member_type_ok(self):
         self._create_checker(dict())
         user_one = tool.entities.FreeIPAUser(
@@ -228,6 +245,42 @@ class TestIntegrityChecker(object):
         assert exc.value[0] == (
             "group-one can only have members of type ['user', 'group']")
 
+    @log_capture('IntegrityChecker', level=logging.DEBUG)
+    def test_check_nesting_level(self, captured_log):
+        self._create_checker(self._sample_entities_correct())
+        assert self.checker._check_nesting_level(
+            'group', 'group-two') == 2
+        assert self.checker.nesting == {
+            'group': {'group-two': 2, 'group-three': 1, 'group-four': 0},
+            'hostgroup': {}}
+        assert self.checker._check_nesting_level(
+            'group', 'group-one-users') == 3
+        assert self.checker.nesting == {
+            'group': {'group-one-users': 3, 'group-two': 2,
+                      'group-three': 1, 'group-four': 0},
+            'hostgroup': {}}
+        captured_log.check(
+            ('IntegrityChecker', 'DEBUG',
+             'Checking nesting level for group group-two'),
+            ('IntegrityChecker', 'DEBUG',
+             'Checking nesting level for group group-three'),
+            ('IntegrityChecker', 'DEBUG',
+             'Checking nesting level for group group-four'),
+            ('IntegrityChecker', 'DEBUG',
+             'Nesting level of group group-four is 0'),
+            ('IntegrityChecker', 'DEBUG',
+             'Nesting level of group group-three is 1'),
+            ('IntegrityChecker', 'DEBUG',
+             'Nesting level of group group-two is 2'),
+            ('IntegrityChecker', 'DEBUG',
+             'Checking nesting level for group group-one-users'),
+            ('IntegrityChecker', 'DEBUG',
+             'Checking nesting level for group group-two'),
+            ('IntegrityChecker', 'DEBUG',
+             'Returning cached nesting level for group group-two (2)'),
+            ('IntegrityChecker', 'DEBUG',
+             'Nesting level of group group-one-users is 3'))
+
     def _sample_entities_correct(self):
         return {
             'user': {
@@ -250,7 +303,13 @@ class TestIntegrityChecker(object):
                         'memberOf': {'group': ['group-two'],
                                      'role': ['role-one']}}, 'path'),
                 'group-two': tool.entities.FreeIPAUserGroup(
-                    'group-two', {}, 'path')},
+                    'group-two', {
+                        'memberOf': {'group': ['group-three']}}, 'path'),
+                'group-three': tool.entities.FreeIPAUserGroup(
+                    'group-three', {
+                        'memberOf': {'group': ['group-four']}}, 'path'),
+                'group-four': tool.entities.FreeIPAUserGroup(
+                    'group-four', {}, 'path')},
             'hostgroup': {
                 'group-one-hosts': tool.entities.FreeIPAHostGroup(
                     'group-one-hosts', {

@@ -23,6 +23,8 @@ class IntegrityChecker(FreeIPAManagerCore):
         super(IntegrityChecker, self).__init__()
         self.entity_dict = parsed
         self.user_group_regex = settings.get('user-group-pattern')
+        self.nesting_limit = settings.get('nesting-limit')
+        self.nesting = {'group': dict(), 'hostgroup': dict()}
 
     def check(self):
         """
@@ -132,6 +134,17 @@ class IntegrityChecker(FreeIPAManagerCore):
             cyclic_path = self._check_cycles(entity)
             if cyclic_path:
                 errs.append('Cyclic membership: %s' % (cyclic_path))
+
+        if errs:
+            return errs
+
+        # check for nesting limit exceedance
+        if isinstance(entity, entities.FreeIPAGroup) and self.nesting_limit:
+            nesting = self._check_nesting_level(
+                entity.entity_name, entity.name)
+            if nesting > self.nesting_limit:
+                errs.append('Nesting level exceeded: %d > %d'
+                            % (nesting, self.nesting_limit))
         return errs
 
     def _check_member_type(self, member, target):
@@ -176,6 +189,38 @@ class IntegrityChecker(FreeIPAManagerCore):
                     return path
                 if target not in visited:
                     stack.append((target, path))
+
+    def _check_nesting_level(self, entity_type, name):
+        """
+        Check the level of entity's membership nesting.
+        Only checked if the nesting-level value is defined in the settings.
+        The `nesting` attribute is used for storing intermediate results
+        during recursive evaluation of depth of groups so that no single group
+        needs to be calculated more than once. This method does not take care
+        of membership cycles since it's only called after the cycles check.
+        :param str entity_type: entity type name (group/hostgroup)
+        :param str name: entity name
+        :returns: maximum depth of nesting
+        """
+        self.lg.debug('Checking nesting level for %s %s', entity_type, name)
+        result = self.nesting.get(entity_type, {}).get(name)
+        if result:  # calculated as part of other entity's evaluation
+            self.lg.debug('Returning cached nesting level for %s %s (%d)',
+                          entity_type, name, result)
+            return result
+        entity = self._find_entity(entity_type, name)
+        # memberOf format is a dict of lists; find the right values safely
+        memberof = entity.data_repo.get('memberOf', dict())
+        targets = memberof.get(entity_type, [])
+        if not targets:
+            result = 0
+        else:
+            result = max(self._check_nesting_level(entity_type, target)
+                         for target in targets) + 1
+        self.nesting[entity_type][name] = result
+        self.lg.debug('Nesting level of %s %s is %d',
+                      entity_type, name, result)
+        return result
 
     def _find_entity(self, entity_type, name):
         entity_subdict = self.entity_dict.get(entity_type)

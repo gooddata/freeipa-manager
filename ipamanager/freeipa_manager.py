@@ -120,7 +120,8 @@ class FreeIPAManager(FreeIPAManagerCore):
         data = ConfigTemplateLoader(self.args.template).load_config()
         for template in data:
             for name, values in template.iteritems():
-                FreeIPATemplate(name, values, self.args.config, self.args.dry_run).create()
+                FreeIPATemplate(
+                    name, values, self.args.config, self.args.dry_run).create()
 
     def _load_settings(self):
         """
