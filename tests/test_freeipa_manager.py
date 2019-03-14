@@ -153,7 +153,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
     def test_load_settings(self):
         assert self._init_tool(['check', 'dump_repo']).settings == {
             'ignore': {'group': ['ipausers', 'test.*'], 'user': ['admin']},
-            'user-group-pattern': '^role-.+|.+-users$'}
+            'user-group-pattern': '^role-.+|.+-users$', 'nesting-limit': 42}
 
     def test_load_settings_not_found(self):
         with mock.patch('__builtin__.open') as mock_open:

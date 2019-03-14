@@ -23,7 +23,8 @@ schema_settings = {
             'role', 'permission', 'privilege', 'service',
             'hbacsvc', 'hbacsvcgroup'): [str]
     },
-    'deletion-patterns': [str]
+    'deletion-patterns': [str],
+    'nesting-limit': int
 }
 
 

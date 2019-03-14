@@ -3,3 +3,4 @@ user-group-pattern: '^role-.+|.+-users$'
 ignore:
   group: [ipausers, test.*]
   user: [admin]
+nesting-limit: 42
