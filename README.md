@@ -30,6 +30,21 @@ ipamanager check config
 The most basic only verifies that the entities defined in the config follow
 the pre-defined structure/integrity rules.
 
+Integrity check verifies basic consistency of entities, such as:
+* whether entities are only members of existing entities,
+* whether entities are only members of entities of allowed types,
+* that there are no cycles in the membership,
+* that HBAC/sudo rules have a member hostgroup & user group.
+
+
+The integrity check module also supports additional settings and constraints
+on the entity structure, such as:
+* that users can only be (direct) members of groups with given naming convention
+  (e.g., a group must be named '\*-users' to be able to contain users directly),
+* that nesting of group membership can only go up to a certain level
+  (e.g., max. group1 -> group2 -> group3 - maximum nesting level 2),
+* ...
+
 ### push
 ```
 ipamanager push config
@@ -365,6 +380,15 @@ to contain users directly. This is useful when defining a strict, nested group s
 If this key's value is set to an empty string (`''`), this is not enforced and any
 user group can contain users directly.
 
+#### nesting-limit
+Defines maximum nesting level of group membership. E.g., a level of 3 means that
+entities can be nested at most like this:
+```yaml
+group1 -> group2 -> group3 -> group4
+```
+This should be a number. If this is not provided, nesting limit is not enforced.
+
+
 ## Further development
 Several new features of *freeipa-manager* are planned for the future, such as:
 ### Meta parameter processing support
@@ -372,10 +396,6 @@ It should be possible to define a structure of *labels* in *metaparams* for user
 that will define roles (in accordance with RBAC) necessary for membership in certain
 groups. The tool should process these labels and ensure that group membership is
 only granted if all the defined criteria are met.
-### Membership nesting control
-The integrity checking module of the tool should allow for ensuring a given maximum
-level of membership entity nesting, so that long and non-transparent "paths" in the
-membership graph can be avoided.
 ### Improved stand-alone functionality
 Currently, we use a (proprietary) wrapper script to facilitate the run of the tool.
 This includes, for instance, dispatch of results to a monitoring tool. Such functionality
