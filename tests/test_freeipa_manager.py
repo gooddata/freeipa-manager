@@ -7,8 +7,9 @@ import logging
 import mock
 import os
 import pytest
+import socket
 import sys
-from testfixtures import log_capture
+from testfixtures import log_capture, LogCapture
 
 from _utils import _import
 sys.modules['ipalib'] = mock.Mock()
@@ -169,3 +170,24 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
         assert exc.value[0] == (
             "Error reading settings file: extra keys "
             "not allowed @ data['ignore']['groups']")
+
+
+class TestUtils(object):
+    def test_init_logging(self):
+        logging.getLogger().handlers = []  # clean left-overs of previous tests
+        with mock.patch('ipamanager.utils.logging.handlers') as mock_handlers:
+            utils.init_logging(logging.INFO)
+        handlers = logging.getLogger().handlers
+        assert len(handlers) == 2
+        assert isinstance(handlers[0], logging.StreamHandler)
+        assert handlers[1] == mock_handlers.SysLogHandler.return_value
+
+    def test_init_logging_no_syslog(self):
+        logging.getLogger().handlers = []  # clean left-overs of previous tests
+        with mock.patch('ipamanager.utils.logging.handlers') as mock_handlers:
+            mock_handlers.SysLogHandler.side_effect = socket.error(
+                'No such file or directory')
+            with LogCapture() as log:
+                utils.init_logging(logging.INFO)
+            log.check(('root', 'ERROR',
+                       'Syslog connection failed: No such file or directory'))
