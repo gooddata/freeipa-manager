@@ -1,5 +1,5 @@
 Name:           freeipa-manager
-Version:        1.2
+Version:        1.3
 Release:        1%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
@@ -44,6 +44,8 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{_bindir}/ipamanager-pull-request
 
 %changelog
+* Wed Mar 27 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.3-1
+- Support logging to syslog as well
 * Thu Mar 14 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.2-1
 - Implement group nesting limit setting
 * Fri Mar 01 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.1-3

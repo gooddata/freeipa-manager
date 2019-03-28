@@ -10,7 +10,10 @@ Various utility functions for better code readability & organization.
 
 import argparse
 import logging
+import logging.handlers
 import re
+import socket
+import sys
 import yaml
 from yamllint.config import YamlLintConfig
 from yamllint.linter import run as yamllint_check
@@ -31,11 +34,30 @@ ENTITY_CLASSES = [
 
 
 def init_logging(loglevel):
+    lg = logging.getLogger()  # add handlers to all loggers
+    lg.setLevel(logging.DEBUG)  # higher levels per handler below
+
+    # stderr handler
     if loglevel == logging.DEBUG:
         fmt = '%(levelname)s:%(name)s:%(lineno)3d:%(funcName)s: %(message)s'
     else:
         fmt = '%(levelname)s:%(name)s: %(message)s'
-    logging.basicConfig(level=loglevel, format=fmt)
+    handler_stderr = logging.StreamHandler(sys.stderr)
+    handler_stderr.setFormatter(logging.Formatter(fmt=fmt))
+    handler_stderr.setLevel(loglevel)
+    lg.addHandler(handler_stderr)
+
+    # syslog output handler
+    try:
+        handler_syslog = logging.handlers.SysLogHandler(
+            address='/dev/log',
+            facility=logging.handlers.SysLogHandler.LOG_LOCAL5)
+        handler_syslog.setFormatter(
+            logging.Formatter(fmt='ipamanager: %(message)s'))
+        handler_syslog.setLevel(logging.INFO)
+        lg.addHandler(handler_syslog)
+    except socket.error as err:
+        lg.error('Syslog connection failed: %s', err)
 
 
 def init_api_connection(loglevel):
