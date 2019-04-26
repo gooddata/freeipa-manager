@@ -54,7 +54,7 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
     def test_run_check(self, mock_config, mock_check):
         manager = self._init_tool(['check', 'config_path', '-v'])
         manager.run()
-        mock_config.assert_called_with('config_path', manager.settings)
+        mock_config.assert_called_with('config_path', manager.settings, True)
         mock_check.assert_called_with(
             manager.config_loader.load.return_value, manager.settings)
 
@@ -129,6 +129,30 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
         mock_conn.assert_called_with(manager.settings, manager.entities,
                                      'dump_repo', False, True, ['user'])
         manager.downloader.pull.assert_called()
+
+    def _mock_load(self):
+        def f(manager, *args, **kwargs):
+            self.mock_load_args = (args, kwargs)
+            manager.entities = {'users': {'user1': mock.Mock()}}
+        return f
+
+    def test_run_roundtrip(self):
+        with mock.patch('%s.FreeIPAManager.load' % modulename,
+                        self._mock_load()):
+            manager = self._init_tool(['roundtrip', 'config_path', '-v'])
+            manager.run()
+        assert self.mock_load_args == ((), {'apply_ignored': True})
+        manager.entities['users']['user1'].normalize.assert_called_with()
+        manager.entities['users']['user1'].write_to_file.assert_called_with()
+
+    def test_run_roundtrip_no_ignored(self):
+        with mock.patch('%s.FreeIPAManager.load' % modulename,
+                        self._mock_load()):
+            manager = self._init_tool(['roundtrip', 'config_path', '-v', '-I'])
+            manager.run()
+        assert self.mock_load_args == ((), {'apply_ignored': False})
+        manager.entities['users']['user1'].normalize.assert_called_with()
+        manager.entities['users']['user1'].write_to_file.assert_called_with()
 
     def test_settings_default_check(self):
         with mock.patch.object(sys, 'argv', ['manager', 'check', 'repo']):
