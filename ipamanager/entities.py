@@ -149,6 +149,18 @@ class FreeIPAEntity(FreeIPAManagerCore):
         """
         self.data_repo.update(additional or {})
 
+    def normalize(self):
+        """
+        Re-structure entity's data in such a way that it can be stored
+        into the configuration file in a normalized format. This is used
+        when round-trip loading and saving a configuration.
+        """
+        memberof = self.data_repo.pop('memberOf', None)
+        if memberof:
+            for target_type, target_list in memberof.iteritems():
+                memberof[target_type] = sorted(target_list)
+            self.data_repo['memberOf'] = memberof
+
     def write_to_file(self):
         if not self.path:
             raise ManagerError(
