@@ -127,6 +127,12 @@ def parse_args():
         '-d', '--dry-run', action='store_true', help='Dry-run mode')
     template.set_defaults(action='template')
 
+    roundtrip = actions.add_parser('roundtrip', parents=[common])
+    roundtrip.add_argument(
+        '-I', '--no-ignored', action='store_true',
+        help='Load all entities (including ignored ones)')
+    roundtrip.set_defaults(action='roundtrip')
+
     args = parser.parse_args()
     # type & action cannot be combined in arg constructor, so parse -v here
     args.loglevel = _type_verbosity(args.loglevel)

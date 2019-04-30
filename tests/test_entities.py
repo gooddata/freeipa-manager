@@ -413,6 +413,23 @@ class TestFreeIPAUser(object):
                 'role': ['role-one-users', 'role-two']},
             'sn': ('Name',)}
 
+    def test_normalize(self):
+        data = {
+            'firstName': 'Some',
+            'lastName': 'Name',
+            'manager': 'sample.manager',
+            'memberOf': {
+                        'group': ['group-two-users', 'group-one'],
+                        'role': ['role-one-users', 'role-two']
+            }
+        }
+        user = tool.FreeIPAUser('test.user', data, 'path')
+        user.normalize()
+        assert user.data_repo['memberOf'] == {
+            'group': ['group-one', 'group-two-users'],
+            'role': ['role-one-users', 'role-two']
+        }
+
     def test_create_user_extrakey(self):
         with pytest.raises(tool.ConfigError) as exc:
             tool.FreeIPAUser('test.user', {'extrakey': 'bad'}, 'path')

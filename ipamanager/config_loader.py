@@ -24,14 +24,16 @@ class ConfigLoader(FreeIPAManagerCore):
     :attr dict entities: storage of loaded entities, which are organized
                          in nested dicts under entity type & entity name keys
     """
-    def __init__(self, basepath, settings):
+    def __init__(self, basepath, settings, ignore=True):
         """
         :param str basepath: path to the cloned config repository
         :param dict settings: parsed contents of the settings file
+        :param bool ignore: whether ignoring settings are taken into account
         """
         super(ConfigLoader, self).__init__()
         self.basepath = basepath
         self.ignored = settings.get('ignore', dict())
+        self.ignore = ignore
         self.entities = dict()
 
     def load(self):
@@ -84,7 +86,7 @@ class ConfigLoader(FreeIPAManagerCore):
         fname = os.path.relpath(path, self.basepath)
         for name, attrs in data.iteritems():
             self.lg.debug('Creating entity %s', name)
-            if check_ignored(entity_class, name, self.ignored):
+            if self.ignore and check_ignored(entity_class, name, self.ignored):
                 self.lg.info('Not creating ignored %s %s from %s',
                              entity_class.entity_name, name, fname)
                 continue

@@ -88,6 +88,22 @@ to the config repository manually.
 
 Example of the `template.yaml` file with decsription can be found in [tests/example_template.yaml](tests/example_template.yaml)
 
+### roundtrip
+```
+ipamanager roundtrip config
+```
+The `roundtrip` command can be used to load entities from config files
+(like the `check` command, but without integrity checking), then store
+them right back to the configuration files.
+
+This can be useful when your config is technically correct, but there are
+style issues in it (e.g., the `memberOf` lists values are unsorted).
+Round-trip will fix these issues. Alternatively, a `pull` operation would
+fix such issues in the config of entities changed on the FreeIPA server as well,
+but such a commit would contain both server-side changes and style fixes;
+this could lead to a confusing diff, which may be undesirable.
+
+### Dry run
 The *dry run* mode can be choosen with `-d` or `--dry-run` flag.
 
 ## Configuration
@@ -404,11 +420,6 @@ could be bundled with the tool directly to facilitate easier usage.
 Since *freeipa-manager* is a tool for Linux environment, distributing a manual entry
 with it would be reasonable, since it's the standard for Linux tools.
 Similarly, `Tab` key auto-completion of commands is a standard and would be useful.
-### Configuration round-trip
-Support loading configuration from files, running integrity check and dumping it back
-into config files. This would be useful for cases when config files are *technically*
-correct but there is a "style" issue to fix in them (e.g., `memberOf` list entries
-are not sorted).
 ### Support for pure LDAP
 The tool could possibly interface LDAP directly instead of the higher-level FreeIPA
 API. This would enable a wider range of applications.

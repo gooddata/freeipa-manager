@@ -43,17 +43,21 @@ class FreeIPAManager(FreeIPAManagerCore):
                 'push': self.push,
                 'pull': self.pull,
                 'diff': self.diff,
-                'template': self.template
+                'template': self.template,
+                'roundtrip': self.roundtrip
             }[self.args.action]()
         except ManagerError as e:
             self.lg.error(e)
             sys.exit(1)
 
-    def load(self):
+    def load(self, apply_ignored=True):
         """
         Load configurations from configuration repository at the given path.
+        :param bool apply_ignored: whether 'ignored' seetings
+                                   should be taken into account
         """
-        self.config_loader = ConfigLoader(self.args.config, self.settings)
+        self.config_loader = ConfigLoader(
+            self.args.config, self.settings, apply_ignored)
         self.entities = self.config_loader.load()
 
     def check(self):
@@ -122,6 +126,25 @@ class FreeIPAManager(FreeIPAManagerCore):
             for name, values in template.iteritems():
                 FreeIPATemplate(
                     name, values, self.args.config, self.args.dry_run).create()
+
+    def roundtrip(self):
+        """
+        Run load, then save the configuration back into config files.
+        This is done to ensure a "normal" formatting when config files
+        are syntactically & logically correct but have a non-standard format
+        (e.g., unsorted membership list, larger or smaller indents etc).
+        :raises ConfigError: in case of configuration syntax errors
+        :raises IntegrityError: in case of config entity integrity violations
+        """
+        if self.args.no_ignored:
+            self.lg.info('Loading ALL entities because of --no-ignored flag')
+        self.load(apply_ignored=not self.args.no_ignored)
+        for entity_type, entity_list in self.entities.iteritems():
+            self.lg.info('Re-writing %s entities to file', entity_type)
+            for e in entity_list.itervalues():
+                e.normalize()
+                e.write_to_file()
+        self.lg.info('Entity round-trip complete')
 
     def _load_settings(self):
         """

@@ -17,14 +17,20 @@ testpath = os.path.dirname(os.path.abspath(__file__))
 
 CONFIG_CORRECT = os.path.join(testpath, 'freeipa-manager-config/correct')
 CONFIG_INVALID = os.path.join(testpath, 'freeipa-manager-config/invalid')
-IGNORED_CORRECT = os.path.join(CONFIG_CORRECT, 'ignored.yaml')
-IGNORED_INVALID = os.path.join(CONFIG_INVALID, 'ignored.yaml')
 NUMBERS = ['one', 'three', 'two']
 
 
 class TestConfigLoader(object):
     def setup_method(self, method):
-        self.loader = tool.ConfigLoader(CONFIG_CORRECT, {})
+        if method.func_name.startswith('test_load'):
+            ignored = {
+                'user': ['firstname.lastname$'],
+                'group': ['group-one-users'],
+                'hostgroup': ['some-hostgroup']
+            }
+        else:
+            ignored = {}
+        self.loader = tool.ConfigLoader(CONFIG_CORRECT, {'ignore': ignored})
         self.expected_hostgroups = [
             CONFIG_CORRECT + '/hostgroups/group_%s.yaml' % group
             for group in NUMBERS]
@@ -184,6 +190,67 @@ class TestConfigLoader(object):
     @log_capture('ConfigLoader', level=logging.INFO)
     def test_load(self, captured_log):
         self.loader.basepath = CONFIG_CORRECT
+        self.loader.load()
+        hostgroups = self.loader.entities['hostgroup']
+        assert len(hostgroups) == 3
+        assert set(hostgroups.keys()) == set([
+            'group-one-hosts', 'group-two', 'group-three-hosts'])
+        users = self.loader.entities['user']
+        assert len(users) == 2
+        assert set(users.keys()) == set([
+            'test.user', 'firstname.lastname2'])
+        hbacsvc = self.loader.entities['hbacsvc']
+        assert len(hbacsvc) == 3
+        assert set(hbacsvc.keys()) == set([
+            'hbacsvc-one', 'hbacsvc-two', 'hbacsvc-three'])
+        hbacsvcgroup = self.loader.entities['hbacsvcgroup']
+        assert len(hbacsvcgroup) == 3
+        assert set(hbacsvcgroup.keys()) == set([
+            'hbacsvcgroup-one', 'hbacsvcgroup-two', 'hbacsvcgroup-three'])
+        groups = self.loader.entities['group']
+        assert len(groups) == 2
+        assert set(groups.keys()) == set(['group-two', 'group-three-users'])
+        service = self.loader.entities['service']
+        assert len(service) == 3
+        assert set(service.keys()) == set([
+            'service-one', 'service-two', 'service-three'])
+        privilege = self.loader.entities['privilege']
+        assert len(privilege) == 3
+        assert set(privilege.keys()) == set([
+            'privilege-one', 'privilege-two', 'privilege-three'])
+        permission = self.loader.entities['permission']
+        assert len(permission) == 3
+        assert set(permission.keys()) == set([
+            'permission-one', 'permission-two', 'permission-three'])
+        role = self.loader.entities['role']
+        assert len(role) == 3
+        assert set(role.keys()) == set([
+            'role-one', 'role-two', 'role-three'])
+        captured_log.check(
+            ('ConfigLoader', 'INFO',
+             'Checking local configuration at %s' % CONFIG_CORRECT),
+            ('ConfigLoader', 'INFO', 'Parsed 3 hbacrules'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 hbacsvcs'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 hbacsvcgroups'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 hostgroups'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 permissions'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 privileges'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 roles'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 services'),
+            ('ConfigLoader', 'INFO', 'Parsed 3 sudorules'),
+            ('ConfigLoader', 'INFO',
+             ('Not creating ignored user firstname.lastname '
+              'from users/firstname_lastname.yaml')),
+            ('ConfigLoader', 'INFO', 'Parsed 2 users'),
+            ('ConfigLoader', 'INFO',
+             ('Not creating ignored group group-one-users '
+              'from groups/group_one.yaml')),
+            ('ConfigLoader', 'INFO', 'Parsed 2 groups'))
+
+    @log_capture('ConfigLoader', level=logging.INFO)
+    def test_load_no_apply_ignored(self, captured_log):
+        self.loader.basepath = CONFIG_CORRECT
+        self.loader.ignore = False
         self.loader.load()
         hostgroups = self.loader.entities['hostgroup']
         assert len(hostgroups) == 3
