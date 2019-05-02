@@ -34,7 +34,7 @@ class TestIpaConnectorBase(object):
 
     def _create_uploader(self, **args):
         with open(SETTINGS) as settings_file:
-            self.settings = yaml.load(settings_file)
+            self.settings = yaml.safe_load(settings_file)
 
         self.uploader = tool.IpaUploader(
             settings=self.settings,
@@ -201,7 +201,7 @@ class TestIpaUploader(TestIpaConnectorBase):
             'givenname': u'Test', 'sn': u'User', 'uid': u'test.user'}
 
     def test_parse_entity_diff_extended_latin(self):
-        name = yaml.load(u'Tešt')
+        name = yaml.safe_load(u'Tešt')
         entity = entities.FreeIPAUser(
             'test.user', {'firstName': name, 'lastName': 'User'}, 'path')
         self.uploader.ipa_entities = {
@@ -253,7 +253,7 @@ class TestIpaUploader(TestIpaConnectorBase):
             'mail': (), 'sn': u'User', 'uid': u'test.user'}
 
     def test_parse_entity_diff_mod_extended_latin_same(self):
-        name = yaml.load(u'Tešt')
+        name = yaml.safe_load(u'Tešt')
         entity = entities.FreeIPAUser(
             'test.user',
             {'firstName': name, 'lastName': 'User',
@@ -276,7 +276,7 @@ class TestIpaUploader(TestIpaConnectorBase):
         assert len(self.uploader.commands) == 0
 
     def test_parse_entity_diff_mod_extended_latin(self):
-        name = yaml.load(u'Tešt')
+        name = yaml.safe_load(u'Tešt')
         entity = entities.FreeIPAUser(
             'test.user',
             {'firstName': name, 'lastName': 'User',
@@ -836,7 +836,7 @@ class TestIpaUploader(TestIpaConnectorBase):
 class TestIpaDownloader(TestIpaConnectorBase):
     def setup_method(self, method):
         with open(SETTINGS) as settings_file:
-            self.settings = yaml.load(settings_file)
+            self.settings = yaml.safe_load(settings_file)
         self._create_downloader()
         if method.func_name.startswith('test_dump_membership'):
             self.downloader.ipa_entities = {
