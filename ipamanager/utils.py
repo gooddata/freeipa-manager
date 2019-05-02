@@ -33,7 +33,7 @@ ENTITY_CLASSES = [
 ]
 
 
-def init_logging(loglevel):
+def init_logging(loglevel, *extra_handlers):
     lg = logging.getLogger()  # add handlers to all loggers
     lg.setLevel(logging.DEBUG)  # higher levels per handler below
 
@@ -46,6 +46,13 @@ def init_logging(loglevel):
     handler_stderr.setFormatter(logging.Formatter(fmt=fmt))
     handler_stderr.setLevel(loglevel)
     lg.addHandler(handler_stderr)
+    lg.debug('Stderr handler added to root logger')
+
+    # add extra handlers (e.g., alerting handler) before syslog
+    # (so that possible syslog error is propagated to alerting)
+    for handler in extra_handlers:
+        lg.addHandler(handler)
+        lg.debug('Handler %s added to root logger', handler)
 
     # syslog output handler
     try:

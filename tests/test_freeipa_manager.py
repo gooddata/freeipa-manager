@@ -197,14 +197,17 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
 
 
 class TestUtils(object):
-    def test_init_logging(self):
-        logging.getLogger().handlers = []  # clean left-overs of previous tests
-        with mock.patch('ipamanager.utils.logging.handlers') as mock_handlers:
-            utils.init_logging(logging.INFO)
-        handlers = logging.getLogger().handlers
-        assert len(handlers) == 2
-        assert isinstance(handlers[0], logging.StreamHandler)
-        assert handlers[1] == mock_handlers.SysLogHandler.return_value
+    @mock.patch('ipamanager.utils.sys')
+    @mock.patch('ipamanager.utils.logging')
+    def test_init_logging_without_alerting(self, mock_logging, mock_sys):
+        utils.init_logging(logging.INFO)
+        mock_logging.StreamHandler.assert_called_with(mock_sys.stderr)
+        facility = mock_logging.handlers.SysLogHandler.LOG_LOCAL5
+        mock_logging.handlers.SysLogHandler.assert_called_with(
+            address='/dev/log', facility=facility)
+        mock_logging.getLogger.return_value.addHandler.assert_has_calls(
+            [mock.call(mock_logging.StreamHandler.return_value),
+             mock.call(mock_logging.handlers.SysLogHandler.return_value)])
 
     def test_init_logging_no_syslog(self):
         logging.getLogger().handlers = []  # clean left-overs of previous tests
@@ -213,5 +216,7 @@ class TestUtils(object):
                 'No such file or directory')
             with LogCapture() as log:
                 utils.init_logging(logging.INFO)
-            log.check(('root', 'ERROR',
-                       'Syslog connection failed: No such file or directory'))
+            log.check(
+                ('root', 'DEBUG', 'Stderr handler added to root logger'),
+                ('root', 'ERROR',
+                 'Syslog connection failed: No such file or directory'))
