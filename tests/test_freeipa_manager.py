@@ -209,6 +209,21 @@ class TestUtils(object):
             [mock.call(mock_logging.StreamHandler.return_value),
              mock.call(mock_logging.handlers.SysLogHandler.return_value)])
 
+    @mock.patch('ipamanager.utils.sys')
+    @mock.patch('ipamanager.utils.logging')
+    def test_init_logging_with_alerting(self, mock_logging, mock_sys):
+        mock_logging.WARNING = logging.WARNING
+        alerting_handler = utils.AlertingLogHandler()
+        utils.init_logging(logging.INFO, alerting_handler)
+        mock_logging.StreamHandler.assert_called_with(mock_sys.stderr)
+        facility = mock_logging.handlers.SysLogHandler.LOG_LOCAL5
+        mock_logging.handlers.SysLogHandler.assert_called_with(
+            address='/dev/log', facility=facility)
+        mock_logging.getLogger.return_value.addHandler.assert_has_calls(
+            [mock.call(mock_logging.StreamHandler.return_value),
+             mock.call(alerting_handler),
+             mock.call(mock_logging.handlers.SysLogHandler.return_value)])
+
     def test_init_logging_no_syslog(self):
         logging.getLogger().handlers = []  # clean left-overs of previous tests
         with mock.patch('ipamanager.utils.logging.handlers') as mock_handlers:
@@ -220,3 +235,52 @@ class TestUtils(object):
                 ('root', 'DEBUG', 'Stderr handler added to root logger'),
                 ('root', 'ERROR',
                  'Syslog connection failed: No such file or directory'))
+
+
+class TestAlertingLogHandler(object):
+    def setup_method(self, method):
+        self.handler = utils.AlertingLogHandler()
+
+    def test_init(self):
+        assert self.handler.level == logging.WARNING
+        assert self.handler.messages == []
+        assert self.handler.max_level == logging.NOTSET
+
+    def test_emit(self):
+        record = logging.LogRecord(
+            'IpaManager', logging.ERROR, 'ipamanager.py', 42,
+            'error updating user %s', ('user1',), None)
+        self.handler.emit(record)
+        assert self.handler.messages == ['ERROR: error updating user user1']
+        assert self.handler.max_level == logging.ERROR
+
+    def test_log_info(self):
+        logger = logging.getLogger('test')
+        logger.handlers = [self.handler]
+        logger.info('test info log')
+        assert self.handler.messages == []
+        assert self.handler.max_level == logging.NOTSET
+
+    def test_log_warning(self):
+        logger = logging.getLogger('test')
+        logger.handlers = [self.handler]
+        logger.warning('test warn log')
+        assert self.handler.messages == ['WARNING: test warn log']
+        assert self.handler.max_level == logging.WARNING
+
+    def test_log_error(self):
+        logger = logging.getLogger('test')
+        logger.handlers = [self.handler]
+        logger.error('test err log')
+        assert self.handler.messages == ['ERROR: test err log']
+        assert self.handler.max_level == logging.ERROR
+
+    def test_log_multiple(self):
+        logger = logging.getLogger('test')
+        logger.handlers = [self.handler]
+        logger.error('test err log')
+        logger.warning('test warn log')
+        logger.info('test info log')
+        assert self.handler.messages == [
+            'ERROR: test err log', 'WARNING: test warn log']
+        assert self.handler.max_level == logging.ERROR
