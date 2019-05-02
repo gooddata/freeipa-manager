@@ -231,7 +231,9 @@ class TestTemplate(object):
         self.template_tool._dump_entities()
         assert os.listdir(os.path.join(tmpdir.strpath, 'hostgroups')) == ['dummy_666.yaml']
         with open(os.path.join(tmpdir.strpath, 'hostgroups/dummy_666.yaml'), 'r') as f:
-            assert yaml.load(f) == {'dummy-666': {'description': 'all description', 'metaparams': {'meta': 'param'}}}
+            assert yaml.safe_load(f) == {
+                'dummy-666': {'description': 'all description',
+                              'metaparams': {'meta': 'param'}}}
 
     def test_load_data(self):
         loaded = self.loader.load_config()

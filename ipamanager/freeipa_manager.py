@@ -30,7 +30,8 @@ class FreeIPAManager(FreeIPAManagerCore):
     def __init__(self):
         super(FreeIPAManager, self).__init__()
         self.args = utils.parse_args()
-        utils.init_logging(self.args.loglevel)
+        self.alerting_handler = utils.AlertingLogHandler()
+        utils.init_logging(self.args.loglevel, self.alerting_handler)
         self._load_settings()
 
     def run(self):
