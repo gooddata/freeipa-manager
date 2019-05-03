@@ -1,4 +1,5 @@
 # freeipa-manager
+[![Build Status](https://travis-ci.org/gooddata/freeipa-manager.svg?branch=master)](https://travis-ci.org/gooddata/freeipa-manager)
 ## Overview
 *freeipa-manager* is a tool for management of [FreeIPA](https://github.com/freeipa/freeipa)
 entities. It makes it easier to setup and maintain identity management using FreeIPA
