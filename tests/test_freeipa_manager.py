@@ -9,7 +9,7 @@ import os
 import pytest
 import socket
 import sys
-from testfixtures import log_capture, LogCapture
+from testfixtures import log_capture, LogCapture, StringComparison
 
 from _utils import _import
 sys.modules['ipalib'] = mock.Mock()
@@ -21,6 +21,8 @@ ipa_connector = _import('ipamanager', 'ipa_connector')
 modulename = 'ipamanager.freeipa_manager'
 SETTINGS = os.path.join(
     os.path.dirname(__file__), 'freeipa-manager-config/settings.yaml')
+SETTINGS_ALERTING = os.path.join(
+    os.path.dirname(__file__), 'freeipa-manager-config/settings_alerting.yaml')
 SETTINGS_INVALID = os.path.join(
     os.path.dirname(__file__), 'freeipa-manager-config/settings_invalid.yaml')
 
@@ -33,6 +35,51 @@ class TestFreeIPAManagerBase(object):
 
 
 class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
+    @mock.patch('%s.importlib.import_module' % modulename)
+    def test_register_alerting_no_modules(self, mock_import):
+        manager = self._init_tool(['check', 'path', '-v'])
+        with mock.patch('%s.logging.RootLogger.addHandler' % modulename) as ma:
+            with LogCapture() as log:
+                manager._register_alerting()
+        mock_import.assert_not_called()
+        ma.assert_not_called()
+        log.check(('FreeIPAManager', 'INFO',
+                   'No alerting plugins configured in settings'))
+
+    @mock.patch('%s.logging.RootLogger.addHandler' % modulename)
+    @mock.patch('%s.importlib.import_module' % modulename)
+    def test_register_alerting_configured(self, mock_import, mock_add):
+        manager = self._init_tool(['check', 'config_path', '-v'])
+        manager.settings['alerting'] = {
+            'monitoring1': {
+                'module': 'monitoring1', 'class': 'TestMonitoringPlugin',
+                'config': {'k1': 'v1', 'k2': 'v2'}
+            },
+            'dummy': {
+                'module': 'test', 'class': 'DummyAlertingPlugin'
+            }
+        }
+        with LogCapture() as log:
+            manager._register_alerting()
+        mock_import.assert_has_calls([
+            mock.call('alerting.monitoring1'),
+            mock.call('alerting.test')], any_order=True)
+        plugin1 = mock_import('alerting.monitoring1').TestMonitoringPlugin
+        plugin1.assert_called_with({'k1': 'v1', 'k2': 'v2'})
+        plugin2 = mock_import('alerting.test').DummyAlertingPlugin
+        plugin2.assert_called_with(None)
+        instances = {p.return_value for p in (plugin1, plugin2)}
+        mock_add.assert_has_calls(
+            [mock.call(i) for i in instances], any_order=True)
+        assert set(manager.alerting_plugins) == instances
+        log.check_present(
+            ('FreeIPAManager', 'DEBUG', 'Registering 2 alerting plugins'),
+            ('FreeIPAManager', 'DEBUG', StringComparison(
+                "Registered plugin .*TestMonitoringPlugin.*")),
+            ('FreeIPAManager', 'DEBUG', StringComparison(
+                "Registered plugin .*DummyAlertingPlugin.*")),
+            order_matters=False)
+
     def test_run_threshold_bad_type(self, capsys):
         with pytest.raises(SystemExit) as exc:
             self._init_tool(['push', 'config_path', '-t', '42a'])
@@ -49,14 +96,56 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
         assert ("manager push: error: argument -t/--threshold: "
                 "must be a number in range 1-100") in err
 
+    @log_capture('FreeIPAManager', level=logging.INFO)
     @mock.patch('%s.IntegrityChecker' % modulename)
     @mock.patch('%s.ConfigLoader' % modulename)
-    def test_run_check(self, mock_config, mock_check):
+    def test_run_check(self, mock_config, mock_check, log):
         manager = self._init_tool(['check', 'config_path', '-v'])
         manager.run()
         mock_config.assert_called_with('config_path', manager.settings, True)
         mock_check.assert_called_with(
             manager.config_loader.load.return_value, manager.settings)
+        log.check(('FreeIPAManager', 'INFO',
+                   'No alerting plugins configured in settings'))
+
+    @mock.patch('%s.IntegrityChecker' % modulename)
+    @mock.patch('%s.ConfigLoader' % modulename)
+    @mock.patch('%s.logging.RootLogger.addHandler' % modulename)
+    @mock.patch('%s.importlib.import_module' % modulename)
+    def test_run_check_alerting_configured(self, mock_import, mock_add,
+                                           mock_config, mock_check):
+        manager = self._init_tool(['check', 'config_path', '-v'])
+        manager.settings['alerting'] = {
+            'monitoring1': {
+                'module': 'monitoring1', 'class': 'TestMonitoringPlugin',
+                'config': {'k1': 'v1', 'k2': 'v2'}
+            },
+            'dummy': {
+                'module': 'test', 'class': 'DummyAlertingPlugin',
+                'config': {'key': 'value', 'k2': 42}
+            }
+        }
+        manager.run()
+        mock_config.assert_called_with('config_path', manager.settings, True)
+        mock_check.assert_called_with(
+            manager.config_loader.load.return_value, manager.settings)
+        plugin1 = mock_import('alerting.monitoring1').TestMonitoringPlugin()
+        plugin1.dispatch.assert_called_with()
+        plugin2 = mock_import('alerting.test').DummyAlertingPlugin()
+        plugin2.dispatch.assert_called_with()
+
+    @log_capture('FreeIPAManager', level=logging.ERROR)
+    @mock.patch('%s.importlib.import_module' % modulename)
+    def test_run_register_alerting_error(self, mock_import, captured_errors):
+        mock_import.side_effect = ImportError('no such module')
+        manager = self._init_tool(['check', 'path'])
+        manager.settings['alerting'] = {'test': {'module': 'b', 'class': 'c'}}
+        with pytest.raises(SystemExit) as exc:
+            manager.run()
+        assert exc.value[0] == 1
+        captured_errors.check(
+            ('FreeIPAManager', 'ERROR',
+             'Could not register alerting plugin test: no such module'))
 
     @log_capture('FreeIPAManager', level=logging.ERROR)
     def test_run_check_error(self, captured_errors):
@@ -179,6 +268,17 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
         assert self._init_tool(['check', 'dump_repo']).settings == {
             'ignore': {'group': ['ipausers', 'test.*'], 'user': ['admin']},
             'user-group-pattern': '^role-.+|.+-users$', 'nesting-limit': 42}
+
+    def test_load_settings_alerting(self):
+        assert self._init_tool(
+            ['check', 'dump_repo'], settings=SETTINGS_ALERTING).settings == {
+                'ignore': {'group': ['ipausers', 'test.*'], 'user': ['admin']},
+                'user-group-pattern': '^role-.+|.+-users$',
+                'nesting-limit': 42,
+                'alerting': {'plugin1': {'class': 'def',
+                                         'config': {'key1': 'value1'},
+                                         'module': 'abc'},
+                             'plugin2': {'class': 'def2', 'module': 'abc'}}}
 
     def test_load_settings_not_found(self):
         with mock.patch('__builtin__.open') as mock_open:

@@ -9,6 +9,8 @@ FreeIPA Manager - top level script
 Main entry point of the tooling, responsible for delegating the tasks.
 """
 
+import importlib
+import logging
 import sys
 import voluptuous
 import yaml
@@ -38,6 +40,7 @@ class FreeIPAManager(FreeIPAManagerCore):
         Execute the task selected by arguments (check config, upload etc).
         """
         try:
+            self._register_alerting()
             {
                 'check': self.check,
                 'push': self.push,
@@ -49,6 +52,31 @@ class FreeIPAManager(FreeIPAManagerCore):
         except ManagerError as e:
             self.lg.error(e)
             sys.exit(1)
+        finally:
+            for plugin in self.alerting_plugins:
+                plugin.dispatch()
+
+    def _register_alerting(self):
+        self.alerting_plugins = []
+        plugins_config = self.settings.get('alerting')
+        if not plugins_config:
+            self.lg.info('No alerting plugins configured in settings')
+            return
+        self.lg.debug('Registering %d alerting plugins', len(plugins_config))
+        root_logger = logging.getLogger()
+        for name, config in plugins_config.iteritems():
+            try:
+                module_path = 'alerting.%s' % (config['module'])
+                module = importlib.import_module(module_path)
+                plugin = getattr(module, config['class'])(config.get('config'))
+                root_logger.addHandler(plugin)
+                self.alerting_plugins.append(plugin)
+                self.lg.debug('Registered plugin %s', plugin)
+            except (AttributeError, ImportError) as e:
+                raise ManagerError(
+                    'Could not register alerting plugin %s: %s' % (name, e))
+        self.lg.debug('Registered %d alerting plugins',
+                      len(self.alerting_plugins))
 
     def load(self, apply_ignored=True):
         """

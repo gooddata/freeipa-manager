@@ -17,14 +17,21 @@ _meta = {str: {str: str}}
 
 
 schema_settings = {
-    'user-group-pattern': str,
+    'alerting': {
+        str: {
+            Required('module'): str,
+            Required('class'): str,
+            'config': dict
+        }
+    },
+    'deletion-patterns': [str],
     'ignore': {
         Any('user', 'group', 'hostgroup', 'hbacrule', 'sudorule',
             'role', 'permission', 'privilege', 'service',
             'hbacsvc', 'hbacsvcgroup'): [str]
     },
-    'deletion-patterns': [str],
-    'nesting-limit': int
+    'nesting-limit': int,
+    'user-group-pattern': str
 }
 
 
