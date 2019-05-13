@@ -57,6 +57,13 @@ class FreeIPAManager(FreeIPAManagerCore):
                 plugin.dispatch()
 
     def _register_alerting(self):
+        """
+        For each alerting plugin listed in settings:
+        1. Instantiate the plugin based on config.
+        2. Add the plugin as a root logging handler.
+        3. Add the plugin to the `alerting_plugins` list attribute,
+           so that it dispatches the results in the end of the run.
+        """
         self.alerting_plugins = []
         plugins_config = self.settings.get('alerting')
         if not plugins_config:
@@ -66,13 +73,14 @@ class FreeIPAManager(FreeIPAManagerCore):
         root_logger = logging.getLogger()
         for name, config in plugins_config.iteritems():
             try:
-                module_path = 'alerting.%s' % (config['module'])
+                module_path = 'ipamanager.alerting.%s' % (config['module'])
                 module = importlib.import_module(module_path)
-                plugin = getattr(module, config['class'])(config.get('config'))
+                plugin_config = config.get('config', {})
+                plugin = getattr(module, config['class'])(plugin_config)
                 root_logger.addHandler(plugin)
                 self.alerting_plugins.append(plugin)
                 self.lg.debug('Registered plugin %s', plugin)
-            except (AttributeError, ImportError) as e:
+            except (AttributeError, ImportError, ManagerError) as e:
                 raise ManagerError(
                     'Could not register alerting plugin %s: %s' % (name, e))
         self.lg.debug('Registered %d alerting plugins',

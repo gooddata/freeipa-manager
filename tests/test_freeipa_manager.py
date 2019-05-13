@@ -62,12 +62,13 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
         with LogCapture() as log:
             manager._register_alerting()
         mock_import.assert_has_calls([
-            mock.call('alerting.monitoring1'),
-            mock.call('alerting.test')], any_order=True)
-        plugin1 = mock_import('alerting.monitoring1').TestMonitoringPlugin
+            mock.call('ipamanager.alerting.monitoring1'),
+            mock.call('ipamanager.alerting.test')], any_order=True)
+        plugin1 = mock_import(
+            'ipamanager.alerting.monitoring1').TestMonitoringPlugin
         plugin1.assert_called_with({'k1': 'v1', 'k2': 'v2'})
-        plugin2 = mock_import('alerting.test').DummyAlertingPlugin
-        plugin2.assert_called_with(None)
+        plugin2 = mock_import('ipamanager.alerting.test').DummyAlertingPlugin
+        plugin2.assert_called_with({})
         instances = {p.return_value for p in (plugin1, plugin2)}
         mock_add.assert_has_calls(
             [mock.call(i) for i in instances], any_order=True)
@@ -129,9 +130,10 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
         mock_config.assert_called_with('config_path', manager.settings, True)
         mock_check.assert_called_with(
             manager.config_loader.load.return_value, manager.settings)
-        plugin1 = mock_import('alerting.monitoring1').TestMonitoringPlugin()
+        plugin1 = mock_import(
+            'ipamanager.alerting.monitoring1').TestMonitoringPlugin()
         plugin1.dispatch.assert_called_with()
-        plugin2 = mock_import('alerting.test').DummyAlertingPlugin()
+        plugin2 = mock_import('ipamanager.alerting.test').DummyAlertingPlugin()
         plugin2.dispatch.assert_called_with()
 
     @log_capture('FreeIPAManager', level=logging.ERROR)
