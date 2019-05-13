@@ -405,6 +405,26 @@ group1 -> group2 -> group3 -> group4
 ```
 This should be a number. If this is not provided, nesting limit is not enforced.
 
+#### alerting
+Defines configuration for alerting plugins that should send a result of the tool's
+run to a monitoring service. Several plugins can be configured:
+```yaml
+# example
+alerting:
+  test-monitoring:
+    module: test_monitoring
+    class: TestMonitoringPlugin
+    config:
+      key1: value1
+      key2: value2
+  other-alerting:
+    module: other.test
+    class: OtherAlertingPlugin
+```
+This would instantiate the plugins `alerting.test_monitoring.TestMonitoringPlugin`
+and `alerting.other.testOtherAlertingPlugin`. The `config` dictionary value is
+passed to the plugin instance without modification.
+
 
 ## Further development
 Several new features of *freeipa-manager* are planned for the future, such as:
@@ -413,10 +433,6 @@ It should be possible to define a structure of *labels* in *metaparams* for user
 that will define roles (in accordance with RBAC) necessary for membership in certain
 groups. The tool should process these labels and ensure that group membership is
 only granted if all the defined criteria are met.
-### Improved stand-alone functionality
-Currently, we use a (proprietary) wrapper script to facilitate the run of the tool.
-This includes, for instance, dispatch of results to a monitoring tool. Such functionality
-could be bundled with the tool directly to facilitate easier usage.
 ### Distribute a Linux manpage and autocompletion
 Since *freeipa-manager* is a tool for Linux environment, distributing a manual entry
 with it would be reasonable, since it's the standard for Linux tools.

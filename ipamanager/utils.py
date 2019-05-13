@@ -33,7 +33,7 @@ ENTITY_CLASSES = [
 ]
 
 
-def init_logging(loglevel, *extra_handlers):
+def init_logging(loglevel):
     lg = logging.getLogger()  # add handlers to all loggers
     lg.setLevel(logging.DEBUG)  # higher levels per handler below
 
@@ -48,12 +48,6 @@ def init_logging(loglevel, *extra_handlers):
     lg.addHandler(handler_stderr)
     lg.debug('Stderr handler added to root logger')
 
-    # add extra handlers (e.g., alerting handler) before syslog
-    # (so that possible syslog error is propagated to alerting)
-    for handler in extra_handlers:
-        lg.addHandler(handler)
-        lg.debug('Handler %s added to root logger', handler)
-
     # syslog output handler
     try:
         handler_syslog = logging.handlers.SysLogHandler(
@@ -66,26 +60,6 @@ def init_logging(loglevel, *extra_handlers):
         lg.debug('Syslog handler added to root logger')
     except socket.error as err:
         lg.error('Syslog connection failed: %s', err)
-
-
-class AlertingLogHandler(logging.Handler):
-    """
-    A handler to capture messages to be forwarded to an alerting system.
-    This should only capture non-OK messages (WARNING and above).
-    """
-    def __init__(self):
-        """
-        :param AlertingCollector collector: object to hold messages & max level
-        """
-        super(AlertingLogHandler, self).__init__()
-        self.setLevel(logging.WARNING)
-        self.setFormatter(logging.Formatter(fmt='%(levelname)s: %(message)s'))
-        self.messages = []
-        self.max_level = logging.NOTSET
-
-    def emit(self, record):
-        self.messages.append(self.format(record))
-        self.max_level = max(self.max_level, record.levelno)
 
 
 def init_api_connection(loglevel):

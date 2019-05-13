@@ -1,0 +1,15 @@
+---
+user-group-pattern: '^role-.+|.+-users$'
+ignore:
+  group: [ipausers, test.*]
+  user: [admin]
+nesting-limit: 42
+alerting:
+  plugin1:
+    module: abc
+    class: def
+    config:
+      key1: value1
+  plugin2:
+    module: abc
+    class: def2
