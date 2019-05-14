@@ -11,15 +11,18 @@ Various utility functions for better code readability & organization.
 import argparse
 import logging
 import logging.handlers
+import os
 import re
 import socket
 import sys
+import voluptuous
 import yaml
 from yamllint.config import YamlLintConfig
 from yamllint.linter import run as yamllint_check
 
 import entities
 from errors import ConfigError
+from schemas import schema_settings
 
 
 # supported FreeIPA entity types
@@ -160,6 +163,44 @@ def run_yamllint_check(data):
     lint_errs = list(yamllint_check(data, YamlLintConfig(yaml.dump(rules))))
     if lint_errs:
         raise ConfigError('yamllint errors: %s' % lint_errs)
+
+
+def _merge_include(target, source):
+    for key, value in source.iteritems():
+        if isinstance(value, dict) and key in target:
+            target[key].update(value)
+        else:
+            target[key] = value
+
+
+def load_settings(path):
+    """
+    Load the tool settings from the given file.
+    If there is an include parameter in the settings file,
+    the listed files are included in the config.
+    :param str path: path to the settings file
+    :returns: loaded settings file
+    :rtype: dict
+    """
+    result = {}
+    with open(path) as src:
+        raw = src.read()
+        run_yamllint_check(raw)
+        settings = yaml.safe_load(raw)
+    # run validation of parsed YAML against schema
+    voluptuous.Schema(schema_settings)(settings)
+    subconfigs = []
+    for included in settings.pop('include', []):
+        subconf = load_settings(os.path.join(os.path.dirname(path), included))
+        subconfigs.append(subconf)
+    subconfigs.append(settings)
+    merge_include = settings.pop('merge_include', False)
+    for config in subconfigs:
+        if merge_include:
+            _merge_include(result, config)
+        else:
+            result.update(config)
+    return result
 
 
 def check_ignored(entity_class, name, ignored):

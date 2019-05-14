@@ -17,6 +17,8 @@ _meta = {str: {str: str}}
 
 
 schema_settings = {
+    'include': list,
+    'merge_include': bool,
     'alerting': {
         str: {
             Required('module'): str,

@@ -23,6 +23,10 @@ SETTINGS = os.path.join(
     os.path.dirname(__file__), 'freeipa-manager-config/settings.yaml')
 SETTINGS_ALERTING = os.path.join(
     os.path.dirname(__file__), 'freeipa-manager-config/settings_alerting.yaml')
+SETTINGS_INCLUDE = os.path.join(
+    os.path.dirname(__file__), 'freeipa-manager-config/settings_include.yaml')
+SETTINGS_MERGE_INCLUDE = os.path.join(
+    os.path.dirname(__file__), 'freeipa-manager-config/settings_merge.yaml')
 SETTINGS_INVALID = os.path.join(
     os.path.dirname(__file__), 'freeipa-manager-config/settings_invalid.yaml')
 
@@ -288,13 +292,13 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
             with pytest.raises(tool.ManagerError) as exc:
                 self._init_tool(['check', 'dump_repo'])
         assert exc.value[0] == (
-            'Error reading settings file: [Errno 2] No such file or dir')
+            'Error loading settings: [Errno 2] No such file or dir')
 
     def test_load_settings_invalid_ignore_key(self):
         with pytest.raises(tool.ManagerError) as exc:
             self._init_tool(['check', 'dump_repo'], settings=SETTINGS_INVALID)
         assert exc.value[0] == (
-            "Error reading settings file: extra keys "
+            "Error loading settings: extra keys "
             "not allowed @ data['ignore']['groups']")
 
 
@@ -322,3 +326,25 @@ class TestUtils(object):
                 ('root', 'DEBUG', 'Stderr handler added to root logger'),
                 ('root', 'ERROR',
                  'Syslog connection failed: No such file or directory'))
+
+    def test_load_settings_no_include(self):
+        assert utils.load_settings(SETTINGS) == {
+            'ignore': {'group': ['ipausers', 'test.*'], 'user': ['admin']},
+            'nesting-limit': 42, 'user-group-pattern': '^role-.+|.+-users$'}
+
+    def test_load_settings_yes_include(self):
+        assert utils.load_settings(SETTINGS_INCLUDE) == {
+            'alerting': {'plugin1': {'class': 'def', 'module': 'abc',
+                                     'config': {'key1': 'value1'}},
+                         'plugin2': {'class': 'def2', 'module': 'abc'}},
+            'ignore': {'group': ['ipausers', 'test.*'], 'user': ['admin']},
+            'nesting-limit': 42, 'user-group-pattern': '^role-.+|.+-users$'}
+
+    def test_load_settings_yes_merge_include(self):
+        assert utils.load_settings(SETTINGS_MERGE_INCLUDE) == {
+            'alerting': {'plugin1': {'class': 'def', 'module': 'abc',
+                                     'config': {'key1': 'value1'}},
+                         'plugin2': {'class': 'def2', 'module': 'abc'}},
+            'ignore': {'group': ['group2', 'group3'],
+                       'service': ['serviceX'], 'user': ['admin']},
+            'nesting-limit': 42, 'user-group-pattern': '^role-.+|.+-users$'}
