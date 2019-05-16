@@ -1,3 +1,13 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2017-2019, GoodData Corporation. All rights reserved.
+"""
+FreeIPA Manager - Alerting base class module
+
+Base class serving for inherits by actual alerting plugin implementations.
+"""
+
 import abc
 import logging
 

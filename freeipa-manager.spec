@@ -1,5 +1,5 @@
 Name:           freeipa-manager
-Version:        1.4
+Version:        1.5
 Release:        1%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
@@ -14,6 +14,7 @@ Requires:       python-requests >= 2.6.0
 Requires:       python-sh >= 1.11
 Requires:       python-voluptuous >= 0.8.5
 Requires:       python2-yamllint >= 1.8.1
+Requires:       /usr/sbin/send_nsca
 BuildRequires:  python-setuptools python-psutil pytest
 Conflicts:      gdc-ipa-utils < 6
 
@@ -44,6 +45,8 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{_bindir}/ipamanager-pull-request
 
 %changelog
+* Tue May 14 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.5-1
+- Implement NSCA alerting plugin
 * Fri Apr 26 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.4-1
 - Support round-trip (load & save) of configuration
 * Wed Mar 27 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.3-1
