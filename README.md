@@ -425,6 +425,32 @@ This would instantiate the plugins `alerting.test_monitoring.TestMonitoringPlugi
 and `alerting.other.testOtherAlertingPlugin`. The `config` dictionary value is
 passed to the plugin instance without modification.
 
+#### include
+A settings file can be included inside another one; this permits us, for example,
+to define common settings for several use cases, and then include this common config
+file to other configs that will extend it for specific use cases:
+```yaml
+# common config
+nesting-limit: 4
+ignore:
+  user: [test]
+---
+# specific config:
+include:
+  - "common.yaml"
+alerting:
+  test-monitoring:
+    module: test_monitoring
+    class: TestMonitoringPlugin
+```
+
+#### merge\_include
+The `merge\_include` parameter defines whether matching dict-type keys in included
+configs should be merged with the value in the current file, rather then overwritten:
+```yaml
+include: ["common.yaml"]
+merge_include: true
+```
 
 ## Further development
 Several new features of *freeipa-manager* are planned for the future, such as:

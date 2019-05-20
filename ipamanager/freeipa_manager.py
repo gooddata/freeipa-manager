@@ -12,8 +12,6 @@ Main entry point of the tooling, responsible for delegating the tasks.
 import importlib
 import logging
 import sys
-import voluptuous
-import yaml
 
 import utils
 from core import FreeIPAManagerCore
@@ -21,7 +19,6 @@ from config_loader import ConfigLoader
 from difference import FreeIPADifference
 from errors import ManagerError
 from integrity_checker import IntegrityChecker
-from schemas import schema_settings
 from template import FreeIPATemplate, ConfigTemplateLoader
 
 
@@ -191,14 +188,9 @@ class FreeIPAManager(FreeIPAManagerCore):
             raise ManagerError('No settings file configured')
         self.lg.debug('Loading settings file from %s', self.args.settings)
         try:
-            with open(self.args.settings) as src:
-                raw = src.read()
-                utils.run_yamllint_check(raw)
-                self.settings = yaml.safe_load(raw)
-                # run validation of parsed YAML against schema
-                voluptuous.Schema(schema_settings)(self.settings)
+            self.settings = utils.load_settings(self.args.settings)
         except Exception as e:
-            raise ManagerError('Error reading settings file: %s' % e)
+            raise ManagerError('Error loading settings: %s' % e)
         self.lg.debug('Settings parsed: %s', self.settings)
 
 

@@ -1,0 +1,16 @@
+---
+include: ['settings.yaml']
+merge_include: true
+
+alerting:
+  plugin1:
+    module: abc
+    class: def
+    config:
+      key1: value1
+  plugin2:
+    module: abc
+    class: def2
+ignore:
+  group: [group2, group3]
+  service: [serviceX]

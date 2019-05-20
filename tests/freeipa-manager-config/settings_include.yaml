@@ -1,0 +1,13 @@
+---
+include:
+  - "settings.yaml"
+
+alerting:
+  plugin1:
+    module: abc
+    class: def
+    config:
+      key1: value1
+  plugin2:
+    module: abc
+    class: def2
