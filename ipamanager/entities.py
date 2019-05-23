@@ -51,7 +51,8 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 raise ConfigError('Error validating %s: %s' % (name, e))
             if not path.endswith('.yaml'):  # created from template tool
                 path, name = os.path.split(self.path)
-                self.path = '%s.yaml' % os.path.join(path, name.replace('-', '_'))
+                self.path = '%s.yaml' % os.path.join(
+                    path, name.replace('-', '_'))
             self.data_ipa = self._convert_to_ipa(data)
             self.data_repo = data
         else:  # created from FreeIPA

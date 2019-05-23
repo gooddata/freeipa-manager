@@ -251,3 +251,13 @@ def check_ignored(entity_class, name, ignored):
         if re.match(pattern, name):
             return True
     return False
+
+
+def find_entity(entity_dict, entity_type, name):
+    """
+    Find an entity by its type and name.
+    :param dict entity_dict: dictionary of parsed entities
+    :param str entity_name: entity type to search for
+    :param str name: entity name to search for
+    """
+    return entity_dict.get(entity_type, {}).get(name)
