@@ -104,6 +104,27 @@ fix such issues in the config of entities changed on the FreeIPA server as well,
 but such a commit would contain both server-side changes and style fixes;
 this could lead to a confusing diff, which may be undesirable.
 
+### Tools
+There is a separate `ipamanager.tools` sub-package, providing tools that are not
+required for the core tool's functionality but can be used to enhance workflows.
+
+#### github-forwarder
+Create a GitHub pull request from the given branch of the config repo.
+Can be useful with the `pull` action.
+```
+ipamanager-pull-request -b new-changes -B master -o my-organization -r config-repo -u github-user -c  # commit changes
+ipamanager-pull-request -b new-changes -B master -o my-organization -r config-repo -u github-user -p  # commit changes & create PR
+```
+
+#### query-tool
+Query the config repo for various meta-values or relationships between entities.
+
+For example, to find if a group called `group1` is a member of the group `group2`
+(including indirect membership), run:
+```
+ipamanager-query member config-repo -m group:group1 -e group:group2
+```
+
 ### Dry run
 The *dry run* mode can be choosen with `-d` or `--dry-run` flag.
 

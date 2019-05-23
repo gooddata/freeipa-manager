@@ -7,7 +7,7 @@ from setuptools import setup
 
 
 with open('requirements.txt') as deps_file:
-    deps = [i.replace('\n', '') for i in deps_file.readlines()]
+    deps = [i.strip() for i in deps_file.readlines()]
 
 
 # Parameters for build
@@ -18,7 +18,8 @@ params = {
     'entry_points': {
         'console_scripts': [
             'ipamanager=ipamanager.freeipa_manager:main',
-            'ipamanager-pull-request=ipamanager.tools.github_forwarder:main']
+            'ipamanager-pull-request=ipamanager.tools.github_forwarder:main',
+            'ipamanager-query=ipamanager.tools.query_tool:main']
     },
     'url': 'https://github.com/gooddata/freeipa-manager',
     'license': 'BSD License 2.0',
