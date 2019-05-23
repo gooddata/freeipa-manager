@@ -11,6 +11,7 @@ Tools for checking integrity of entity configurations.
 import entities
 from core import FreeIPAManagerCore
 from errors import IntegrityError
+from utils import find_entity
 
 
 class IntegrityChecker(FreeIPAManagerCore):
@@ -223,7 +224,4 @@ class IntegrityChecker(FreeIPAManagerCore):
         return result
 
     def _find_entity(self, entity_type, name):
-        entity_subdict = self.entity_dict.get(entity_type)
-        if entity_subdict:
-            return entity_subdict.get(name)
-        return None
+        return find_entity(self.entity_dict, entity_type, name)
