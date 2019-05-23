@@ -303,6 +303,33 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
 
 
 class TestUtils(object):
+    def test_check_handler_present_empty(self):
+        lg = logging.getLogger('test_check_handler_present')
+        assert not utils._check_handler_present(lg, logging.StreamHandler)
+
+    def test_check_handler_present_not_present(self):
+        lg = logging.getLogger('test_check_handler_present_not_present')
+        lg.addHandler(logging.StreamHandler(sys.stderr))
+        assert not utils._check_handler_present(lg, logging.FileHandler)
+
+    def test_check_handler_present_present_different_attr(self):
+        lg = logging.getLogger(
+            'test_check_handler_present_not_present_different_attr')
+        lg.addHandler(logging.StreamHandler(sys.stderr))
+        assert not utils._check_handler_present(
+            lg, logging.StreamHandler, ('stream', sys.stdout))
+
+    def test_check_handler_present_present_no_attr(self):
+        lg = logging.getLogger('test_check_handler_present_present_no_attr')
+        lg.addHandler(logging.StreamHandler(sys.stderr))
+        assert utils._check_handler_present(lg, logging.StreamHandler)
+
+    def test_check_handler_present_present_same_attr(self):
+        lg = logging.getLogger('test_check_handler_present_present_same_attr')
+        lg.addHandler(logging.StreamHandler(sys.stderr))
+        assert utils._check_handler_present(
+            lg, logging.StreamHandler, ('stream', sys.stderr))
+
     @mock.patch('ipamanager.utils.sys')
     @mock.patch('ipamanager.utils.logging')
     def test_init_logging(self, mock_logging, mock_sys):
@@ -318,14 +345,27 @@ class TestUtils(object):
     def test_init_logging_no_syslog(self):
         logging.getLogger().handlers = []  # clean left-overs of previous tests
         with mock.patch('ipamanager.utils.logging.handlers') as mock_handlers:
-            mock_handlers.SysLogHandler.side_effect = socket.error(
-                'No such file or directory')
-            with LogCapture() as log:
-                utils.init_logging(logging.INFO)
+            with mock.patch(
+                    'ipamanager.utils._check_handler_present') as mock_check:
+                mock_check.return_value = False
+                mock_handlers.SysLogHandler.side_effect = socket.error(
+                    'No such file or directory')
+                with LogCapture() as log:
+                    utils.init_logging(logging.INFO)
             log.check(
                 ('root', 'DEBUG', 'Stderr handler added to root logger'),
                 ('root', 'ERROR',
                  'Syslog connection failed: No such file or directory'))
+
+    def test_init_logging_already_added(self):
+        logging.getLogger().handlers = []  # clean left-overs of previous tests
+        with mock.patch(
+                'ipamanager.utils._check_handler_present') as mock_check:
+            mock_check.return_value = True
+            with LogCapture() as log:
+                utils.init_logging(logging.INFO)
+            log.check(('root', 'DEBUG', 'Stderr handler already added'),
+                      ('root', 'DEBUG', 'Syslog handler already added'))
 
     def test_load_settings_no_include(self):
         assert utils.load_settings(SETTINGS) == {

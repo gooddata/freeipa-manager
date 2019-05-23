@@ -36,33 +36,68 @@ ENTITY_CLASSES = [
 ]
 
 
+def _check_handler_present(logger, handler_type, *compare):
+    """
+    Check if a handler of given and with given attributes
+    has been added to the logger already.
+    :param logging.Logger logger: logger whose handlers to check
+    :param type handler_type: handler class to check for
+    :param [(str, obj)] compare:
+        list of (attribute, value) items to check the handler against
+        (e.g., (stream, sys.stderr) will check if handler.stream == sys.stderr)
+    :returns: True if such a handler is configured, False otherwise
+    :rtype: bool
+    """
+    for handler in logger.handlers:
+        if isinstance(handler, handler_type):
+            attrs_match = True
+            for attr, value in compare:
+                try:
+                    if getattr(handler, attr) != value:
+                        attrs_match = False
+                        break
+                except AttributeError:
+                    continue
+            if attrs_match:
+                return True
+    return False
+
+
 def init_logging(loglevel):
     lg = logging.getLogger()  # add handlers to all loggers
     lg.setLevel(logging.DEBUG)  # higher levels per handler below
 
     # stderr handler
-    if loglevel == logging.DEBUG:
-        fmt = '%(levelname)s:%(name)s:%(lineno)3d:%(funcName)s: %(message)s'
+    if _check_handler_present(
+            lg, logging.StreamHandler, ('stream', sys.stderr)):
+        lg.debug('Stderr handler already added')
     else:
-        fmt = '%(levelname)s:%(name)s: %(message)s'
-    handler_stderr = logging.StreamHandler(sys.stderr)
-    handler_stderr.setFormatter(logging.Formatter(fmt=fmt))
-    handler_stderr.setLevel(loglevel)
-    lg.addHandler(handler_stderr)
-    lg.debug('Stderr handler added to root logger')
+        if loglevel == logging.DEBUG:
+            fm = '%(levelname)s:%(name)s:%(lineno)3d:%(funcName)s: %(message)s'
+        else:
+            fm = '%(levelname)s:%(name)s: %(message)s'
+        handler_stderr = logging.StreamHandler(sys.stderr)
+        handler_stderr.setFormatter(logging.Formatter(fmt=fm))
+        handler_stderr.setLevel(loglevel)
+        lg.addHandler(handler_stderr)
+        lg.debug('Stderr handler added to root logger')
 
     # syslog output handler
-    try:
-        handler_syslog = logging.handlers.SysLogHandler(
-            address='/dev/log',
-            facility=logging.handlers.SysLogHandler.LOG_LOCAL5)
-        handler_syslog.setFormatter(
-            logging.Formatter(fmt='ipamanager: %(message)s'))
-        handler_syslog.setLevel(logging.INFO)
-        lg.addHandler(handler_syslog)
-        lg.debug('Syslog handler added to root logger')
-    except socket.error as err:
-        lg.error('Syslog connection failed: %s', err)
+    facility = logging.handlers.SysLogHandler.LOG_LOCAL5
+    if _check_handler_present(lg, logging.handlers.SysLogHandler,
+                              ('facility', facility), ('address', '/dev/log')):
+        lg.debug('Syslog handler already added')
+    else:
+        try:
+            handler_syslog = logging.handlers.SysLogHandler(
+                address='/dev/log', facility=facility)
+            handler_syslog.setFormatter(
+                logging.Formatter(fmt='ipamanager: %(message)s'))
+            handler_syslog.setLevel(logging.INFO)
+            lg.addHandler(handler_syslog)
+            lg.debug('Syslog handler added to root logger')
+        except socket.error as err:
+            lg.error('Syslog connection failed: %s', err)
 
 
 def init_api_connection(loglevel):

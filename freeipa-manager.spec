@@ -1,6 +1,6 @@
 Name:           freeipa-manager
 Version:        1.6
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
 License:        BSD License 2.0
@@ -45,7 +45,9 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{_bindir}/ipamanager-pull-request
 
 %changelog
-* Tue May 14 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.5-1
+* Thu May 23 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.6-2
+- Do not re-add logging handlers if already setup
+* Tue May 14 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.6-1
 - Support includes in settings file
 * Tue May 14 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.5-1
 - Implement NSCA alerting plugin
