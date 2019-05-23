@@ -40,7 +40,7 @@ class TestConfigLoader(object):
                 'firstname_lastname', 'firstname_lastname_2', 'test_user']]
         self.expected_groups = [
             CONFIG_CORRECT + '/groups/group_%s.yaml' % group
-            for group in NUMBERS]
+            for group in ['four'] + NUMBERS]
         self.expected_hbac_rules = [
             CONFIG_CORRECT + '/hbacrules/rule_%s.yaml' % rule
             for rule in NUMBERS]
@@ -208,8 +208,9 @@ class TestConfigLoader(object):
         assert set(hbacsvcgroup.keys()) == set([
             'hbacsvcgroup-one', 'hbacsvcgroup-two', 'hbacsvcgroup-three'])
         groups = self.loader.entities['group']
-        assert len(groups) == 2
-        assert set(groups.keys()) == set(['group-two', 'group-three-users'])
+        assert len(groups) == 3
+        assert set(groups.keys()) == set(
+            ['group-two', 'group-three-users', 'group-four-users'])
         service = self.loader.entities['service']
         assert len(service) == 3
         assert set(service.keys()) == set([
@@ -245,7 +246,7 @@ class TestConfigLoader(object):
             ('ConfigLoader', 'INFO',
              ('Not creating ignored group group-one-users '
               'from groups/group_one.yaml')),
-            ('ConfigLoader', 'INFO', 'Parsed 2 groups'))
+            ('ConfigLoader', 'INFO', 'Parsed 3 groups'))
 
     @log_capture('ConfigLoader', level=logging.INFO)
     def test_load_no_apply_ignored(self, captured_log):
@@ -269,9 +270,10 @@ class TestConfigLoader(object):
         assert set(hbacsvcgroup.keys()) == set([
             'hbacsvcgroup-one', 'hbacsvcgroup-two', 'hbacsvcgroup-three'])
         groups = self.loader.entities['group']
-        assert len(groups) == 3
+        assert len(groups) == 4
         assert set(groups.keys()) == set([
-            'group-one-users', 'group-two', 'group-three-users'])
+            'group-one-users', 'group-two',
+            'group-three-users', 'group-four-users'])
         service = self.loader.entities['service']
         assert len(service) == 3
         assert set(service.keys()) == set([
@@ -301,7 +303,7 @@ class TestConfigLoader(object):
             ('ConfigLoader', 'INFO', 'Parsed 3 services'),
             ('ConfigLoader', 'INFO', 'Parsed 3 sudorules'),
             ('ConfigLoader', 'INFO', 'Parsed 3 users'),
-            ('ConfigLoader', 'INFO', 'Parsed 3 groups'))
+            ('ConfigLoader', 'INFO', 'Parsed 4 groups'))
 
     @log_capture('ConfigLoader', level=logging.INFO)
     def test_load_empty(self, captured_log):
