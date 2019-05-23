@@ -180,8 +180,75 @@ class TestQueryTool(object):
         member = self.querytool.entities['user']['firstname.lastname2']
         assert self.querytool._construct_path(entity, member) == []
 
+    def _mock_find(self, *missing):
+        def f(entities, entity_type, name):
+            for t, n in missing:
+                if t == entity_type and n == name:
+                    return None
+            return 'mock_entity: <%s %s>' % (entity_type, name)
+        return f
+
+    def test_check_user_membership(self):
+        self.querytool.check_membership = mock.Mock()
+        self.querytool.check_membership.return_value = [['user1', 'group-one']]
+        with mock.patch('%s.find_entity' % modulename, self._mock_find()):
+            ret = self.querytool.check_user_membership('user1', 'group-one')
+        self.querytool.check_membership.assert_called_with(
+            'mock_entity: <user user1>', 'mock_entity: <group group-one>')
+        assert ret
+
+    def test_check_user_membership_not_a_member(self):
+        self.querytool.check_membership = mock.Mock()
+        self.querytool.check_membership.return_value = []
+        with mock.patch('%s.find_entity' % modulename, self._mock_find()):
+            ret = self.querytool.check_user_membership('user1', 'group-one')
+        self.querytool.check_membership.assert_called_with(
+            'mock_entity: <user user1>', 'mock_entity: <group group-one>')
+        assert not ret
+
+    def test_check_user_membership_user_not_found(self):
+        mock_find_inst = self._mock_find(('user', 'user1'))
+        with mock.patch('%s.find_entity' % modulename, mock_find_inst):
+            with pytest.raises(tool.ManagerError) as exc:
+                self.querytool.check_user_membership('user1', 'group-one')
+        assert exc.value[0] == 'User user1 does not exist in config'
+
+    def test_check_user_membership_group_not_found(self):
+        mock_find_inst = self._mock_find(('group', 'group-one'))
+        with mock.patch('%s.find_entity' % modulename, mock_find_inst):
+            with pytest.raises(tool.ManagerError) as exc:
+                self.querytool.check_user_membership('user1', 'group-one')
+        assert exc.value[0] == 'Group group-one does not exist in config'
+
+    def test_list_groups(self):
+        self.querytool.build_graph = mock.Mock()
+        self.querytool.build_graph.return_value = set()
+        for i in range(5):
+            mock_group = mock.Mock()
+            mock_group.name = 'group%d' % i
+            self.querytool.build_graph.return_value.add(mock_group)
+        with mock.patch('%s.find_entity' % modulename, self._mock_find()):
+            ret = self.querytool.list_groups('user1')
+        self.querytool.build_graph.assert_called_with(
+            'mock_entity: <user user1>')
+        assert ret.__class__.__name__ == 'generator'
+        assert set(ret) == set('group%d' % i for i in range(5))
+
+    def test_list_groups_user_not_found(self):
+        with mock.patch('%s.find_entity' % modulename) as mock_find:
+            mock_find.return_value = None
+            with pytest.raises(tool.ManagerError) as exc:
+                self.querytool.list_groups('user1')
+        assert exc.value[0] == 'User user1 does not exist in config'
+
 
 class TestQueryToolTopLevel(object):
+    @mock.patch('%s.QueryTool' % modulename)
+    def test_load_query_tool(self, mock_querytool):
+        querytool = tool.load_query_tool('config', 'settings')
+        assert querytool == mock_querytool.return_value
+        querytool.load.assert_called_with()
+
     def test_entity_type(self):
         assert tool._entity_type(
             'sometype:somename') == ('sometype', 'somename')

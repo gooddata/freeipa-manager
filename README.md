@@ -125,6 +125,16 @@ For example, to find if a group called `group1` is a member of the group `group2
 ipamanager-query member config-repo -m group:group1 -e group:group2
 ```
 
+The QueryTool functionality can also be imported to use from other Python code:
+```python
+from ipamanager.tools.query_tool import load_query_tool
+
+querytool = load_query_tool('config_repo', 'settings.yaml')
+querytool.check_user_membership('user.name', 'group-name')  # True/False
+for group in querytool.list_groups('user.name'):  # returns iterator
+    print group
+```
+
 ### Dry run
 The *dry run* mode can be choosen with `-d` or `--dry-run` flag.
 
