@@ -21,25 +21,24 @@ import socket
 import time
 
 from ipamanager.errors import ManagerError
-from ipamanager.utils import init_logging
+from ipamanager.tools.core import FreeIPAManagerToolCore
 
 
-class GitHubForwarder(object):
+class GitHubForwarder(FreeIPAManagerToolCore):
     """
     Responsible for updating FreeIPA server with changed configuration.
     """
-    def __init__(self):
+    def __init__(self, args=None):
         """
         Create a GitHub forwarder object.
         """
+        self._parse_args(args)
         self.name = socket.getfqdn().replace('.int.', '.')
         self.msg = 'Entity dump from %s' % self.name
-        self._parse_args()
-        init_logging(self.args.loglevel)
-        self.lg = logging.getLogger(self.__class__.__name__)
         # configure the repo path to be used for all git command calls
         self.git = sh.git.bake(_cwd=self.args.path)
         self.changes = False
+        super(GitHubForwarder, self).__init__(self.args.loglevel)
 
     def run(self):
         """
@@ -168,7 +167,7 @@ class GitHubForwarder(object):
             else:
                 raise ManagerError('Creating PR failed: %s' % err)
 
-    def _parse_args(self):
+    def _parse_args(self, args=None):
         parser = argparse.ArgumentParser(description='GitHubForwarder')
         parser.add_argument('path', help='Config repository path')
         parser.add_argument('-b', '--branch', help='Branch to commit to',
@@ -195,7 +194,7 @@ class GitHubForwarder(object):
         parser_verbose.add_argument(
             '-d', '--debug', action='store_const',
             dest='loglevel', const=logging.DEBUG, help='Debug mode')
-        self.args = parser.parse_args()
+        self.args = parser.parse_args(args)
 
 
 def main():
