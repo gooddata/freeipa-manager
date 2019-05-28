@@ -170,6 +170,51 @@ class QueryTool(FreeIPAManagerToolCore):
         self.lg.debug('Found %d paths %s -> %s', len(paths), member, entity)
         return paths
 
+    def check_user_membership(self, user, group):
+        """
+        Check if `user` is a member of a `group`.
+        This function serves as a wrapper for easy usage from other scripts.
+        :param str user: name of the user to check
+        :param str group: name of the group to check
+        :returns: True if `user` is a member of `group`, False otherwise
+        :rtype: bool
+        """
+        user_entity = find_entity(self.entities, 'user', user)
+        if not user_entity:
+            raise ManagerError('User %s does not exist in config' % user)
+        group_entity = find_entity(self.entities, 'group', group)
+        if not group_entity:
+            raise ManagerError('Group %s does not exist in config' % group)
+        return bool(self.check_membership(user_entity, group_entity))
+
+    def list_groups(self, user):
+        """
+        Find all groups that `user` is a member of.
+        This function serves as a wrapper for easy import into other scripts.
+        :param str user: name of the user to check
+        :returns: generator of group names that `user` is a member of
+        :rtype: generator
+        """
+        user_entity = find_entity(self.entities, 'user', user)
+        if not user_entity:
+            raise ManagerError('User %s does not exist in config' % user)
+        groups = self.build_graph(user_entity)
+        return (i.name for i in groups)
+
+
+def load_query_tool(config, settings=None):
+    """
+    Initialize and return a QueryTool instance.
+    This function serves as a wrapper for easy import into other scripts.
+    :param str config: path to the config repository folder
+    :param str settings: path to the settings file
+    :returns: QueryTool instance that was initialized
+    :rtype: QueryTool
+    """
+    querytool = QueryTool(config, settings)
+    querytool.load()
+    return querytool
+
 
 def _parse_args(args=None):
     common = _args_common()

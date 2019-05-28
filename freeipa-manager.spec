@@ -1,6 +1,6 @@
 Name:           freeipa-manager
 Version:        1.7
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
 License:        BSD License 2.0
@@ -46,6 +46,8 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{_bindir}/ipamanager-query
 
 %changelog
+* Tue May 28 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.7-2
+- Make ipamanager.tools.QueryTool easier to import
 * Tue May 28 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.7-1
 - Add a query tool into ipamanager.tools
 * Thu May 23 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.6-2
