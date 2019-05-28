@@ -4,3 +4,5 @@ group-one-users:
   memberOf:
     group:
       - group-two
+  metaparams:
+    labels: [approval, security]
