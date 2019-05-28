@@ -1,0 +1,4 @@
+---
+group-four-users:
+  memberOf:
+    group: [group-three-users]

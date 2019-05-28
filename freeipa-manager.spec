@@ -1,6 +1,6 @@
 Name:           freeipa-manager
-Version:        1.6
-Release:        2%{?dist}
+Version:        1.7
+Release:        1%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
 License:        BSD License 2.0
@@ -45,6 +45,8 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{_bindir}/ipamanager-pull-request
 
 %changelog
+* Tue May 28 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.7-1
+- Add a query tool into ipamanager.tools
 * Thu May 23 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.6-2
 - Do not re-add logging handlers if already setup
 * Tue May 14 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.6-1

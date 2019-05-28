@@ -9,4 +9,5 @@ firstname.lastname2:
   title: Sr. SW Enginner
   memberOf:
     group:
+      - group-four-users
       - group-three-users
