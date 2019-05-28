@@ -43,6 +43,7 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{python_sitelib}/ipamanager*
 %{_bindir}/ipamanager
 %{_bindir}/ipamanager-pull-request
+%{_bindir}/ipamanager-query
 
 %changelog
 * Tue May 28 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.7-1
