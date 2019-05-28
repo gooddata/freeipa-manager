@@ -119,10 +119,50 @@ ipamanager-pull-request -b new-changes -B master -o my-organization -r config-re
 #### query-tool
 Query the config repo for various meta-values or relationships between entities.
 
-For example, to find if a group called `group1` is a member of the group `group2`
-(including indirect membership), run:
+##### member
+The `member` query functionality enables searching for nested membership relations
+between entities. For example, to find if a group called `group1` is a member of
+the group `group2` (including indirect membership), run:
 ```
-ipamanager-query member config-repo -m group:group1 -e group:group2
+ipamanager-query member <config-repo> -m <group:group1> -e <group:group2>
+```
+
+##### labels
+The `labels` functionality allows defining security labels that can be assigned
+to users and groups; a user is then required to have the security labels that match
+those of the groups they are a member of.
+
+The labels are defined as a key in the entities' `metaparams` mapping. For instance,
+we could have a user and a group with the following labels:
+```yaml
+---
+user1:
+  ...
+  metaparams:
+    labels: [label1, label2]
+---
+group1:
+  ...
+  metaparams:
+    labels: [label2, label3]
+```
+In this case, `user1` would need to be granted the `label3` label in order to be
+able to be a member of `group1`.
+
+The `labels` command, along with appropriate subcommand, is used to access this
+functionality via CLI.
+```
+# check if label is required by group
+ipamanager-query labels check label <group> <config-repo>
+
+# list labels that a user is missing, based on their groups
+ipamanager-query labels missing <user> <config-repo>
+
+# list all labels required by a group
+ipamanager-query labels necessary <group> <config-repo>
+
+# check if user has all labels required to be a member of group
+ipamanager-query labels user <user> <group> <config-repo>
 ```
 
 The QueryTool functionality can also be imported to use from other Python code:
@@ -133,6 +173,13 @@ querytool = load_query_tool('config_repo', 'settings.yaml')
 querytool.check_user_membership('user.name', 'group-name')  # True/False
 for group in querytool.list_groups('user.name'):  # returns iterator
     print group
+
+querytool.check_label_necessary('label', 'group')  # True/False
+for label in querytool.list_user_missing_labels('user'):
+    print label
+for label in querytool.list_necessary_labels('group'):
+    print label
+querytool.check_user_necessary_labels('user', 'group')  # True/False
 ```
 
 ### Dry run
