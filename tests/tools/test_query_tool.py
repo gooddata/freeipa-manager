@@ -27,6 +27,10 @@ class TestQueryTool(object):
             if not re.match(r'^test_(run|load)', method.func_name):
                 with LogCapture():
                     self.querytool.load()
+                if not method.func_name.startswith('test_list_necessary'):
+                    self.querytool._list_necessary_labels = mock.Mock()
+                    self.querytool._list_necessary_labels.return_value = [
+                        'label1', 'label2']
             self.querytool.graph = {}
             self.querytool.ancestors = {}
             self.querytool.paths = {}
@@ -43,10 +47,17 @@ class TestQueryTool(object):
         mock_load_settings.assert_called_with(os.path.join(
             testdir, '../freeipa-manager-config/correct/settings_common.yaml'))
 
-    def test_run(self):
+    def test_run_member(self):
         self.querytool._query_membership = mock.Mock()
-        self.querytool.run('member', [], [])
+        args = argparse.Namespace(action='member', members=[], entities=[])
+        self.querytool.run(args)
         self.querytool._query_membership.assert_called_with([], [])
+
+    def test_run_labels(self):
+        self.querytool._query_labels = mock.Mock()
+        args = argparse.Namespace(action='labels')
+        self.querytool.run(args)
+        self.querytool._query_labels.assert_called_with(args)
 
     @log_capture()
     @mock.patch('%s.IntegrityChecker' % modulename)
@@ -241,6 +252,217 @@ class TestQueryTool(object):
                 self.querytool.list_groups('user1')
         assert exc.value[0] == 'User user1 does not exist in config'
 
+    def test_query_labels_check_necessary(self):
+        self.querytool.check_label_necessary = mock.Mock()
+        self.querytool.check_label_necessary.return_value = True
+        args = argparse.Namespace(action='labels', subaction='check',
+                                  label='label', group='group')
+        self.querytool._query_labels(args)
+        self.querytool.check_label_necessary.assert_called_with(
+            'label', 'group')
+
+    def test_query_labels_check_not_necessary(self):
+        self.querytool.check_label_necessary = mock.Mock()
+        self.querytool.check_label_necessary.return_value = False
+        args = argparse.Namespace(action='labels', subaction='check',
+                                  label='label', group='group')
+        self.querytool._query_labels(args)
+        self.querytool.check_label_necessary.assert_called_with(
+            'label', 'group')
+
+    def test_query_labels_missing_missing(self):
+        self.querytool.list_user_missing_labels = mock.Mock()
+        self.querytool.list_user_missing_labels.return_value = [
+            'label2', 'label3']
+        args = argparse.Namespace(
+            action='labels', subaction='missing', user='user')
+        self.querytool._query_labels(args)
+        self.querytool.list_user_missing_labels.assert_called_with('user')
+
+    def test_query_labels_missing_not_missing(self):
+        self.querytool.list_user_missing_labels = mock.Mock()
+        self.querytool.list_user_missing_labels.return_value = []
+        args = argparse.Namespace(
+            action='labels', subaction='missing', user='user')
+        self.querytool._query_labels(args)
+        self.querytool.list_user_missing_labels.assert_called_with('user')
+
+    def test_query_labels_necessary_necessary(self):
+        self.querytool.list_necessary_labels = mock.Mock()
+        self.querytool.list_necessary_labels.return_value = [
+            'label2', 'label3']
+        args = argparse.Namespace(
+            action='labels', subaction='necessary', group='group')
+        self.querytool._query_labels(args)
+        self.querytool.list_necessary_labels.assert_called_with('group')
+
+    def test_query_labels_necessary_not_necessary(self):
+        self.querytool.list_necessary_labels = mock.Mock()
+        self.querytool.list_necessary_labels.return_value = []
+        args = argparse.Namespace(
+            action='labels', subaction='necessary', group='group')
+        self.querytool._query_labels(args)
+        self.querytool.list_necessary_labels.assert_called_with('group')
+
+    def test_query_labels_user_all_labels(self):
+        self.querytool.check_user_necessary_labels = mock.Mock()
+        self.querytool.check_user_necessary_labels.return_value = True
+        args = argparse.Namespace(
+            action='labels', subaction='user', group='group', user='user')
+        self.querytool._query_labels(args)
+        self.querytool.check_user_necessary_labels.assert_called_with(
+            'user', 'group')
+
+    def test_query_labels_user_labels_missing(self):
+        self.querytool.check_user_necessary_labels = mock.Mock()
+        self.querytool.check_user_necessary_labels.return_value = False
+        args = argparse.Namespace(
+            action='labels', subaction='user', group='group', user='user')
+        self.querytool._query_labels(args)
+        self.querytool.check_user_necessary_labels.assert_called_with(
+            'user', 'group')
+
+    def test_get_labels(self):
+        data = {'metaparams': {'labels': ['label1', 'label2']}}
+        entity = entities.FreeIPAUserGroup('test-group', data)
+        assert self.querytool._get_labels(entity) == ['label1', 'label2']
+
+    def test_get_labels_empty(self):
+        entity = entities.FreeIPAUserGroup('test-group', {})
+        assert self.querytool._get_labels(entity) == []
+
+    def test_list_necessary_labels(self):
+        entity = self.querytool.entities['group']['group-one-users']
+        assert self.querytool._list_necessary_labels(entity) == ['review']
+
+    def test_list_necessary_labels_include_self(self):
+        entity = self.querytool.entities['group']['group-one-users']
+        assert self.querytool._list_necessary_labels(
+            entity, include_self=True) == ['review', 'approval', 'security']
+
+    @log_capture()
+    @mock.patch('%s.find_entity' % modulename)
+    def test_check_label_necessary(self, mock_find, log):
+        mock_find.return_value = 'entity'
+        assert self.querytool.check_label_necessary('label1', 'group1')
+        log.check(('QueryTool', 'INFO',
+                   'Label label1 IS necessary for group group1'))
+
+    @log_capture()
+    @mock.patch('%s.find_entity' % modulename)
+    def test_check_label_necessary_not_needed(self, mock_find, log):
+        mock_find.return_value = 'entity'
+        assert not self.querytool.check_label_necessary('label3', 'group1')
+        log.check(('QueryTool', 'INFO',
+                   "Label label3 ISN'T necessary for group group1"))
+
+    @mock.patch('%s.find_entity' % modulename)
+    def test_check_label_necessary_group_not_found(self, mock_find):
+        mock_find.return_value = None
+        with pytest.raises(tool.ManagerError) as exc:
+            self.querytool.check_label_necessary('label3', 'group1')
+        assert exc.value[0] == 'Group group1 does not exist in config'
+
+    @log_capture()
+    @mock.patch('%s.find_entity' % modulename)
+    def test_list_user_missing_labels(self, mock_find, log):
+        mock_find.return_value = 'user'
+        self.querytool._get_labels = mock.Mock()
+        self.querytool._get_labels.return_value = ['label1', 'label2']
+        self.querytool.list_necessary_labels = mock.Mock()
+        self.querytool.list_necessary_labels.return_value = [
+            'label1', 'label3']
+        assert self.querytool.list_user_missing_labels('user1') == {'label3'}
+        log.check(('QueryTool', 'INFO', 'User user1 misses labels: {label3}'))
+
+    @log_capture()
+    @mock.patch('%s.find_entity' % modulename)
+    def test_list_user_missing_labels_no_missing(self, mock_find, log):
+        mock_find.return_value = 'user'
+        self.querytool._get_labels = mock.Mock()
+        self.querytool._get_labels.return_value = ['label']
+        self.querytool.list_necessary_labels = mock.Mock()
+        self.querytool.list_necessary_labels.return_value = ['label', 'label3']
+        assert self.querytool.list_user_missing_labels('user1') == {'label3'}
+        log.check(('QueryTool', 'INFO', 'User user1 misses labels: {label3}'))
+
+    @mock.patch('%s.find_entity' % modulename)
+    def test_list_user_missing_labels_user_not_found(self, mock_find):
+        mock_find.return_value = None
+        with pytest.raises(tool.ManagerError) as exc:
+            self.querytool.list_user_missing_labels('user1')
+        assert exc.value[0] == 'User user1 does not exist in config'
+
+    @log_capture()
+    @mock.patch('%s.find_entity' % modulename)
+    def test_public_list_necessary_labels(self, mock_find, log):
+        mock_find.return_value = 'entity'
+        self.querytool._list_necessary_labels.return_value = ['label1']
+        ret = self.querytool.list_necessary_labels('group1')
+        assert ret == ['label1']
+        self.querytool._list_necessary_labels.assert_called_with(
+            'entity', include_self=True)
+        log.check(('QueryTool', 'INFO',
+                   'Group group1 requires labels: [label1]'))
+
+    @log_capture()
+    @mock.patch('%s.find_entity' % modulename)
+    def test_public_list_necessary_labels_no_required(self, mock_find, log):
+        mock_find.return_value = 'entity'
+        self.querytool._list_necessary_labels.return_value = []
+        ret = self.querytool.list_necessary_labels('group1')
+        assert ret == []
+        self.querytool._list_necessary_labels.assert_called_with(
+            'entity', include_self=True)
+        log.check(('QueryTool', 'INFO',
+                   'Group group1 requires NO labels'))
+
+    @mock.patch('%s.find_entity' % modulename)
+    def test_public_list_necessary_labels_group_notfound(self, mock_find):
+        mock_find.return_value = None
+        with pytest.raises(tool.ManagerError) as exc:
+            self.querytool.list_necessary_labels('group1')
+        assert exc.value[0] == 'Group group1 does not exist in config'
+
+    @log_capture()
+    @mock.patch('%s.find_entity' % modulename)
+    def test_check_user_necessary_labels(self, mock_find, log):
+        mock_find.return_value = 'entity'
+        self.querytool._get_labels = mock.Mock()
+        self.querytool._get_labels.return_value = ['label1', 'label2']
+        assert self.querytool.check_user_necessary_labels('user1', 'group1')
+        log.check(
+            ('QueryTool', 'INFO',
+             'User user1 DOES have all required labels for group group1'))
+
+    @log_capture()
+    @mock.patch('%s.find_entity' % modulename)
+    def test_check_user_necessary_labels_missing(self, mock_find, log):
+        mock_find.return_value = 'entity'
+        self.querytool._get_labels = mock.Mock()
+        self.querytool._get_labels.return_value = ['label1']
+        assert not self.querytool.check_user_necessary_labels(
+            'user1', 'group1')
+        log.check(
+            ('QueryTool', 'INFO',
+             'User user1 DOES NOT have required labels for group group1'))
+
+    def test_check_user_necessary_labels_user_not_found(self):
+        mock_find_inst = self._mock_find(('user', 'user1'))
+        with mock.patch('%s.find_entity' % modulename, mock_find_inst):
+            with pytest.raises(tool.ManagerError) as exc:
+                self.querytool.check_user_necessary_labels('user1', 'group1')
+        assert exc.value[0] == 'User user1 does not exist in config'
+
+    @log_capture()
+    def test_check_user_necessary_labels_group_not_found(self, log):
+        mock_find_inst = self._mock_find(('group', 'group1'))
+        with mock.patch('%s.find_entity' % modulename, mock_find_inst):
+            with pytest.raises(tool.ManagerError) as exc:
+                self.querytool.check_user_necessary_labels('user1', 'group1')
+        assert exc.value[0] == 'Group group1 does not exist in config'
+        log.check()
+
 
 class TestQueryToolTopLevel(object):
     @mock.patch('%s.QueryTool' % modulename)
@@ -285,5 +507,4 @@ class TestQueryToolTopLevel(object):
         mock_querytool.assert_called_with('config', 'settings.yam', 20)
         mock_querytool.return_value.load.assert_called_with()
         mock_querytool.return_value.run.assert_called_with(
-            'member', [('group', 'group1'), ('user', 'user1')],
-            [('group', 'group2')])
+            mock_parse_args.return_value)
