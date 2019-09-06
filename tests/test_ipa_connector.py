@@ -551,6 +551,18 @@ class TestIpaUploader(TestIpaConnectorBase):
              '11 commands, 120 remote entities (9.17 %)'),
             ('IpaUploader', 'DEBUG', 'Threshold check passed'))
 
+    def test_check_threshold_over_100(self):
+        self._create_uploader(threshold=100)
+        self.uploader.commands = [
+            tool.Command('cmd%d' % i, {}, '', '') for i in range(1, 100)]
+        self.uploader.ipa_entity_count = 10
+        with LogCapture('IpaUploader', level=logging.DEBUG) as log:
+            self.uploader._check_threshold()
+        log.check(
+            ('IpaUploader', 'DEBUG',
+             '99 commands, 10 remote entities (100.00 %)'),
+            ('IpaUploader', 'DEBUG', 'Threshold check passed'))
+
     def test_check_threshold_empty_ipa(self):
         self._create_uploader(threshold=10)
         self.uploader.commands = [

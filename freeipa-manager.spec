@@ -1,6 +1,6 @@
 Name:           freeipa-manager
 Version:        1.8
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
 License:        BSD License 2.0
@@ -46,6 +46,8 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{_bindir}/ipamanager-query
 
 %changelog
+* Wed May 29 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.8-1
+- Fix change threshold calculation (cap values to 100 %)
 * Wed May 29 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.8-1
 - Add label processing to ipamanager.tools.QueryTool
 * Tue May 28 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.7-2
