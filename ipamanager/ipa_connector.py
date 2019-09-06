@@ -232,10 +232,12 @@ class IpaUploader(IpaConnector):
                     'There were %d errors executing update' % len(self.errs))
 
     def _check_threshold(self):
-        if not self.ipa_entity_count:  # avoid divison by zero on empty IPA
-            ratio = 100
-        else:
-            ratio = 100 * float(len(self.commands))/self.ipa_entity_count
+        try:
+            abs_ratio = float(len(self.commands)) / self.ipa_entity_count
+        except ZeroDivisionError:
+            abs_ratio = 1
+        # cap change ratio to 100 % to avoid threshold issues
+        ratio = min(abs_ratio * 100, 100)
         self.lg.debug('%d commands, %d remote entities (%.2f %%)',
                       len(self.commands), self.ipa_entity_count, ratio)
         if ratio > self.threshold:
