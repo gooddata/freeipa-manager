@@ -225,6 +225,37 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                                      'dump_repo', False, True, ['user'])
         manager.downloader.pull.assert_called()
 
+    def test_run_diff(self):
+        with mock.patch(
+                'ipamanager.freeipa_manager.FreeIPADifference') as mock_diff:
+            manager = self._init_tool(['diff', 'repo1', 'repo2'])
+            manager.run()
+        mock_diff.assert_called_with('repo1', 'repo2')
+        mock_diff.return_value.run.assert_called_with()
+
+    @mock.patch('ipamanager.freeipa_manager.FreeIPATemplate')
+    @mock.patch('ipamanager.freeipa_manager.ConfigTemplateLoader')
+    def test_run_template(self, mock_loader, mock_template):
+        mock_loader.return_value.load_config.return_value = [{
+            'subcluster1': {'datacenters': {'a1': 10, 'a2': 20},
+                            'separate_sudo': True,
+                            'separate_foreman_view': False},
+            'subcluster2': {'datacenters': {'a2': 20, 'a3': 30},
+                            'separate_sudo': False,
+                            'separate_foreman_view': True}
+        }]
+        self._init_tool(['template', 'repo', 'template.file']).run()
+        mock_loader.assert_called_with('template.file')
+        assert all(item in mock_template.call_args_list for item in [
+            mock.call('subcluster2', {'datacenters': {'a3': 30, 'a2': 20},
+                                      'separate_sudo': False,
+                                      'separate_foreman_view': True},
+                      'repo', False),
+            mock.call('subcluster1', {'datacenters': {'a1': 10, 'a2': 20},
+                                      'separate_sudo': True,
+                                      'separate_foreman_view': False},
+                      'repo', False)])
+
     def _mock_load(self):
         def f(manager, *args, **kwargs):
             self.mock_load_args = (args, kwargs)

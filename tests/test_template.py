@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright © 2017-2019, GoodData Corporation. All rights reserved.
 import logging
+import mock
 import os
 import pytest
 import yaml
@@ -224,6 +225,26 @@ class TestTemplate(object):
             "primitive-dummy-yy-19-full-access, group primitive-dummy-zz-15-full-access]")),
             ('FreeIPATemplate', 'INFO', 'Run without -d option to create'))
 
+    @log_capture('FreeIPATemplate', level=logging.INFO)
+    @mock.patch('ipamanager.template.FreeIPATemplate._dump_entities')
+    def test_create_dry_run_off(self, mock_dump, captured_log):
+        tool.FreeIPATemplate('dummy', self.data, 'dummy_path', dry_run=False).create()
+        mock_dump.assert_called_with()
+        captured_log.check(
+            ('FreeIPATemplate', 'INFO',
+             ('Succesfully created YAML files: [group aggregate-dummy-full, '
+              'hostgroup dummy-15, hostgroup dummy-19, hostgroup dummy-42, '
+              'hostgroup dummy-666, hbacrule dummy-xx-42-full-access, hbacrule'
+              ' dummy-xx-666-full-access, hbacrule dummy-yy-19-full-access, '
+              'hbacrule dummy-zz-15-full-access, group foreman-dummy-xx-42-'
+              'full, group foreman-dummy-xx-666-full, group foreman-dummy-yy-'
+              '19-full, group foreman-dummy-zz-15-full, group primitive-dummy'
+              '-xx-42-full-access, group primitive-dummy-xx-666-full-access, '
+              'group primitive-dummy-yy-19-full-access, '
+              'group primitive-dummy-zz-15-full-access]')),
+            ('FreeIPATemplate', 'INFO',
+             'Please review them manually and then commit them'))
+
     def test_dump_files(self, tmpdir):
         self.template_tool.path_repo = tmpdir.strpath
         self.template_tool._create_hostgroup('xx', '666')
@@ -252,3 +273,31 @@ class TestTemplate(object):
         assert exc.value[0] == (
             "Error validating config file tests/example_template.yaml: required key"
             " not provided @ data['dummy']['datacenters']")
+
+
+class TestConfigTemplateLoader(object):
+    def setup_method(self, method):
+        self.loader = tool.ConfigTemplateLoader('tests/example_template.yaml')
+
+    def test_load_config_ok(self):
+        data = self.loader.load_config()
+        assert isinstance(data, list)
+        assert any(isinstance(item, dict) for item in data)
+
+    @mock.patch('__builtin__.open')
+    def test_load_config_io_error(self, mock_open):
+        mock_open.side_effect = IOError('[Err 21] No such file')
+        with pytest.raises(tool.ConfigError) as exc:
+            self.loader.load_config()
+        assert exc.value[0] == (
+            'Error reading config file tests/example_template.yaml: '
+            '[Err 21] No such file')
+
+    @mock.patch('__builtin__.open')
+    def test_load_config_yaml_error(self, mock_open):
+        mock_open.side_effect = tool.yaml.YAMLError('Bad format')
+        with pytest.raises(tool.ConfigError) as exc:
+            self.loader.load_config()
+        assert exc.value[0] == (
+            'Error parsing config file tests/example_template.yaml: '
+            'Bad format')
