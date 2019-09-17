@@ -1,3 +1,4 @@
+argcomplete
 pyyaml
 requests
 sh

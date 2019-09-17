@@ -8,6 +8,7 @@ FreeIPA Manager - utility module
 Various utility functions for better code readability & organization.
 """
 
+import argcomplete
 import argparse
 import logging
 import logging.handlers
@@ -125,7 +126,8 @@ def _args_common():
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument('config', help='Config repository path')
     common.add_argument('-p', '--pull-types', nargs='+', default=['user'],
-                        help='Types of entities to pull')
+                        help='Types of entities to pull',
+                        choices=[cls.entity_name for cls in ENTITY_CLASSES])
     common.add_argument('-s', '--settings', help='Settings file')
     common.add_argument('-v', '--verbose', action='count', default=0,
                         dest='loglevel', help='Verbose mode (-vv for debug)')
@@ -173,6 +175,7 @@ def parse_args():
         help='Load all entities (including ignored ones)')
     roundtrip.set_defaults(action='roundtrip')
 
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
     # type & action cannot be combined in arg constructor, so parse -v here
     args.loglevel = _type_verbosity(args.loglevel)

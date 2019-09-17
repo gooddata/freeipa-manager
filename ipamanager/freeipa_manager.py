@@ -27,8 +27,9 @@ class FreeIPAManager(FreeIPAManagerCore):
     Main runnable class responsible for coordinating module functionality.
     """
     def __init__(self):
-        super(FreeIPAManager, self).__init__()
+        # parse_args is called by argcomplete; must be as fast as possible
         self.args = utils.parse_args()
+        super(FreeIPAManager, self).__init__()
         utils.init_logging(self.args.loglevel)
         self._load_settings()
 

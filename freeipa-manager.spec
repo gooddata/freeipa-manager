@@ -1,6 +1,6 @@
 Name:           freeipa-manager
 Version:        1.8
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
 License:        BSD License 2.0
@@ -10,12 +10,13 @@ Source0:        %{name}.tar.gz
 Requires:       python
 Requires:       gdc-python-common
 Requires:       PyYAML >= 3.10
+Requires:       python-argcomplete
 Requires:       python-requests >= 2.6.0
 Requires:       python-sh >= 1.11
 Requires:       python-voluptuous >= 0.8.5
 Requires:       python2-yamllint >= 1.8.1
 Requires:       /usr/sbin/send_nsca
-BuildRequires:  python-setuptools python-psutil pytest
+BuildRequires:  pytest python-argcomplete python-psutil python-setuptools
 Conflicts:      gdc-ipa-utils < 6
 
 %description
@@ -37,6 +38,10 @@ mkdir -p $RPM_BUILD_ROOT
 export PACKAGE_VERSION=%{version}.%{release}
 %{__python} setup.py install -O1 --skip-build --root $RPM_BUILD_ROOT
 
+# install autocompletion script
+mkdir -p $RPM_BUILD_ROOT/etc/bash_completion.d
+register-python-argcomplete ipamanager > $RPM_BUILD_ROOT/etc/bash_completion.d/ipamanager
+
 %files
 %defattr(-,root,root,-)
 %{python_sitelib}/freeipa_manager*
@@ -44,9 +49,12 @@ export PACKAGE_VERSION=%{version}.%{release}
 %{_bindir}/ipamanager
 %{_bindir}/ipamanager-pull-request
 %{_bindir}/ipamanager-query
+/etc/bash_completion.d/ipamanager
 
 %changelog
-* Wed May 29 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.8-1
+* Tue Sep 10 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.8-3
+- Add Bash command autocompletion
+* Fri Sep 06 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.8-2
 - Fix change threshold calculation (cap values to 100 %)
 * Wed May 29 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.8-1
 - Add label processing to ipamanager.tools.QueryTool
