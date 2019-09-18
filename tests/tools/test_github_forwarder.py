@@ -45,6 +45,33 @@ class TestGitHubForwarder(object):
         with open('%s/%s.json' % (responses, name), 'r') as f:
             return f.read()
 
+    def test_run_no_action(self):
+        self.forwarder.args.commit = False
+        self.forwarder._commit = mock.Mock()
+        self.forwarder.args.pull_request = False
+        self.forwarder._create_pull_request = mock.Mock()
+        self.forwarder.run()
+        self.forwarder._commit.assert_not_called()
+        self.forwarder._create_pull_request.assert_not_called()
+
+    def test_run_commit(self):
+        self.forwarder.args.commit = True
+        self.forwarder._commit = mock.Mock()
+        self.forwarder.args.pull_request = False
+        self.forwarder._create_pull_request = mock.Mock()
+        self.forwarder.run()
+        self.forwarder._commit.assert_called_with()
+        self.forwarder._create_pull_request.assert_not_called()
+
+    def test_run_pull_request(self):
+        self.forwarder.args.commit = False
+        self.forwarder._commit = mock.Mock()
+        self.forwarder.args.pull_request = True
+        self.forwarder._create_pull_request = mock.Mock()
+        self.forwarder.run()
+        self.forwarder._commit.assert_called_with()
+        self.forwarder._create_pull_request.assert_called_with()
+
     def test_commit(self):
         def _mock_time(*args):
             return '01 Jan 2017 12:34:56'

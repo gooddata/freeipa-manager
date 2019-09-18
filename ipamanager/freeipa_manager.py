@@ -185,8 +185,6 @@ class FreeIPAManager(FreeIPAManagerCore):
         Load the settings file. The file contains integrity check settings,
         ignored entities configuration and other useful settings.
         """
-        if not self.args.settings:
-            raise ManagerError('No settings file configured')
         self.lg.debug('Loading settings file from %s', self.args.settings)
         try:
             self.settings = utils.load_settings(self.args.settings)
