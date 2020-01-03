@@ -1,4 +1,4 @@
-argcomplete
+argcomplete <= 1.10
 pyyaml
 requests
 sh
