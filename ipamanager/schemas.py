@@ -120,6 +120,7 @@ schema_permissions = {
     'description': str,
     'subtree': _item_or_list,
     'attributes': _item_or_list,
+    'filters': _item_or_list,
     'grantedRights': _item_or_list,
     'defaultAttr': _item_or_list,
     'location': _item_or_list,
