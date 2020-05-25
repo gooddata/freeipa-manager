@@ -555,13 +555,14 @@ class FreeIPAPermission(FreeIPAEntity):
     entity_name = 'permission'
     managed_attributes_pull = ['description', 'subtree', 'attrs',
                                'ipapermlocation', 'ipapermright',
-                               'ipapermdefaultattr']
+                               'ipapermdefaultattr', 'ipapermtargetfilter']
     managed_attributes_push = managed_attributes_pull
     key_mapping = {
         'grantedRights': 'ipapermright',
         'attributes': 'attrs',
         'location': 'ipapermlocation',
-        'defaultAttr': 'ipapermdefaultattr'
+        'defaultAttr': 'ipapermdefaultattr',
+        'filters': 'ipapermtargetfilter'
     }
     allowed_members = ['privilege']
     validation_schema = voluptuous.Schema(schemas.schema_permissions)

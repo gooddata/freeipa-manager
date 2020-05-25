@@ -1,6 +1,6 @@
 Name:           freeipa-manager
-Version:        1.8
-Release:        3%{?dist}
+Version:        1.9
+Release:        1%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
 License:        BSD License 2.0
@@ -52,6 +52,8 @@ register-python-argcomplete ipamanager > $RPM_BUILD_ROOT/etc/bash_completion.d/i
 /etc/bash_completion.d/ipamanager
 
 %changelog
+* Mon May 25 2020 Kristian Lesko <kristian.lesko@gooddata.com> - 1.9-1
+- Support filter parameters in permission entity
 * Tue Sep 10 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.8-3
 - Add Bash command autocompletion
 * Fri Sep 06 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.8-2
