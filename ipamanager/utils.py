@@ -250,6 +250,7 @@ def check_ignored(entity_class, name, ignored):
     :returns: True if entity should be ignored, False otherwise
     :rtype: bool
     """
+    print(dummy)
     for pattern in ignored.get(entity_class.entity_name, []):
         if re.match(pattern, name):
             return True

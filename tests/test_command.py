@@ -28,6 +28,7 @@ class TestCommand(object):
 
     @log_capture('Command', level=logging.INFO)
     def test_execute(self, captured_log):
+        a= dummy
         mock_api = mock.MagicMock()
         mock_api.Command.__getitem__.side_effect = self._api_call
         tool.Command('user_add', {'givenName': 'Test', 'sn': 'User'},

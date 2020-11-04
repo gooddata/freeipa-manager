@@ -21,7 +21,8 @@ from core import FreeIPAManagerCore
 from errors import ConfigError
 from schemas import schema_template
 
-
+print abc
+abc=xyz
 class FreeIPATemplate(FreeIPAManagerCore):
     """
     Class used for preparing the FreeIPA locally for a given subcluster from a
