@@ -1,0 +1,4 @@
+gdc.sonar.prebuild=export SUBFOLDER=
+gdc.sonar.prebuild=export DOCKER_REGISTRY=harbor.intgdc.com
+gdc.sonar.prebuild=cish tox-docker --github-ssh=false
+sonar.python.coverage.reportPaths=coverage.xml
