@@ -37,6 +37,8 @@ class NscaAlertingPlugin(AlertingPlugin):
             raise ConfigError(
                 'Parameter service must be defined for %s' % self.name)
 
+        self.nsca_hostname = config.get('nsca_hostname', socket.getfqdn())
+
     def _status_code(self):
         """
         Get the status code to dispatch to NSCA (0, 1 or 2) based on max_level.
@@ -50,7 +52,7 @@ class NscaAlertingPlugin(AlertingPlugin):
         return 0
 
     def _run_dispatch(self, code, message):
-        data = '%s;%s;%s;%s' % (socket.getfqdn(), self.service, code, message)
+        data = '%s;%s;%s;%s' % (self.nsca_hostname, self.service, code, message)
         self.lg.debug('Dispatching NSCA data: %s', data)
         sp = Popen((self.command, '-d', ';'),
                    stdin=PIPE, stdout=PIPE, stderr=PIPE)

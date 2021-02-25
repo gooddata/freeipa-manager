@@ -23,7 +23,8 @@ class TestAlerting(object):
                 'err': 'Some errors:'
             },
             'command': '/dev/null/send_nsca',
-            'service': 'ipamanager-push'
+            'service': 'ipamanager-push',
+            'nsca_hostname': 'freeipa-node'
         }
         if not method.func_name.startswith('test_init'):
             self.plugin = tool.NscaAlertingPlugin(self.config)
@@ -83,7 +84,6 @@ class TestAlerting(object):
     @mock.patch('ipamanager.alerting.nsca.Popen')
     @mock.patch('ipamanager.alerting.nsca.socket')
     def test_run_dispatch(self, mock_sock, mock_popen, log):
-        mock_sock.getfqdn.return_value = 'freeipa-node'
         ret = self.plugin._run_dispatch(7, 'some msg')
         mock_popen.assert_called_with(
             ('/dev/null/send_nsca', '-d', ';'), stdin=-1, stdout=-1, stderr=-1)
