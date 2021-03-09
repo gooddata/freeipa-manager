@@ -1,5 +1,5 @@
 Name:           freeipa-manager
-Version:        1.10
+Version:        1.11
 Release:        1%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
@@ -52,6 +52,8 @@ register-python-argcomplete ipamanager > $RPM_BUILD_ROOT/etc/bash_completion.d/i
 /etc/bash_completion.d/ipamanager
 
 %changelog
+* Mon Mar 10 2021 Kristian Lesko <kristian.lesko@gooddata.com> - 1.11-1
+- Support syncing users from Okta instead of Git
 * Mon May 25 2020 Kristian Lesko <kristian.lesko@gooddata.com> - 1.9-1
 - Support filter parameters in permission entity
 * Tue Sep 10 2019 Kristian Lesko <kristian.lesko@gooddata.com> - 1.8-3
