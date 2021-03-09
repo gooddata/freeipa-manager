@@ -87,8 +87,8 @@ class ConfigLoader(FreeIPAManagerCore):
         for name, attrs in data.iteritems():
             self.lg.debug('Creating entity %s', name)
             if self.ignore and check_ignored(entity_class, name, self.ignored):
-                self.lg.info('Not creating ignored %s %s from %s',
-                             entity_class.entity_name, name, fname)
+                self.lg.debug('Not creating ignored %s %s from %s',
+                              entity_class.entity_name, name, fname)
                 continue
             entity = entity_class(name, attrs, path)
             if name in self.entities[entity_class.entity_name]:

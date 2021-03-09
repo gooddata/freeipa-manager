@@ -33,7 +33,17 @@ schema_settings = {
             'hbacsvc', 'hbacsvcgroup'): [str]
     },
     'nesting-limit': int,
-    'user-group-pattern': str
+    'user-group-pattern': str,
+    'okta': {
+        'enabled': bool,
+        'ignore': [str],
+        Required('attributes'): [str],
+        Required('auth'): {
+            Required('org'): str,
+            Required('token_path'): str
+        },
+        'user_id_regex': str
+    }
 }
 
 

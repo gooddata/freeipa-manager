@@ -16,6 +16,7 @@ import sys
 import utils
 from core import FreeIPAManagerCore
 from config_loader import ConfigLoader
+from okta_loader import OktaLoader
 from difference import FreeIPADifference
 from errors import ManagerError
 from integrity_checker import IntegrityChecker
@@ -32,6 +33,9 @@ class FreeIPAManager(FreeIPAManagerCore):
         super(FreeIPAManager, self).__init__()
         utils.init_logging(self.args.loglevel)
         self._load_settings()
+        # Find if users should be pushed from Okta
+        self.okta_users = self.settings.get('okta', dict()).get(
+            'enabled', False)
 
     def run(self):
         """
@@ -87,12 +91,24 @@ class FreeIPAManager(FreeIPAManagerCore):
     def load(self, apply_ignored=True):
         """
         Load configurations from configuration repository at the given path.
-        :param bool apply_ignored: whether 'ignored' seetings
+        :param bool apply_ignored: whether 'ignored' settings
                                    should be taken into account
         """
         self.config_loader = ConfigLoader(
             self.args.config, self.settings, apply_ignored)
         self.entities = self.config_loader.load()
+
+        if self.okta_users:
+            # only groups defined both in IPA & Okta are taken for Okta users
+            ipa_groups = self.entities.get('group', []).keys()
+            self.okta_loader = OktaLoader(self.settings, ipa_groups)
+            if self.entities.get('user'):
+                self.lg.warning(
+                    '%d users parsed from Git but will be overwritten by Okta',
+                    len(self.entities['user']))
+            self.entities['user'] = self.okta_loader.load()
+            # parse Okta groups to use for constructing diff
+            self.okta_groups = self.okta_loader.load_groups()
 
     def check(self):
         """
@@ -119,7 +135,8 @@ class FreeIPAManager(FreeIPAManagerCore):
         utils.init_api_connection(self.args.loglevel)
         self.uploader = IpaUploader(
             self.settings, self.entities, self.args.threshold,
-            self.args.force, self.args.deletion)
+            self.args.force, self.args.deletion, self.okta_users,
+            self.okta_groups if self.okta_users else [])
         self.uploader.push()
 
     def pull(self):

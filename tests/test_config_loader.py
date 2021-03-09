@@ -174,7 +174,7 @@ class TestConfigLoader(object):
             'More than one entity parsed from users/test_user.yaml (2)'
         )
 
-    @log_capture('ConfigLoader', level=logging.INFO)
+    @log_capture('ConfigLoader', level=logging.DEBUG)
     def test_parse_ignored(self, captured_log):
         data = {'test.user': {'firstName': 'first', 'lastName': 'last'}}
         self.loader.entities['user'] = []
@@ -183,9 +183,11 @@ class TestConfigLoader(object):
             data, entities.FreeIPAUser,
             '%s/users/test_user.yaml' % CONFIG_CORRECT)
         assert self.loader.entities['user'] == []
-        captured_log.check(('ConfigLoader', 'INFO',
-                            ('Not creating ignored user test.user '
-                             'from users/test_user.yaml')))
+        captured_log.check(
+            ('ConfigLoader', 'DEBUG', 'Creating entity test.user'),
+            ('ConfigLoader', 'DEBUG',
+             'Not creating ignored user test.user '
+             'from users/test_user.yaml'))
 
     @log_capture('ConfigLoader', level=logging.INFO)
     def test_load(self, captured_log):
@@ -239,13 +241,7 @@ class TestConfigLoader(object):
             ('ConfigLoader', 'INFO', 'Parsed 3 roles'),
             ('ConfigLoader', 'INFO', 'Parsed 3 services'),
             ('ConfigLoader', 'INFO', 'Parsed 3 sudorules'),
-            ('ConfigLoader', 'INFO',
-             ('Not creating ignored user firstname.lastname '
-              'from users/firstname_lastname.yaml')),
             ('ConfigLoader', 'INFO', 'Parsed 2 users'),
-            ('ConfigLoader', 'INFO',
-             ('Not creating ignored group group-one-users '
-              'from groups/group_one.yaml')),
             ('ConfigLoader', 'INFO', 'Parsed 3 groups'))
 
     @log_capture('ConfigLoader', level=logging.INFO)
