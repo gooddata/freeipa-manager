@@ -506,6 +506,54 @@ class TestFreeIPAUser(object):
         assert all(isinstance(i, unicode) for i in result.itervalues())
 
 
+class TestFreeIPAOktaUser(object):
+    def test_create_user_correct(self):
+        data = {
+            'disabled': True,
+            'email': 'some.name@devgdc.com',
+            'firstName': 'Some',
+            'lastName': 'Name',
+            'githubLogin': 'some-name-123',
+            'manager': '',
+            'memberOf': {'group': ['okta-group-one']},
+            'sshkey': 'ssh-key-test'
+        }
+        user = tool.FreeIPAOktaUser('test.user', data)
+        assert user.name == 'test.user'
+        assert user.data_repo == data
+        assert user.data_ipa == {
+            'carlicense': (u'some-name-123',),
+            'givenname': (u'Some',),
+            'ipasshpubkey': (u'ssh-key-test',),
+            'mail': (u'some.name@devgdc.com',),
+            'memberof': {'group': ['okta-group-one']},
+            'sn': (u'Name',), 'nsaccountlock': True
+        }
+
+    def test_create_commands_disable(self):
+        user = tool.FreeIPAOktaUser('user.one', {'nsaccountlock': True})
+        remote_user = tool.FreeIPAUserGroup(
+            'rule-one', {'nsaccountlock': False})
+        cmds = user.create_commands(remote_user)
+        assert len(cmds) == 1
+        assert repr(cmds[0]) == 'user_disable user.one ()'
+
+    def test_create_commands_enable(self):
+        user = tool.FreeIPAOktaUser('user.one', {'nsaccountlock': False})
+        remote_user = tool.FreeIPAUserGroup(
+            'rule-one', {'nsaccountlock': True})
+        cmds = user.create_commands(remote_user)
+        assert len(cmds) == 1
+        assert repr(cmds[0]) == 'user_enable user.one ()'
+
+    def test_create_commands_new_disabled(self):
+        user = tool.FreeIPAOktaUser('user.one', {'nsaccountlock': True})
+        cmds = user.create_commands(None)
+        assert len(cmds) == 2
+        assert repr(cmds[0]) == 'user_add user.one ()'
+        assert repr(cmds[1]) == 'user_disable user.one ()'
+
+
 class TestFreeIPAUserGroup(object):
     def setup_method(self, method):
         self.data = {
