@@ -1,0 +1,148 @@
+[
+    {
+        "_links": {
+            "self": {
+                "href": "https://gooddata.okta.com/api/v1/users/00u99999999999999999"
+            }
+        },
+        "activated": "2020-11-20T16:18:44.000Z",
+        "created": "2020-11-20T15:18:43.000Z",
+        "credentials": {
+            "password": {},
+            "provider": {
+                "name": "OKTA",
+                "type": "OKTA"
+            },
+            "recovery_question": {
+                "question": "test?"
+            }
+        },
+        "id": "00u99999999999999999",
+        "lastLogin": "2021-01-17T16:29:51.000Z",
+        "lastUpdated": "2021-01-17T16:28:46.000Z",
+        "passwordChanged": "2021-01-17T16:28:46.000Z",
+        "profile": {
+            "email": "some.user@devgdc.com",
+            "firstName": "Some",
+            "lastName": "User",
+            "login": "some.user@devgdc.com",
+            "mobilePhone": null,
+            "secondEmail": null,
+            "manager": ""
+        },
+        "status": "ACTIVE",
+        "statusChanged": "2020-11-19T16:43:04.000Z",
+        "type": {
+            "id": "aaaaaaaaaaaaaaaaaaaa"
+        }
+    },
+    {
+        "_links": {
+            "self": {
+                "href": "https://gooddata.okta.com/api/v1/users/00u99999999999999991"
+            }
+        },
+        "activated": "2020-11-20T16:18:44.000Z",
+        "created": "2020-11-20T15:18:43.000Z",
+        "credentials": {
+            "password": {},
+            "provider": {
+                "name": "OKTA",
+                "type": "OKTA"
+            },
+            "recovery_question": {
+                "question": "test2?"
+            }
+        },
+        "id": "00u99999999999999991",
+        "lastLogin": "2021-01-17T16:29:51.000Z",
+        "lastUpdated": "2021-01-17T16:28:46.000Z",
+        "passwordChanged": "2021-01-17T16:28:46.000Z",
+        "profile": {
+            "email": "other.user@devgdc.com",
+            "firstName": "Other",
+            "lastName": "User",
+            "login": "other.user@devgdc.com",
+            "mobilePhone": null,
+            "secondEmail": null,
+            "manager": "manager.one"
+        },
+        "status": "SUSPENDED",
+        "statusChanged": "2020-11-19T16:43:04.000Z",
+        "type": {
+            "id": "aaaaaaaaaaaaaaaaaaaa"
+        }
+    },
+    {
+        "_links": {
+            "self": {
+                "href": "https://gooddata.okta.com/api/v1/users/00u99999999999999998"
+            }
+        },
+        "activated": "2020-11-20T16:18:44.000Z",
+        "created": "2020-11-20T15:18:43.000Z",
+        "credentials": {
+            "password": {},
+            "provider": {
+                "name": "OKTA",
+                "type": "OKTA"
+            },
+            "recovery_question": {
+                "question": "test3?"
+            }
+        },
+        "id": "00u99999999999999998",
+        "lastLogin": "2021-01-17T16:29:51.000Z",
+        "lastUpdated": "2021-01-17T16:28:46.000Z",
+        "passwordChanged": "2021-01-17T16:28:46.000Z",
+        "profile": {
+            "email": "different.user@otherdomain.com",
+            "firstName": "Some",
+            "lastName": "User",
+            "login": "different.user@otherdomain.com",
+            "mobilePhone": null,
+            "secondEmail": null
+        },
+        "status": "ACTIVE",
+        "statusChanged": "2020-11-19T16:43:04.000Z",
+        "type": {
+            "id": "aaaaaaaaaaaaaaaaaaaa"
+        }
+    },
+    {
+        "_links": {
+            "self": {
+                "href": "https://gooddata.okta.com/api/v1/users/00u99999999999999997"
+            }
+        },
+        "activated": "2020-11-20T16:18:44.000Z",
+        "created": "2020-11-20T15:18:43.000Z",
+        "credentials": {
+            "password": {},
+            "provider": {
+                "name": "OKTA",
+                "type": "OKTA"
+            },
+            "recovery_question": {
+                "question": "test4?"
+            }
+        },
+        "id": "00u99999999999999997",
+        "lastLogin": "2021-01-17T16:29:51.000Z",
+        "lastUpdated": "2021-01-17T16:28:46.000Z",
+        "passwordChanged": "2021-01-17T16:28:46.000Z",
+        "profile": {
+            "email": "terminated.user@devgdc.com",
+            "firstName": "Some",
+            "lastName": "User",
+            "login": "terminated.user@devgdc.com",
+            "mobilePhone": null,
+            "secondEmail": null
+        },
+        "status": "DEPROVISIONED",
+        "statusChanged": "2020-11-19T16:43:04.000Z",
+        "type": {
+            "id": "aaaaaaaaaaaaaaaaaaaa"
+        }
+    }
+]

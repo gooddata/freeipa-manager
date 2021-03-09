@@ -1,0 +1,26 @@
+[
+    {
+        "profile": {
+            "description": null,
+            "name": "oktagroup1"
+        }
+    },
+    {
+        "profile": {
+            "description": null,
+            "name": "oktagroup2"
+        }
+    },
+    {
+        "profile": {
+            "description": null,
+            "name": "commongroup1"
+        }
+    },
+    {
+        "profile": {
+            "description": null,
+            "name": "commongroup2"
+        }
+    }
+]
