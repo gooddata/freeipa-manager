@@ -21,3 +21,7 @@ class ConfigError(ManagerError):
 
 class IntegrityError(ConfigError):
     """Error raised in case of integrity checking failure."""
+
+
+class OktaError(ManagerError):
+    """Error raised in case of issues with Okta communication."""

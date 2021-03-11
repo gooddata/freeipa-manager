@@ -169,7 +169,8 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager = self._init_tool(['push', 'config_repo', '-ft', '10'])
                 manager.entities = dict()
                 manager.run()
-        mock_conn.assert_called_with(manager.settings, {}, 10, True, False)
+        mock_conn.assert_called_with(
+            manager.settings, {}, 10, True, False, False, [])
 
     def test_run_push_enable_deletion(self):
         with mock.patch('ipamanager.ipa_connector.IpaUploader') as mock_conn:
@@ -177,7 +178,8 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager = self._init_tool(['push', 'repo_path', '-fdt', '10'])
                 manager.entities = dict()
                 manager.run()
-        mock_conn.assert_called_with(manager.settings, {}, 10, True, True)
+        mock_conn.assert_called_with(
+            manager.settings, {}, 10, True, True, False, [])
 
     def test_run_push_dry_run(self):
         with mock.patch('ipamanager.ipa_connector.IpaUploader') as mock_conn:
@@ -185,7 +187,8 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager = self._init_tool(['push', 'config_repo'])
                 manager.entities = dict()
                 manager.run()
-        mock_conn.assert_called_with(manager.settings, {}, 10, False, False)
+        mock_conn.assert_called_with(
+            manager.settings, {}, 10, False, False, False, [])
 
     def test_run_push_dry_run_enable_deletion(self):
         with mock.patch('ipamanager.ipa_connector.IpaUploader') as mock_conn:
@@ -193,7 +196,8 @@ class TestFreeIPAManagerRun(TestFreeIPAManagerBase):
                 manager = self._init_tool(['push', 'config_repo', '-d'])
                 manager.entities = dict()
                 manager.run()
-        mock_conn.assert_called_with(manager.settings, {}, 10, False, True)
+        mock_conn.assert_called_with(
+            manager.settings, {}, 10, False, True, False, [])
 
     def test_run_pull(self):
         with mock.patch('ipamanager.ipa_connector.IpaDownloader') as mock_conn:

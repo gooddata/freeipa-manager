@@ -31,7 +31,7 @@ class FreeIPAEntity(FreeIPAManagerCore):
     ignored = []  # list of ignored entities for each entity type
     allowed_members = []
 
-    def __init__(self, name, data, path=None):
+    def __init__(self, name, data, path=None, okta=False):
         """
         :param str name: entity name (user login, group name etc.)
         :param dict data: dictionary of entity configuration values
@@ -44,7 +44,7 @@ class FreeIPAEntity(FreeIPAManagerCore):
         self.name = name
         self.path = path
         self.metaparams = data.pop('metaparams', dict())
-        if self.path:  # created from local config
+        if self.path:  # created from Git
             try:
                 self.validation_schema(data)
             except voluptuous.Error as e:
@@ -53,6 +53,7 @@ class FreeIPAEntity(FreeIPAManagerCore):
                 path, name = os.path.split(self.path)
                 self.path = '%s.yaml' % os.path.join(
                     path, name.replace('-', '_'))
+        if self.path or okta:  # created from Git/Okta
             self.data_ipa = self._convert_to_ipa(data)
             self.data_repo = data
         else:  # created from FreeIPA
@@ -365,6 +366,60 @@ class FreeIPAUser(FreeIPAEntity):
         'githubLogin': 'carLicense'
     }
     validation_schema = voluptuous.Schema(schemas.schema_users)
+
+
+class FreeIPAOktaUser(FreeIPAUser):
+    """Representation of a FreeIPA user fetched from Okta."""
+    managed_attributes_push = FreeIPAUser.managed_attributes_push + [
+        'ipaSshPubKey']
+    # we don't support pulling from IPA to Okta
+    managed_attributes_pull = []
+    key_mapping = {
+        'email': 'mail',
+        'firstName': 'givenName',
+        'lastName': 'sn',
+        'githubLogin': 'carLicense',
+        'department': 'ou',
+        'sshkey': 'ipaSshPubKey',
+        'disabled': 'nsAccountLock'
+    }
+
+    def __init__(self, name, data):
+        """
+        :param str name: entity name (user login)
+        :param dict data: dictionary of entity configuration values
+        """
+        super(FreeIPAOktaUser, self).__init__(name, data, okta=True)
+
+    def _convert_to_ipa(self, data):
+        """
+        Some Okta profile attributes have an empty string value
+        instead of being None/null; let us handle them properly
+        to avoid trying to apply an empty diff against IPA API.
+        """
+        result = super(FreeIPAOktaUser, self)._convert_to_ipa(data)
+        return dict((k, v) for k, v in result.iteritems() if v != (u'',))
+
+    def create_commands(self, remote_entity=None):
+        """
+        On top of attribute diff, handle disabling the user.
+        :param dict remote_entity: remote rule data
+        :returns: list of commands to execute
+        :rtype: list(Command)
+        """
+        result = super(FreeIPAOktaUser, self).create_commands(remote_entity)
+        suspended_okta = self.data_ipa.get('nsaccountlock', False)
+        try:
+            disabled_ipa = remote_entity.data_ipa['nsaccountlock']
+        except (AttributeError, KeyError):
+            disabled_ipa = False
+        if suspended_okta and not disabled_ipa:
+            result.append(
+                Command('user_disable', {}, self.name, self.entity_id_type))
+        elif disabled_ipa and not suspended_okta:
+            result.append(
+                Command('user_enable', {}, self.name, self.entity_id_type))
+        return result
 
 
 class FreeIPARule(FreeIPAEntity):

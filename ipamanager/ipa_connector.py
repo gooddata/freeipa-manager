@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright © 2017-2019, GoodData Corporation. All rights reserved.
+# Copyright © 2017-2021, GoodData Corporation. All rights reserved.
 """
 FreeIPA Manager - IPA updating module
 
@@ -71,8 +71,8 @@ class IpaConnector(FreeIPAManagerCore):
 
 
 class IpaUploader(IpaConnector):
-    def __init__(self, settings, parsed, threshold,
-                 force=False, enable_deletion=False):
+    def __init__(self, settings, parsed, threshold, force=False,
+                 enable_deletion=False, okta_users=False, okta_groups=[]):
         """
         Initialize an IPA connector object.
         :param dict settings: parsed contents of the settings file
@@ -80,6 +80,8 @@ class IpaUploader(IpaConnector):
         :param int threshold: max percentage of entities to edit (1-100)
         :param bool force: execute changes (dry run if False)
         :param bool enable_deletion: enable deleting entities
+        :param bool okta_users: push users from Okta instead of Git
+        :param [str] okta_groups: list of Okta groups to use for diff
         """
         super(IpaUploader, self).__init__(parsed, settings)
         self.threshold = threshold
@@ -89,6 +91,13 @@ class IpaUploader(IpaConnector):
         self.deletion_patterns = settings.get(
             'deletion-patterns',
             ['.+_del$', '.+_remove_member$', '.+_remove_option$'])
+
+        # parse Okta-related settings
+        okta_settings = settings.get('okta', dict())
+        self.okta_users = okta_users
+        self.okta_groups = okta_groups
+        if self.okta_users:
+            self.ignored['user'] = okta_settings.get('ignore', [])
 
     def _prepare_push(self):
         """
@@ -166,19 +175,25 @@ class IpaUploader(IpaConnector):
                 self.commands.append(
                     Command(command, {entity.entity_name: (entity.name,)},
                             repo_group.name, repo_group.entity_id_type))
-        #  here happens the deletion
-        for cls in ENTITY_CLASSES:
-            if entity.entity_name in cls.allowed_members:
-                target_type = cls.entity_name
-                for target in self.ipa_entities[target_type].itervalues():
-                    members = target.data_ipa.get(
-                        'member_%s' % entity.entity_name, [])
-                    if entity.name in members:
-                        if target.name not in member_of.get(target_type, []):
-                            command = '%s_remove_member' % target_type
-                            diff = {entity.entity_name: (entity.name,)}
-                            self.commands.append(
-                                Command(command, diff, target.name, 'cn'))
+
+        target_types = [cls.entity_name for cls in ENTITY_CLASSES
+                        if entity.entity_name in cls.allowed_members]
+        for target_type in target_types:
+            if (entity.entity_name == 'user' and target_type == 'group'
+                    and self.okta_users):
+                targets = [gr for gr in self.okta_groups
+                           if gr in self.ipa_entities[target_type]]
+            else:
+                targets = self.ipa_entities[target_type].keys()
+            for target in targets:
+                members = self.ipa_entities[target_type][target].data_ipa.get(
+                    'member_%s' % entity.entity_name, [])
+                if entity.name in members:
+                    if target not in member_of.get(target_type, []):
+                        command = '%s_remove_member' % target_type
+                        diff = {entity.entity_name: (entity.name,)}
+                        self.commands.append(
+                            Command(command, diff, target, 'cn'))
 
     def _prepare_del_commands(self):
         """
