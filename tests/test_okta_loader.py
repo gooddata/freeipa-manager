@@ -7,7 +7,7 @@ import json
 import mock
 import os.path
 import requests_mock
-from testfixtures import LogCapture
+from testfixtures import LogCapture, StringComparison
 
 from _utils import _import
 tool = _import('ipamanager', 'okta_loader')
@@ -61,7 +61,7 @@ class TestConfigLoader(object):
         with LogCapture() as log:
             users = self.loader.load()
 
-        assert users.keys() == [u'some.user', u'other.user']
+        assert set(users.keys()) == {u'some.user', u'other.user'}
 
         assert users[u'some.user'].data_ipa == {
             'givenname': (u'Some',), 'mail': (u'some.user@devgdc.com',),
@@ -92,8 +92,8 @@ class TestConfigLoader(object):
              u'match UID regex "(.+)@devgdc.com", skipping'),
             ('OktaLoader', 'DEBUG',
              u'User terminated.user is DEPROVISIONED in Okta, not creating'),
-            ('OktaLoader', 'DEBUG',
-             "Users loaded from Okta: [u'some.user', u'other.user']"),
+            ('OktaLoader', 'DEBUG', StringComparison(
+                "Users loaded from Okta: .+")),
             ('OktaLoader', 'INFO', '2 users loaded from Okta'))
 
     def test_load_groups(self):
