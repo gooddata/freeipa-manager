@@ -3,4 +3,3 @@ pyyaml
 requests
 sh < 1.14
 voluptuous
-yamllint < 1.25

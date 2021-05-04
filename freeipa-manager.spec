@@ -1,5 +1,5 @@
 Name:           freeipa-manager
-Version:        1.11
+Version:        1.12
 Release:        1%{?dist}
 Summary:        FreeIPA entity provisioning tool
 
@@ -14,7 +14,6 @@ Requires:       python-argcomplete
 Requires:       python-requests >= 2.6.0
 Requires:       python-sh >= 1.11
 Requires:       python-voluptuous >= 0.8.5
-Requires:       python2-yamllint >= 1.8.1
 Requires:       /usr/sbin/send_nsca
 BuildRequires:  pytest python-argcomplete python-psutil python-setuptools
 Conflicts:      gdc-ipa-utils < 6
