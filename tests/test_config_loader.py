@@ -103,6 +103,28 @@ class TestConfigLoader(object):
             'No privilege files found',
             'No permission files found'])
 
+    @log_capture('ConfigLoader', level=logging.DEBUG)
+    def test_run_yamllint_check_ok(self, captured_log):
+        data = '---\ntest-group:\n  description: A test group.\n'
+        tool.run_yamllint_check(data)
+        captured_log.check()
+
+    @log_capture('ConfigLoader', level=logging.DEBUG)
+    def test_run_yamllint_check_long_line(self, captured_log):
+        data = '---\ntest-group:\n  description: %s\n' % ('x' * 80)
+        tool.run_yamllint_check(data)
+        captured_log.check()
+
+    def test_run_yamllint_check_error(self):
+        data = 'test-group:\n  description: A test group.\n  description: test'
+        with pytest.raises(tool.ConfigError) as exc:
+            tool.run_yamllint_check(data)
+        assert exc.value[0] == (
+            'yamllint errors: [1:1: missing document start "---" '
+            '(document-start), 3:3: duplication of key "description" '
+            'in mapping (key-duplicates), 3:20: no new line character '
+            'at the end of file (new-line-at-end-of-file)]')
+
     def test_parse(self):
         self.loader.entities = {'user': {}}
         data = {'test.user': {'firstName': 'first', 'lastName': 'last'}}
