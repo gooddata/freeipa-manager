@@ -121,22 +121,23 @@ class OktaLoader(FreeIPAManagerCore):
         return filtered_groups
 
     def _get_okta_api_pages(self, url):
-        self.lg.debug('Reading Okta users from %s', url)
+        self.lg.debug('Getting Okta API response from %s', url)
         resp = self.session.get(url)
         if not resp.ok:
-            raise OktaError('Error reading users from Okta: %s', resp.text)
-        users = resp.json()
+            raise OktaError('Error reading Okta API: %s', resp.text)
+        results = resp.json()
         # handle pagination:
         if resp.links.get('next'):
-            users.extend(self._get_okta_api_pages(resp.links['next']['url']))
-        return users
+            results.extend(self._get_okta_api_pages(resp.links['next']['url']))
+        return results
 
     def _user_groups(self, user):
         self.lg.debug('Reading user %s (%s) Okta groups',
                       user['profile']['login'], user['id'])
-        resp = self.session.get('%s/users/%s/groups'
-                                % (self.okta_url, user['id']))
-        if not resp.ok:
+        try:
+            resp = self._get_okta_api_pages(
+                '%s/users/%s/groups' % (self.okta_url, user['id']))
+        except OktaError as e:
             raise OktaError('Error getting user %s groups: %s',
-                            user['profile']['login'], resp.text)
-        return (gr['profile']['name'] for gr in resp.json())
+                            user['profile']['login'], e)
+        return (gr['profile']['name'] for gr in resp)
