@@ -179,13 +179,7 @@ class IpaUploader(IpaConnector):
         target_types = [cls.entity_name for cls in ENTITY_CLASSES
                         if entity.entity_name in cls.allowed_members]
         for target_type in target_types:
-            if (entity.entity_name == 'user' and target_type == 'group'
-                    and self.okta_users):
-                targets = [gr for gr in self.okta_groups
-                           if gr in self.ipa_entities[target_type]]
-            else:
-                targets = self.ipa_entities[target_type].keys()
-            for target in targets:
+            for target in self.ipa_entities[target_type]:
                 members = self.ipa_entities[target_type][target].data_ipa.get(
                     'member_%s' % entity.entity_name, [])
                 if entity.name in members:
