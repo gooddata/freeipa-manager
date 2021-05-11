@@ -84,7 +84,7 @@ class TestConfigLoader(object):
         log.check(
             ('OktaLoader', 'INFO', 'Loading users from Okta'),
             ('OktaLoader', 'DEBUG',
-             u'User some.user is ACTIVE in Okta, creating as active user'),
+             u'User some.user is ACTIVE in Okta, setting as active user'),
             ('OktaLoader', 'DEBUG',
              u'User other.user is SUSPENDED in Okta, setting as disabled'),
             ('OktaLoader', 'WARNING',

@@ -83,7 +83,7 @@ class OktaLoader(FreeIPAManagerCore):
 
             # handle Okta user status
             status = user['status']
-            if status in ('STAGED', 'DEPROVISIONED'):
+            if status == 'DEPROVISIONED':
                 self.lg.debug('User %s is %s in Okta, not creating',
                               uid, status)
                 # shouldn't be in FreeIPA at all
@@ -93,11 +93,14 @@ class OktaLoader(FreeIPAManagerCore):
                               uid, status)
                 # should be disabled
                 user_config['disabled'] = True
-            elif status in ('PROVISIONED', 'ACTIVE',
+            elif status in ('PROVISIONED', 'ACTIVE', 'STAGED',
                             'PASSWORD_EXPIRED', 'LOCKED_OUT', 'RECOVERY'):
-                self.lg.debug('User %s is %s in Okta, creating as active user',
+                self.lg.debug('User %s is %s in Okta, setting as active user',
                               uid, status)
                 user_config['disabled'] = False
+            else:
+                raise OktaError('User %s in unexpected state: %s'
+                                % (uid, status))
 
             for attr in self.settings['okta']['attributes']:
                 if attr in user['profile']:
