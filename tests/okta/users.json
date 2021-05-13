@@ -28,7 +28,8 @@
             "login": "some.user@devgdc.com",
             "mobilePhone": null,
             "secondEmail": null,
-            "manager": ""
+            "employeeNumber": "123",
+            "manager": null
         },
         "status": "ACTIVE",
         "statusChanged": "2020-11-19T16:43:04.000Z",
@@ -65,7 +66,8 @@
             "login": "other.user@devgdc.com",
             "mobilePhone": null,
             "secondEmail": null,
-            "manager": "manager.one"
+            "managerId": "123",
+            "manager": "Some User"
         },
         "status": "SUSPENDED",
         "statusChanged": "2020-11-19T16:43:04.000Z",

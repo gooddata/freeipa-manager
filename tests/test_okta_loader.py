@@ -75,16 +75,18 @@ class TestConfigLoader(object):
         assert users[u'other.user'].data_ipa == {
             'givenname': (u'Other',), 'mail': (u'other.user@devgdc.com',),
             'memberof': {'group': ['commongroup2']}, 'sn': (u'User',),
-            'nsaccountlock': True}
+            'nsaccountlock': True, 'manager': (u'some.user',)}
         assert users[u'other.user'].data_repo == {
             'email': u'other.user@devgdc.com', 'firstName': u'Other',
             'lastName': u'User', 'memberOf': {'group': ['commongroup2']},
-            'disabled': True}
+            'disabled': True, 'manager': u'some.user'}
 
         log.check(
             ('OktaLoader', 'INFO', 'Loading users from Okta'),
             ('OktaLoader', 'DEBUG',
              u'User some.user is ACTIVE in Okta, setting as active user'),
+            ('OktaLoader', 'WARNING',
+             u'User some.user has no manager defined'),
             ('OktaLoader', 'DEBUG',
              u'User other.user is SUSPENDED in Okta, setting as disabled'),
             ('OktaLoader', 'WARNING',

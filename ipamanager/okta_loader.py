@@ -53,6 +53,21 @@ class OktaLoader(FreeIPAManagerCore):
             'Authorization': 'SSWS %s' % self.okta_token
         }
 
+    def _parse_uid(self, raw, regex):
+        if not regex:
+            return raw
+        return re.match(regex, raw).group(1)
+
+    def _parse_manager(self, uid, user, uid_regex):
+        manager_id = user['profile'].get('managerId')
+        if not manager_id:
+            self.lg.warning('User %s has no manager defined', uid)
+            return
+        for other in self.okta_users:
+            if other['profile'].get('employeeNumber') == manager_id:
+                return self._parse_uid(other['profile']['login'], uid_regex)
+        self.lg.warning('User %s manager (ID %s) not found', uid, manager_id)
+
     def load(self):
         """
         Parse Okta users and attributes.
@@ -60,19 +75,17 @@ class OktaLoader(FreeIPAManagerCore):
         self.lg.info('Loading users from Okta')
         users = dict()
         uid_regex = self.settings['okta']['user_id_regex']
-        for user in self._get_okta_api_pages('%s/users' % self.okta_url):
-            # parse UID from Okta
-            uid_raw = user['profile']['login']
-            if uid_regex:
-                try:
-                    uid = re.match(uid_regex, uid_raw).group(1)
-                except AttributeError:
-                    self.lg.warning(
-                        'User %s does not match UID regex "%s", skipping',
-                        uid_raw, uid_regex)
-                    continue
-            else:
-                uid = uid_raw
+
+        self.okta_users = self._get_okta_api_pages('%s/users' % self.okta_url)
+
+        for user in self.okta_users:
+            try:
+                uid = self._parse_uid(user['profile']['login'], uid_regex)
+            except AttributeError:
+                self.lg.warning(
+                    'User %s does not match UID regex "%s", skipping',
+                    user['profile']['login'], uid_regex)
+                continue
 
             # check if ignored
             if check_ignored(FreeIPAOktaUser, uid, self.ignored):
@@ -108,6 +121,11 @@ class OktaLoader(FreeIPAManagerCore):
             groups = set(self._user_groups(user)).intersection(self.ipa_groups)
             if groups:
                 user_config['memberOf'] = {'group': list(groups)}
+
+            # parse manager
+            manager = self._parse_manager(uid, user, uid_regex)
+            if manager:
+                user_config['manager'] = manager
 
             users[uid] = FreeIPAOktaUser(uid, user_config)
         self.lg.debug('Users loaded from Okta: %s', users.keys())
