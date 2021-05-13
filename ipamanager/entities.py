@@ -380,7 +380,7 @@ class FreeIPAOktaUser(FreeIPAUser):
         'lastName': 'sn',
         'githubLogin': 'carLicense',
         'department': 'ou',
-        'sshkey': 'ipaSshPubKey',
+        'sshKeys': 'ipaSshPubKey',
         'disabled': 'nsAccountLock'
     }
 

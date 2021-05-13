@@ -516,7 +516,7 @@ class TestFreeIPAOktaUser(object):
             'githubLogin': 'some-name-123',
             'manager': '',
             'memberOf': {'group': ['okta-group-one']},
-            'sshkey': 'ssh-key-test'
+            'sshKeys': ['ssh-key-test']
         }
         user = tool.FreeIPAOktaUser('test.user', data)
         assert user.name == 'test.user'
