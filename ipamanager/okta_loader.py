@@ -53,6 +53,21 @@ class OktaLoader(FreeIPAManagerCore):
             'Authorization': 'SSWS %s' % self.okta_token
         }
 
+    def _parse_uid(self, raw, regex):
+        if not regex:
+            return raw
+        return re.match(regex, raw).group(1)
+
+    def _parse_manager(self, uid, user, uid_regex):
+        manager_id = user['profile'].get('managerId')
+        if not manager_id:
+            self.lg.warning('User %s has no manager defined', uid)
+            return
+        for other in self.okta_users:
+            if other['profile'].get('employeeNumber') == manager_id:
+                return self._parse_uid(other['profile']['login'], uid_regex)
+        self.lg.warning('User %s manager (ID %s) not found', uid, manager_id)
+
     def load(self):
         """
         Parse Okta users and attributes.
@@ -60,19 +75,17 @@ class OktaLoader(FreeIPAManagerCore):
         self.lg.info('Loading users from Okta')
         users = dict()
         uid_regex = self.settings['okta']['user_id_regex']
-        for user in self._get_okta_api_pages('%s/users' % self.okta_url):
-            # parse UID from Okta
-            uid_raw = user['profile']['login']
-            if uid_regex:
-                try:
-                    uid = re.match(uid_regex, uid_raw).group(1)
-                except AttributeError:
-                    self.lg.warning(
-                        'User %s does not match UID regex "%s", skipping',
-                        uid_raw, uid_regex)
-                    continue
-            else:
-                uid = uid_raw
+
+        self.okta_users = self._get_okta_api_pages('%s/users' % self.okta_url)
+
+        for user in self.okta_users:
+            try:
+                uid = self._parse_uid(user['profile']['login'], uid_regex)
+            except AttributeError:
+                self.lg.warning(
+                    'User %s does not match UID regex "%s", skipping',
+                    user['profile']['login'], uid_regex)
+                continue
 
             # check if ignored
             if check_ignored(FreeIPAOktaUser, uid, self.ignored):
@@ -83,7 +96,7 @@ class OktaLoader(FreeIPAManagerCore):
 
             # handle Okta user status
             status = user['status']
-            if status in ('STAGED', 'DEPROVISIONED'):
+            if status == 'DEPROVISIONED':
                 self.lg.debug('User %s is %s in Okta, not creating',
                               uid, status)
                 # shouldn't be in FreeIPA at all
@@ -93,11 +106,14 @@ class OktaLoader(FreeIPAManagerCore):
                               uid, status)
                 # should be disabled
                 user_config['disabled'] = True
-            elif status in ('PROVISIONED', 'ACTIVE',
+            elif status in ('PROVISIONED', 'ACTIVE', 'STAGED',
                             'PASSWORD_EXPIRED', 'LOCKED_OUT', 'RECOVERY'):
-                self.lg.debug('User %s is %s in Okta, creating as active user',
+                self.lg.debug('User %s is %s in Okta, setting as active user',
                               uid, status)
                 user_config['disabled'] = False
+            else:
+                raise OktaError('User %s in unexpected state: %s'
+                                % (uid, status))
 
             for attr in self.settings['okta']['attributes']:
                 if attr in user['profile']:
@@ -105,6 +121,11 @@ class OktaLoader(FreeIPAManagerCore):
             groups = set(self._user_groups(user)).intersection(self.ipa_groups)
             if groups:
                 user_config['memberOf'] = {'group': list(groups)}
+
+            # parse manager
+            manager = self._parse_manager(uid, user, uid_regex)
+            if manager:
+                user_config['manager'] = manager
 
             users[uid] = FreeIPAOktaUser(uid, user_config)
         self.lg.debug('Users loaded from Okta: %s', users.keys())
@@ -121,22 +142,23 @@ class OktaLoader(FreeIPAManagerCore):
         return filtered_groups
 
     def _get_okta_api_pages(self, url):
-        self.lg.debug('Reading Okta users from %s', url)
+        self.lg.debug('Getting Okta API response from %s', url)
         resp = self.session.get(url)
         if not resp.ok:
-            raise OktaError('Error reading users from Okta: %s', resp.text)
-        users = resp.json()
+            raise OktaError('Error reading Okta API: %s', resp.text)
+        results = resp.json()
         # handle pagination:
         if resp.links.get('next'):
-            users.extend(self._get_okta_api_pages(resp.links['next']['url']))
-        return users
+            results.extend(self._get_okta_api_pages(resp.links['next']['url']))
+        return results
 
     def _user_groups(self, user):
         self.lg.debug('Reading user %s (%s) Okta groups',
                       user['profile']['login'], user['id'])
-        resp = self.session.get('%s/users/%s/groups'
-                                % (self.okta_url, user['id']))
-        if not resp.ok:
+        try:
+            resp = self._get_okta_api_pages(
+                '%s/users/%s/groups' % (self.okta_url, user['id']))
+        except OktaError as e:
             raise OktaError('Error getting user %s groups: %s',
-                            user['profile']['login'], resp.text)
-        return (gr['profile']['name'] for gr in resp.json())
+                            user['profile']['login'], e)
+        return (gr['profile']['name'] for gr in resp)
