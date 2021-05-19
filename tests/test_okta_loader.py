@@ -17,7 +17,7 @@ modulename = 'ipamanager.config_loader'
 testpath = os.path.dirname(os.path.abspath(__file__))
 
 
-class TestConfigLoader(object):
+class TestOktaLoader(object):
     def setup_method(self, method):
         settings = {'okta': {
             'auth': {'org': 'testoktaorg', 'token_path': '/test/okta.token'},
@@ -64,21 +64,21 @@ class TestConfigLoader(object):
         assert set(users.keys()) == {u'some.user', u'other.user'}
 
         assert users[u'some.user'].data_ipa == {
-            'givenname': (u'Some',), 'mail': (u'some.user@devgdc.com',),
-            'memberof': {'group': ['commongroup1']}, 'sn': (u'User',),
+            'givenname': (u'Some',), 'sn': (u'User',),
+            'memberof': {'group': ['commongroup1']},
             'nsaccountlock': False}
         assert users[u'some.user'].data_repo == {
-            'email': u'some.user@devgdc.com', 'firstName': u'Some',
-            'lastName': u'User', 'memberOf': {'group': ['commongroup1']},
+            'firstName': u'Some', 'lastName': u'User',
+            'memberOf': {'group': ['commongroup1']},
             'disabled': False}
 
         assert users[u'other.user'].data_ipa == {
-            'givenname': (u'Other',), 'mail': (u'other.user@devgdc.com',),
-            'memberof': {'group': ['commongroup2']}, 'sn': (u'User',),
+            'givenname': (u'Other',), 'sn': (u'User',),
+            'memberof': {'group': ['commongroup2']},
             'nsaccountlock': True, 'manager': (u'some.user',)}
         assert users[u'other.user'].data_repo == {
-            'email': u'other.user@devgdc.com', 'firstName': u'Other',
-            'lastName': u'User', 'memberOf': {'group': ['commongroup2']},
+            'firstName': u'Other', 'lastName': u'User',
+            'memberOf': {'group': ['commongroup2']},
             'disabled': True, 'manager': u'some.user'}
 
         log.check(
