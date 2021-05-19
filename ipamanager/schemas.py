@@ -36,6 +36,7 @@ schema_settings = {
     'user-group-pattern': str,
     'okta': {
         'enabled': bool,
+        'user_group_filter': [str],
         'ignore': [str],
         Required('attributes'): [str],
         Required('auth'): {
