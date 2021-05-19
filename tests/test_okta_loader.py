@@ -98,6 +98,38 @@ class TestOktaLoader(object):
                 "Users loaded from Okta: .+")),
             ('OktaLoader', 'INFO', '2 users loaded from Okta'))
 
+    def test_load_group_filter(self):
+        self.loader.settings['okta']['user_group_filter'] = ['commongroup2']
+        self.loader._get_okta_api_pages = mock.Mock()
+        with open(os.path.join(testpath, 'okta/users.json')) as resp_users_fh:
+            resp_users = json.load(resp_users_fh)
+            self.loader._get_okta_api_pages.return_value = resp_users
+        self.loader._user_groups = self._mock_groups
+
+        with LogCapture() as log:
+            users = self.loader.load()
+
+        assert len(users) == 1
+        assert users.keys() == [u'other.user']
+
+        log.check(
+            ('OktaLoader', 'INFO', 'Loading users from Okta'),
+            ('OktaLoader',
+             'DEBUG',
+             u'User some.user is ACTIVE in Okta, setting as active user'),
+            ('OktaLoader', 'INFO', u'User some.user has no group from filter, skipping'),
+            ('OktaLoader',
+             'DEBUG',
+             u'User other.user is SUSPENDED in Okta, setting as disabled'),
+            ('OktaLoader',
+             'WARNING',
+             u'User different.user@otherdomain.com does not match UID regex "(.+)@devgdc.com", skipping'),
+            ('OktaLoader',
+             'DEBUG',
+             u'User terminated.user is DEPROVISIONED in Okta, not creating'),
+            ('OktaLoader', 'DEBUG', "Users loaded from Okta: [u'other.user']"),
+            ('OktaLoader', 'INFO', '1 users loaded from Okta'))
+
     def test_load_groups(self):
         self.loader._get_okta_api_pages = mock.Mock()
         with open(os.path.join(testpath, 'okta/groups.json')) as resp_groups_fh:

@@ -75,6 +75,7 @@ class OktaLoader(FreeIPAManagerCore):
         self.lg.info('Loading users from Okta')
         users = dict()
         uid_regex = self.settings['okta']['user_id_regex']
+        group_filter = self.settings['okta'].get('user_group_filter', [])
 
         self.okta_users = self._get_okta_api_pages('%s/users' % self.okta_url)
 
@@ -121,6 +122,11 @@ class OktaLoader(FreeIPAManagerCore):
             groups = set(self._user_groups(user)).intersection(self.ipa_groups)
             if groups:
                 user_config['memberOf'] = {'group': list(groups)}
+
+            # don't create if filter enabled & user has no relevant groups
+            if group_filter and not groups.intersection(group_filter):
+                self.lg.info('User %s has no group from filter, skipping', uid)
+                continue
 
             # parse manager
             manager = self._parse_manager(uid, user, uid_regex)
