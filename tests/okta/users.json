@@ -22,7 +22,6 @@
         "lastUpdated": "2021-01-17T16:28:46.000Z",
         "passwordChanged": "2021-01-17T16:28:46.000Z",
         "profile": {
-            "email": "some.user@devgdc.com",
             "firstName": "Some",
             "lastName": "User",
             "login": "some.user@devgdc.com",
@@ -60,7 +59,6 @@
         "lastUpdated": "2021-01-17T16:28:46.000Z",
         "passwordChanged": "2021-01-17T16:28:46.000Z",
         "profile": {
-            "email": "other.user@devgdc.com",
             "firstName": "Other",
             "lastName": "User",
             "login": "other.user@devgdc.com",

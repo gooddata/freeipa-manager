@@ -1,5 +1,5 @@
 Name:           freeipa-manager
-Version:        1.15
+Version:        1.16
 Release:        1%{?dist}
 Summary:        FreeIPA entity provisioning tool
 

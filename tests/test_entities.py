@@ -510,7 +510,6 @@ class TestFreeIPAOktaUser(object):
     def test_create_user_correct(self):
         data = {
             'disabled': True,
-            'email': 'some.name@devgdc.com',
             'firstName': 'Some',
             'lastName': 'Name',
             'githubLogin': 'some-name-123',
@@ -525,7 +524,6 @@ class TestFreeIPAOktaUser(object):
             'carlicense': (u'some-name-123',),
             'givenname': (u'Some',),
             'ipasshpubkey': (u'ssh-key-test',),
-            'mail': (u'some.name@devgdc.com',),
             'memberof': {'group': ['okta-group-one']},
             'sn': (u'Name',), 'nsaccountlock': True
         }

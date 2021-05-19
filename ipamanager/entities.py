@@ -370,12 +370,12 @@ class FreeIPAUser(FreeIPAEntity):
 
 class FreeIPAOktaUser(FreeIPAUser):
     """Representation of a FreeIPA user fetched from Okta."""
-    managed_attributes_push = FreeIPAUser.managed_attributes_push + [
-        'ipaSshPubKey']
+    managed_attributes_push = [
+        attr for attr in FreeIPAUser.managed_attributes_push
+        if attr != 'mail'] + ['ipaSshPubKey']
     # we don't support pulling from IPA to Okta
     managed_attributes_pull = []
     key_mapping = {
-        'email': 'mail',
         'firstName': 'givenName',
         'lastName': 'sn',
         'githubLogin': 'carLicense',
