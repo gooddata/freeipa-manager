@@ -128,10 +128,10 @@ class OktaLoader(FreeIPAManagerCore):
                 self.lg.info('User %s has no group from filter, skipping', uid)
                 continue
 
-            # parse manager
-            manager = self._parse_manager(uid, user, uid_regex)
-            if manager:
-                user_config['manager'] = manager
+            if self.settings['okta'].get('parse_manager', True):
+                manager = self._parse_manager(uid, user, uid_regex)
+                if manager:
+                    user_config['manager'] = manager
 
             users[uid] = FreeIPAOktaUser(uid, user_config)
         self.lg.debug('Users loaded from Okta: %s', users.keys())
