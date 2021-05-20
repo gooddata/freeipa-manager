@@ -37,6 +37,7 @@ schema_settings = {
     'okta': {
         'enabled': bool,
         'user_group_filter': [str],
+        'parse_manager': bool,
         'ignore': [str],
         Required('attributes'): [str],
         Required('auth'): {
