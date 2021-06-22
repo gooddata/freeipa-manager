@@ -99,6 +99,12 @@ class FreeIPAManager(FreeIPAManagerCore):
         self.entities = self.config_loader.load()
 
         if self.okta_users:
+            if self.args.action == 'check':
+                self.lg.info('Okta user loading not supported in test')
+                self.entities['user'] = {}
+                self.okta_groups = []
+                return
+
             # only groups defined both in IPA & Okta are taken for Okta users
             ipa_groups = self.entities.get('group', []).keys()
             self.okta_loader = OktaLoader(self.settings, ipa_groups)
