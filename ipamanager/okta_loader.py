@@ -151,7 +151,7 @@ class OktaLoader(FreeIPAManagerCore):
         self.lg.debug('Getting Okta API response from %s', url)
         resp = self.session.get(url)
         if not resp.ok:
-            raise OktaError('Error reading Okta API: %s', resp.text)
+            raise OktaError('Error reading Okta API: %s' % resp.text)
         results = resp.json()
         # handle pagination:
         if resp.links.get('next'):
@@ -165,6 +165,6 @@ class OktaLoader(FreeIPAManagerCore):
             resp = self._get_okta_api_pages(
                 '%s/users/%s/groups' % (self.okta_url, user['id']))
         except OktaError as e:
-            raise OktaError('Error getting user %s groups: %s',
-                            user['profile']['login'], e)
+            raise OktaError('Error getting user %s groups: %s'
+                            % (user['profile']['login'], e))
         return (gr['profile']['name'] for gr in resp)
