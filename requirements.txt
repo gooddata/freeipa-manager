@@ -1,5 +1,5 @@
 argcomplete <= 1.10
-pyyaml
+pyyaml < 6
 requests
 sh < 1.14
 voluptuous
