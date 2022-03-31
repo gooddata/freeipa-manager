@@ -2,5 +2,5 @@ argcomplete <= 1.10
 pyyaml < 6
 requests
 sh < 1.14
-voluptuous
+voluptuous>=0.7,<=0.12.2
 yamllint < 1.25
