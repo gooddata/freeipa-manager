@@ -15,7 +15,7 @@ import yaml
 
 from core import FreeIPAManagerCore
 from errors import ConfigError
-from utils import ENTITY_CLASSES, check_ignored, run_yamllint_check
+from utils import ENTITY_CLASSES, check_ignored
 
 
 class ConfigLoader(FreeIPAManagerCore):
@@ -55,8 +55,6 @@ class ConfigLoader(FreeIPAManagerCore):
                 try:
                     with open(path, 'r') as confsource:
                         contents = confsource.read()
-                    run_yamllint_check(contents)
-                    self.lg.debug('%s yamllint check passed', fname)
                     data = yaml.safe_load(contents)
                     self._parse(data, entity_class, path)
                 except (IOError, ConfigError, yaml.YAMLError) as e:
