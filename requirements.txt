@@ -4,4 +4,3 @@ certifi < 2022
 requests
 sh < 1.14
 voluptuous>=0.7,<=0.12.2
-yamllint < 1.25
