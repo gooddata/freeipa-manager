@@ -1,5 +1,7 @@
+## :warning: This repository has been deprecated and the development of freeipa-manager has been stopped. Feel free to apply in case you want to take over the ownership. :warning:
+
 # freeipa-manager
-[![Build Status](https://travis-ci.org/gooddata/freeipa-manager.svg?branch=master)](https://travis-ci.org/gooddata/freeipa-manager)
+
 ## Overview
 *freeipa-manager* is a tool for management of [FreeIPA](https://github.com/freeipa/freeipa)
 entities. It makes it easier to setup and maintain identity management using FreeIPA
